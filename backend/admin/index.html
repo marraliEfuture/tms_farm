@@ -110,6 +110,8 @@ tbody tr.sel td{background:var(--accent-soft)}
 .bar{display:grid;grid-template-columns:120px minmax(0,1fr) 30px;gap:10px;align-items:center;font-size:13px}
 .bar i{display:block;height:8px;border-radius:4px;background:var(--grad)}
 .bar u{text-decoration:none;text-align:right;font-variant-numeric:tabular-nums;color:#fff}
+.lav{position:relative;display:inline-grid;place-items:center;flex:0 0 auto;width:34px;height:34px;border-radius:9px;overflow:hidden;font-weight:700;font-size:13px;color:#fff;background:hsl(var(--h) 55% 42%)}
+.lav img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;padding:3px}
 .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,10px);background:#fff;color:#000;padding:11px 16px;border-radius:12px;font-size:13.5px;font-weight:500;opacity:0;transition:.25s;pointer-events:none;z-index:50;max-width:calc(100% - 32px)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 .note{font-size:12.5px;color:var(--muted)}
@@ -162,6 +164,13 @@ const CLIENTS = [
   {id:"vin", name:"Vini Collina SA", city:"Taverne", sys:"Halo", dom:"vinicollina.ch", contacts:[{n:"Paolo Ghirlanda", src:"O365", mail:"p.ghirlanda@vinicollina.ch", tel:"+41 76 300 14 59"}]}
 ];
 const cl = id => CLIENTS.find(c=>c.id===id);
+/* logo dal dominio del cliente (scaricato dal backend), altrimenti le iniziali */
+function logo(c){
+  const ini = c.name.replace(/\b(SA|Sagl|Srl|SpA|AG|GmbH)\b/g,"").trim().split(/\s+/).slice(0,2).map(w=>w[0]).join("").toUpperCase();
+  let h = 0; for(const ch of c.name) h = (h*31 + ch.charCodeAt(0)) % 360;
+  const src = c.dom ? (location.protocol==="file:" ? "https://www.google.com/s2/favicons?sz=128&domain=" : "/api/app/logo?d=") + encodeURIComponent(c.dom) : "";
+  return `<span class="lav" style="--h:${h}" aria-hidden="true">${esc(ini)}${src?`<img src="${src}" alt="" loading="lazy" onload="if(this.naturalWidth&&this.naturalWidth<=16)this.remove()" onerror="this.remove()">`:""}</span>`;
+}
 const TECHS = [
   {ini:"MB", name:"Tecnico Zona Sud", mail:"mb@efuture.it", zona:"Sud", app:true, last:"08:20"},
   {ini:"LC", name:"Tecnico Zona Centro", mail:"lc@efuture.it", zona:"Centro", app:true, last:"ieri"},
@@ -324,7 +333,7 @@ function ticket(){
 function clienti(){
   $("#main").innerHTML = `<div class="top"><div><h1>Clienti</h1><p class="sub">Anagrafiche da ITSM e Halo, contatti anche da Office 365. Servono a riconoscere il mittente delle mail.</p></div></div>
     <div class="tbl"><table><thead><tr><th>Cliente</th><th>Ticket in</th><th>Dominio</th><th>Contatti</th></tr></thead><tbody>
-      ${CLIENTS.map(c=>`<tr><td><span class="strong">${esc(c.name)}</span><div class="dim">${esc(c.city)}</div></td><td>${badge(c.sys)}</td><td class="mono">@${esc(c.dom)}</td>
+      ${CLIENTS.map(c=>`<tr><td><div style="display:flex;gap:10px;align-items:center">${logo(c)}<div><span class="strong">${esc(c.name)}</span><div class="dim">${esc(c.city)}</div></div></div></td><td>${badge(c.sys)}</td><td class="mono">@${esc(c.dom)}</td>
         <td>${c.contacts.map(k=>`<div>${esc(k.n)} ${badge(k.src)}<div class="dim">${esc(k.mail)}${k.tel?" · "+esc(k.tel):""}</div></div>`).join("")}</td></tr>`).join("")}
     </tbody></table></div>`;
 }

@@ -95,6 +95,10 @@ npm run codice -- mario.rossi@efuture.it "Mario Rossi" MR Sud
 
 Il comando stampa il codice di accesso da dare al tecnico: viene mostrato una sola volta, nel file `data/tecnici.json` resta solo la sua impronta.
 
+## Loghi dei clienti
+
+Il logo di ogni cliente si ricava dal dominio della sua mail (per esempio `@caseificiovalle.ch`): il backend scarica una volta l'icona del sito tramite il servizio pubblico di Google (`google.com/s2/favicons`) e la tiene in `backend/data/logos/` per 30 giorni. Se il sito non ha un'icona compaiono le iniziali su un colore fisso. Google vede quindi i domini dei clienti, non altri dati.
+
 ## Cosa manca per l'uso reale
 
 - **ITSM:** il collegamento si aspetta tre letture (clienti, ticket aperti, identificativo dell'ultima mail di un ticket). Vanno adattate alle API o al database reali di itsm.efuture.it in `backend/src/connectors/itsm.js`.

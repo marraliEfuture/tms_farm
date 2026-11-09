@@ -10,6 +10,7 @@ const auth = require("./src/auth");
 const sources = require("./src/connectors");
 const mail = require("./src/mail");
 const { recognize } = require("./src/recognize");
+const logos = require("./src/logos");
 
 const app = express();
 app.use(express.json({ limit: "20mb" }));
@@ -59,6 +60,11 @@ async function logMail(msg, sent) {
 }
 
 /* ---------------- API app ---------------- */
+app.get("/api/app/logo", async (req, res) => {
+  const got = await logos.get(req.query.d);
+  if (!got) return res.set("Cache-Control", "public, max-age=86400").sendStatus(404);
+  res.set("Cache-Control", "public, max-age=604800").type(got.type).send(got.buf);
+});
 app.get("/api/app/info", (req, res) => res.json({ mode: cfg.mode, demo: auth.demoHint() }));
 app.post("/api/app/login", (req, res) => {
   const token = auth.login(req.body.mail, req.body.code);

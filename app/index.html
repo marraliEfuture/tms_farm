@@ -190,6 +190,10 @@ body{padding:0!important}
 .avatar{border:0;cursor:pointer}
 .install{display:flex;align-items:center;gap:10px;margin:0 16px 12px;padding:10px 12px;border-radius:14px;background:var(--accent-soft);color:var(--ink);font-size:13px;font-weight:600}
 .install span{flex:1}
+.lav{position:relative;display:inline-grid;place-items:center;flex:0 0 auto;border-radius:9px;overflow:hidden;font-weight:700;color:#fff;background:hsl(var(--h) 55% 42%);letter-spacing:0}
+.lav img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;padding:3px}
+.who-row{display:flex;align-items:center;gap:10px;min-width:0}
+.opt{gap:10px}
 .banner{background:var(--amber-soft);color:var(--amber);border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:600}
 .login{padding:28px 22px;gap:16px;justify-content:center}
 .login h2{font-size:24px;margin:0;color:var(--ink)}
@@ -289,6 +293,16 @@ let S = freshState();
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const cl = id => CLIENTS.find(c => c.id === id);
+/* logo del cliente dal dominio della sua mail; se non c'è, le iniziali su un colore fisso per cliente */
+function logo(c, size){
+  size = size || 28;
+  const dom = c && (c.dom || (typeof DOM !== "undefined" && DOM[c.id]) || ((c.contacts||[]).map(k=>(k.mail||"").split("@")[1]).find(Boolean)) || "");
+  const name = (c && c.name) || "?";
+  const ini = name.replace(/\b(SA|Sagl|Srl|SpA|AG|GmbH)\b/g,"").trim().split(/\s+/).slice(0,2).map(w=>w[0]).join("").toUpperCase();
+  let h = 0; for(const ch of name) h = (h*31 + ch.charCodeAt(0)) % 360;
+  const src = dom ? (API ? API+"/api/app/logo?d="+encodeURIComponent(dom) : "https://www.google.com/s2/favicons?sz=128&domain="+encodeURIComponent(dom)) : "";
+  return `<span class="lav" style="--h:${h};width:${size}px;height:${size}px;font-size:${Math.round(size*.38)}px" aria-hidden="true">${esc(ini)}${src?`<img src="${src}" alt="" loading="lazy" onload="if(this.naturalWidth&&this.naturalWidth<=16)this.remove()" onerror="this.remove()">`:""}</span>`;
+}
 const badge = s => `<span class="pill s-${s}">${SRC[s]}</span>`;
 const nowStr = () => new Date().toTimeString().slice(0,5);
 const digits = s => String(s||"").replace(/\D/g,"").slice(-9);
@@ -318,7 +332,7 @@ function renderMessaggi(){
   el.innerHTML = (API ? "" : `<div class="banner">Modalità prova: nessuna mail parte davvero. Per collegare l'app al backend imposta backendUrl in config.js.</div>`) + `<div><h2 class="sec">Messaggi</h2><p class="sub">Tu scrivi per mail a ${SUPPORT}, gli aggiornamenti arrivano da ITSM, Halo e Office 365</p></div>
     <div class="list">${S.threads.map((th,i)=>{ const c=cl(th.client)||{name:"Cliente da identificare",sys:"Halo"}; const l=lastOf(th);
       return `<button class="item${th.unread?" unread":""}" data-i="${i}">
-        <div class="row"><span class="nm">${esc(c.name)}</span><span class="tm">${esc(l.t)}</span></div>
+        <div class="row"><span class="nm who-row">${th.client?logo(c):""}${esc(c.name)}</span><span class="tm">${esc(l.t)}</span></div>
         <div class="row" style="justify-content:flex-start"><span class="mono">${esc(th.ticket)}</span>${th.client?badge(c.sys):""}</div>
         <span class="pv">${l.k==="tf"?"Ticket Farm: ":l.k==="fwd"?"Dal cliente: ":"Tu: "}${esc(l.text)}</span></button>`;}).join("")}</div>`;
   el.querySelectorAll(".item").forEach(b=>b.onclick=()=>openChat(+b.dataset.i));
@@ -335,7 +349,7 @@ function openChat(i){
   const c = cl(th.client);
   const ch = $("#chat"); ch.hidden = false;
   ch.innerHTML = `<div class="chead"><button class="back" id="c-back" aria-label="Indietro">‹</button>
-      <div style="min-width:0;flex:1"><div class="client">${esc(c?c.name:"Cliente da identificare")}</div><div class="row" style="justify-content:flex-start"><span class="mono">${esc(th.ticket)}</span>${c?badge(c.sys):""}</div></div></div>
+      ${c?logo(c,36):""}<div style="min-width:0;flex:1"><div class="client">${esc(c?c.name:"Cliente da identificare")}</div><div class="row" style="justify-content:flex-start"><span class="mono">${esc(th.ticket)}</span>${c?badge(c.sys):""}</div></div></div>
     <div class="msgs" id="msgs"></div>
     <div class="composer">
       <div class="line"><textarea class="input" id="c-text" placeholder="Scrivi una mail su questo ticket…"></textarea><button class="btn primary" id="c-send" type="button">Invia</button></div>
@@ -475,7 +489,7 @@ function drawPick(){
   const f = S.f, box = $("#pick");
   if(f.client){
     const c = cl(f.client);
-    box.innerHTML = `<div class="sel"><div class="row"><span class="client">${esc(c.name)}</span>${badge(c.sys)}</div>
+    box.innerHTML = `<div class="sel"><div class="row"><span class="client who-row">${logo(c)}${esc(c.name)}</span>${badge(c.sys)}</div>
       <span class="hint">${esc(c.city)} · ${c.contacts.map(k=>esc(k.n)).join(", ")}</span>${f.reason?`<span class="hint ok">Compilato da solo: ${esc(f.reason)}</span>`:""}
       <button class="linkbtn" id="p-change" type="button" style="align-self:flex-start">Cambia cliente</button></div>`;
     $("#p-change").onclick = ()=>{ f.client=null; f.reason=""; f.dest="new"; drawPick(); drawDest(); };
@@ -499,13 +513,13 @@ function choose(id){ const f=S.f; f.client=id; f.reason=""; const c=cl(id); f.de
 function drawSugg(){
   const box = $("#sugg"); if(!box) return;
   const s = suggestions(S.f);
-  box.innerHTML = s.length ? `<span class="hint">Proposto da Ticket Farm</span>` + s.map(x=>`<button class="opt" type="button" data-c="${x.c.id}"><span>${esc(x.c.name)}<small class="why">${esc(x.why)}</small></span>${badge(x.c.sys)}</button>`).join("") : "";
+  box.innerHTML = s.length ? `<span class="hint">Proposto da Ticket Farm</span>` + s.map(x=>`<button class="opt" type="button" data-c="${x.c.id}">${logo(x.c)}<span style="flex:1">${esc(x.c.name)}<small class="why">${esc(x.why)}</small></span>${badge(x.c.sys)}</button>`).join("") : "";
   box.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>choose(b.dataset.c));
 }
 function tix(){
   const ts = S.threads.filter(t=>t.client);
   return ts.length ? `<span class="hint">I tuoi ticket aperti</span>` + ts.map(t=>{ const c=cl(t.client), o=c.open.find(x=>x.id===t.ticket);
-    return `<button class="opt" type="button" data-t="${t.ticket}"><span>${esc(c.name)}<small>${t.ticket}${o?" · "+esc(o.t):""}</small></span>${badge(c.sys)}</button>`; }).join("") : "";
+    return `<button class="opt" type="button" data-t="${t.ticket}">${logo(c)}<span style="flex:1">${esc(c.name)}<small>${t.ticket}${o?" · "+esc(o.t):""}</small></span>${badge(c.sys)}</button>`; }).join("") : "";
 }
 function drawList(){
   const box = $("#plist"); if(!box) return;
@@ -513,7 +527,7 @@ function drawList(){
   let list;
   if(q) list = CLIENTS.filter(c => (c.name+" "+c.city+" "+c.contacts.map(k=>k.n).join(" ")).toLowerCase().includes(q));
   else { const ids=[...new Set(S.threads.map(t=>t.client).filter(Boolean))]; list = ids.map(cl).filter(Boolean); }
-  box.innerHTML = (q?"":tix()+`<span class="hint">Clienti recenti</span>`) + (list.length ? list.map(c=>`<button class="opt" type="button" data-c="${c.id}"><span>${esc(c.name)}<small>${esc(c.city)} · ${c.contacts.map(k=>esc(k.n)).join(", ")}</small></span>${badge(c.sys)}</button>`).join("") : `<div class="empty">Nessun cliente con «${esc(q)}»</div>`);
+  box.innerHTML = (q?"":tix()+`<span class="hint">Clienti recenti</span>`) + (list.length ? list.map(c=>`<button class="opt" type="button" data-c="${c.id}">${logo(c)}<span style="flex:1">${esc(c.name)}<small>${esc(c.city)} · ${c.contacts.map(k=>esc(k.n)).join(", ")}</small></span>${badge(c.sys)}</button>`).join("") : `<div class="empty">Nessun cliente con «${esc(q)}»</div>`);
   box.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>choose(b.dataset.c));
   box.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{ const th=S.threads.find(t=>t.ticket===b.dataset.t); choose(th.client); S.f.dest=th.ticket; drawDest(); });
 }
@@ -602,7 +616,7 @@ function renderClienti(){
   el.innerHTML = `<div><h2 class="sec">Clienti</h2><p class="sub">Letti da Ticket Farm: anagrafiche da ITSM e Halo, contatti da Office 365</p></div>
     <input class="input" id="c-q" type="search" placeholder="Cerca cliente, persona o numero" value="${esc(S.csearch)}">
     <div class="list">${list.length ? list.map(c=>`<button class="item" data-c="${c.id}">
-      <div class="row"><span class="nm">${esc(c.name)}</span>${badge(c.sys)}</div>
+      <div class="row"><span class="nm who-row">${logo(c)}${esc(c.name)}</span>${badge(c.sys)}</div>
       <span class="pv">${esc(c.city)} · ${c.open.length} ticket aperti</span></button>`).join("") : `<div class="empty">Nessun cliente trovato</div>`}</div>`;
   const qi = $("#c-q"); qi.oninput = ()=>{ S.csearch = qi.value; const p = qi.selectionStart; renderClienti(); const n=$("#c-q"); n.focus(); n.setSelectionRange(p,p); };
   el.querySelectorAll(".item").forEach(b=>b.onclick=()=>clientSheet(b.dataset.c));
@@ -611,7 +625,7 @@ function clientSheet(id){
   const c = cl(id), root = $("#sheet-root");
   root.innerHTML = `<div class="sheet-bg" id="sb"><div class="sheet" role="dialog" aria-label="${esc(c.name)}">
     <div class="grab"></div>
-    <div class="row"><div class="client">${esc(c.name)}</div>${badge(c.sys)}</div>
+    <div class="row"><div class="client who-row">${logo(c,40)}${esc(c.name)}</div>${badge(c.sys)}</div>
     <span class="sub">${esc(c.city)} · ticket in ${SRC[c.sys]}</span>
     <div class="field"><span>Contatti</span><div class="kv">${c.contacts.map(k=>`<div class="row"><span>${esc(k.n)}<br><span class="mono">${esc(k.tel||"numero non presente")}</span></span>${badge(k.src)}</div>`).join("")}</div></div>
     <div class="field"><span>Ticket aperti</span><div class="kv">${c.open.length ? c.open.map(o=>`<div><span class="mono">${o.id}</span> · ${esc(o.t)}</div>`).join("") : `<span class="sub">Nessuno</span>`}</div></div>
