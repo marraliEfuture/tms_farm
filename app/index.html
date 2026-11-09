@@ -188,6 +188,8 @@ body{padding:0!important}
 .tabs{padding-bottom:max(14px, env(safe-area-inset-bottom,0px))}
 .composer{padding-bottom:max(16px, env(safe-area-inset-bottom,0px))}
 .avatar{border:0;cursor:pointer}
+.install{display:flex;align-items:center;gap:10px;margin:0 16px 12px;padding:10px 12px;border-radius:14px;background:var(--accent-soft);color:var(--ink);font-size:13px;font-weight:600}
+.install span{flex:1}
 .banner{background:var(--amber-soft);color:var(--amber);border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:600}
 .login{padding:28px 22px;gap:16px;justify-content:center}
 .login h2{font-size:24px;margin:0;color:var(--ink)}
@@ -205,6 +207,7 @@ body{padding:0!important}
       <div class="who"><button class="themebtn" id="theme" type="button" aria-label="Cambia tema"></button><span id="who-zona">Zona Sud</span><button class="avatar" id="who-ini" type="button" aria-label="Il tuo profilo">MB</button></div>
     </header>
 
+    <div class="install" id="install" hidden><span id="install-txt">Installa Ticket Farm su questo dispositivo</span><button class="btn small primary" id="install-go" type="button">Installa</button><button class="linkbtn" id="install-x" type="button" aria-label="Non ora">✕</button></div>
     <main class="screen" id="s-messaggi"></main>
     <main class="screen" id="s-inoltra" hidden></main>
     <main class="screen" id="s-clienti" hidden></main>
@@ -730,6 +733,21 @@ try{ const t = localStorage.getItem("tf-theme"); if(t) document.documentElement.
 $("#theme").onclick = ()=>setTheme(curTheme()==="dark" ? "light" : "dark");
 paintTheme();
 $("#who-ini").onclick = profile;
+/* proposta di installazione: Chrome/Edge su PC e Android usano il loro dialogo, su iPhone si spiega come fare */
+(function(){
+  const box = $("#install"), standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  let skip = false; try{ skip = localStorage.getItem("tf-install-x") === "1"; }catch(e){}
+  if(standalone || skip) return;
+  let evt = null;
+  window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); evt = e; box.hidden = false; });
+  window.addEventListener("appinstalled", () => { box.hidden = true; toast("Ticket Farm installata"); });
+  if(/iphone|ipad|ipod/i.test(navigator.userAgent)){
+    $("#install-txt").textContent = "Per installarla: tocca Condividi e poi «Aggiungi alla schermata Home»";
+    $("#install-go").hidden = true; box.hidden = false;
+  }
+  $("#install-go").onclick = () => { if(!evt) return; evt.prompt(); evt.userChoice.then(() => { box.hidden = true; evt = null; }); };
+  $("#install-x").onclick = () => { box.hidden = true; try{ localStorage.setItem("tf-install-x", "1"); }catch(e){} };
+})();
 if(API){ CLIENTS = []; S.threads = []; }
 if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
 start();

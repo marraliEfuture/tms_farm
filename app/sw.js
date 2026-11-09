@@ -1,6 +1,6 @@
 /* Service worker: tiene in cache i file dell'app così si apre anche senza rete.
    Le chiamate al backend (/api/...) passano sempre dalla rete. */
-const VERSION = "tf-1";
+const VERSION = "tf-2";
 const FILES = ["./", "index.html", "config.js", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener("activate", e => {
