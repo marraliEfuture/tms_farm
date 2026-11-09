@@ -1,10 +1,8 @@
-# Pubblica la cartella app/ su GitHub Pages a ogni modifica su main.
-# Una volta sola: Settings → Pages → Source: "GitHub Actions".
+# FACOLTATIVO: pubblica la cartella app/ su GitHub Pages (solo modalità prova, o con backendUrl in config.js).
+# Di solito non serve: l'app è già servita dal backend in /app/.
+# GitHub Pages su un repository privato richiede un piano a pagamento. Si avvia a mano da Actions.
 name: Pubblica app su GitHub Pages
 on:
-  push:
-    branches: [main]
-    paths: ["app/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 permissions:
   contents: read

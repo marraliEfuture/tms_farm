@@ -129,7 +129,11 @@ app.post("/api/app/note", auth.requireTech, async (req, res, next) => {
 
 /* ---------------- console dell'ufficio ---------------- */
 app.use(["/admin", "/api/admin"], auth.requireAdmin);
-app.get("/", (req, res) => res.redirect("/admin/"));
+/* l'app del tecnico è servita dallo stesso server: niente GitHub Pages, il repository può restare privato */
+const APP_DIR = path.join(__dirname, "..", "app");
+app.get("/app/config.js", (req, res) => res.type("application/javascript").send("window.TF_CONFIG = { backendUrl: location.origin };"));
+app.use("/app", express.static(APP_DIR));
+app.get("/", (req, res) => res.redirect("/app/"));
 app.use("/admin", express.static(path.join(__dirname, "admin")));
 
 app.get("/api/admin/state", async (req, res, next) => {

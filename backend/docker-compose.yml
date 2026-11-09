@@ -1,10 +1,12 @@
 services:
   ticketfarm:
-    build: .
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
     restart: unless-stopped
     env_file: .env
     ports:
       - "8080:8080"
     volumes:
-      - ./data:/srv/data
-      - ./outbox:/srv/outbox
+      - ./data:/srv/backend/data
+      - ./outbox:/srv/backend/outbox

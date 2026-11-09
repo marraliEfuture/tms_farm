@@ -34,7 +34,7 @@ npm start
 ```
 
 - Console: <http://localhost:8080/admin/>
-- App: apri `app/index.html` con un piccolo server (per esempio `npx serve app`) e in `app/config.js` metti `backendUrl: "http://localhost:8080"`.
+- App: <http://localhost:8080/app/>
 - Accesso di prova: `mb@efuture.it`, codice `123456`.
 
 In modalità prova (`MODE=demo`) i dati sono di esempio e **le mail non partono**: vengono salvate come file `.eml` in `backend/outbox/`, così si può vedere esattamente cosa riceverebbe support@.
@@ -43,17 +43,21 @@ Test automatici: `cd backend && npm test`.
 
 ## Installare l'app sul telefono
 
-L'app è una **web app installabile** (PWA): niente App Store, si installa dal browser.
+L'app è una **web app installabile** (PWA): niente App Store, si installa dal browser. È servita dal backend stesso all'indirizzo `/app/`, per esempio `https://ticketfarm.efuture.it/app/`, e lì si collega da sola al backend. Il repository può quindi restare **privato**.
 
-1. Pubblica l'app su GitHub Pages (una volta sola): nel repository, **Settings → Pages → Source: GitHub Actions**. A ogni modifica di `app/` il workflow `Pubblica app su GitHub Pages` la aggiorna. L'indirizzo sarà `https://marraliefuture.github.io/tms_farm/`.
-2. Sul telefono apri quell'indirizzo:
+1. Metti online il backend (sezione sotto) con un indirizzo **https**.
+2. Sul telefono del tecnico apri `https://<indirizzo del backend>/app/`:
    - **Android (Chrome):** menu ⋮ → **Installa app**. Dopo l'installazione, Ticket Farm compare anche nel menu **Condividi** per i testi.
    - **iPhone (Safari):** pulsante Condividi → **Aggiungi alla schermata Home**.
-3. Finché `app/config.js` ha `backendUrl` vuoto, l'app è in **modalità prova** con dati di esempio. Quando il backend è online, metti lì il suo indirizzo (deve essere **https**).
+3. Il tecnico accede con la sua mail e il codice che gli dai (vedi *Aggiungere i tecnici*).
+
+I tecnici **non** hanno bisogno di un account GitHub: GitHub serve solo a chi lavora sul codice.
+
+Per una prova veloce senza backend si può aprire `app/index.html` da un piccolo server: con `backendUrl` vuoto in `app/config.js` l'app usa dati di esempio e non manda mail.
 
 ## Mettere online il backend
 
-Sul server di Efuture, con Docker:
+Sul server di Efuture, con Docker (dalla cartella `backend`, che usa anche `app/`):
 
 ```bash
 cd backend
@@ -61,7 +65,10 @@ cp .env.example .env      # poi compila .env
 docker compose up -d --build
 ```
 
-Il backend ascolta sulla porta 8080: va esposto in **https** (per esempio `https://ticketfarm.efuture.it`) tramite il proxy già usato per gli altri servizi.
+Il backend ascolta sulla porta 8080: va esposto in **https** (per esempio `https://ticketfarm.efuture.it`) tramite il proxy già usato per gli altri servizi. Indirizzi:
+
+- `/app/` app dei tecnici
+- `/admin/` console dell'ufficio (utente e password da `.env`)
 
 Cosa compilare in `.env`:
 
@@ -69,7 +76,7 @@ Cosa compilare in `.env`:
 |---|---|
 | `SECRET` | firma degli accessi dei tecnici (stringa lunga e casuale) |
 | `SUPPORT_ADDRESS` | dove l'app manda le mail (`support@efuture.it`) |
-| `APP_URL` | indirizzo dell'app su GitHub Pages |
+| `APP_URL` | indirizzo dell'app, di solito `https://<backend>/app/` (serve per il collegamento nella console) |
 | `ADMIN_USER`, `ADMIN_PASSWORD` | accesso alla console `/admin` |
 | `MODE` | `demo` per provare, `live` per usare i dati veri e spedire |
 | `SMTP_*` | server di posta da cui partono le mail. Deve permettere di spedire **con mittente la casella del tecnico** (relay autorizzato o "Send As"). Se `SMTP_HOST` è vuoto le mail restano in `outbox/` |
@@ -97,7 +104,7 @@ Il comando stampa il codice di accesso da dare al tecnico: viene mostrato una so
 ## Struttura
 
 ```
-app/                  web app del tecnico (pubblicata su GitHub Pages)
+app/                  web app del tecnico (servita dal backend in /app/)
   index.html          tutta l'app
   config.js           indirizzo del backend (vuoto = prova)
   manifest.webmanifest, sw.js, icons/   installazione sul telefono
@@ -110,3 +117,9 @@ backend/
   scripts/codice.js   aggiunge un tecnico
   test/               test automatici
 ```
+
+## Lavorare con il repository privato
+
+1. Su GitHub apri il repository → **Settings → General → Danger Zone → Change visibility → Make private**.
+2. **Settings → Collaborators → Add people**: scrivi l'utente GitHub o la mail della persona. Riceve un invito e, quando lo accetta, vede il repository. Nessun altro lo vede.
+3. Per dare permessi diversi (solo lettura, scrittura, amministrazione) crea un'**organizzazione** GitHub gratuita (per esempio "efuture"), sposta lì il repository (**Settings → Transfer**) e usa i **Team**.
