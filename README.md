@@ -25,7 +25,7 @@ Sempre presenti: `X-TicketFarm-Tecnico`, `X-TicketFarm-Ora-Messaggio` (ora in cu
 
 ## Provarlo sul proprio computer
 
-Serve Node.js 18 o più recente.
+Serve Node.js 20 o più recente.
 
 ```bash
 cd backend

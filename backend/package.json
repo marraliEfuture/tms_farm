@@ -9,9 +9,11 @@
     "test": "node --test test/*.test.js",
     "codice": "node scripts/codice.js"
   },
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "express": "^4.21.2",
-    "nodemailer": "^6.9.16"
+    "nodemailer": "~10.2.1"
   }
 }
