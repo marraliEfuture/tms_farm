@@ -57,7 +57,9 @@ Per una prova veloce senza backend si può aprire `app/index.html` da un piccolo
 
 ## Mettere online il backend
 
-Sul server di Efuture, con Docker (dalla cartella `backend`, che usa anche `app/`):
+**Server Linux senza Docker:** segui [`deploy/LEGGIMI.md`](deploy/LEGGIMI.md). Uno script installa il servizio systemd, e ci sono gli esempi per nginx e Apache.
+
+In alternativa, con Docker (dalla cartella `backend`, che usa anche `app/`):
 
 ```bash
 cd backend
@@ -108,6 +110,7 @@ app/                  web app del tecnico (servita dal backend in /app/)
   index.html          tutta l'app
   config.js           indirizzo del backend (vuoto = prova)
   manifest.webmanifest, sw.js, icons/   installazione sul telefono
+deploy/               installazione su server Linux (systemd, nginx, Apache)
 backend/
   server.js           API e console
   admin/index.html    console dell'ufficio

@@ -1,0 +1,25 @@
+# Servizio systemd del backend Ticket Farm.
+# Installato da deploy/installa.sh in /etc/systemd/system/ticketfarm.service
+[Unit]
+Description=Ticket Farm backend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ticketfarm
+Group=ticketfarm
+WorkingDirectory=/opt/tms_farm/backend
+ExecStart=NODE_BIN server.js
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+# protezioni: il servizio può scrivere solo in data/ e outbox/
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/tms_farm/backend/data /opt/tms_farm/backend/outbox
+
+[Install]
+WantedBy=multi-user.target
