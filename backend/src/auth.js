@@ -52,4 +52,6 @@ function requireAdmin(req, res, next) {
   if (cfg.adminPassword && u === cfg.adminUser && p === cfg.adminPassword) return next();
   res.set("WWW-Authenticate", 'Basic realm="Ticket Farm"').status(401).send("Accesso richiesto");
 }
-module.exports = { hashCode, techs, findTech, login, verify, requireTech, requireAdmin, TECH_FILE };
+/* solo in prova, senza tecnici veri: credenziali da suggerire nella schermata di accesso */
+function demoHint() { return cfg.mode === "demo" && !fs.existsSync(TECH_FILE) ? { mail: DEMO_TECHS[0].mail, code: DEMO_TECHS[0].codice } : null; }
+module.exports = { demoHint, hashCode, techs, findTech, login, verify, requireTech, requireAdmin, TECH_FILE };

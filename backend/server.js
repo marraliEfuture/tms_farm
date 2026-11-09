@@ -59,6 +59,7 @@ async function logMail(msg, sent) {
 }
 
 /* ---------------- API app ---------------- */
+app.get("/api/app/info", (req, res) => res.json({ mode: cfg.mode, demo: auth.demoHint() }));
 app.post("/api/app/login", (req, res) => {
   const token = auth.login(req.body.mail, req.body.code);
   if (!token) return res.status(401).json({ error: "mail o codice non corretti" });

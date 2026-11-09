@@ -679,9 +679,19 @@ function addPhotos(list, done){
 function renderLogin(){
   const el = $("#login"); el.hidden = false;
   el.innerHTML = `<h2>Accedi a Ticket Farm</h2><p class="sub">Usa la tua mail aziendale e il codice che ti ha dato l'ufficio.</p>
+    <div id="l-hint"></div>
     <label class="field"><span>Mail</span><input class="input" id="l-mail" type="email" autocomplete="username" placeholder="nome@efuture.it"></label>
     <label class="field"><span>Codice</span><input class="input" id="l-code" type="password" inputmode="numeric" autocomplete="current-password"></label>
     <button class="btn primary block" id="l-go" type="button">Accedi</button>`;
+  /* in modalità prova il backend suggerisce le credenziali di esempio */
+  api("/api/app/info").then(i=>{
+    if(!i.demo) return;
+    $("#l-mail").placeholder = i.demo.mail; $("#l-code").placeholder = i.demo.code;
+    $("#l-mail").title = "Prova: mail = "+i.demo.mail+", codice = "+i.demo.code; $("#l-code").title = $("#l-mail").title;
+    $("#l-hint").innerHTML = `<div class="banner">Modalità prova: mail = <b>${esc(i.demo.mail)}</b>, codice = <b>${esc(i.demo.code)}</b>
+      <button class="linkbtn" id="l-fill" type="button" style="display:block;margin-top:6px">Compila e accedi</button></div>`;
+    $("#l-fill").onclick = ()=>{ $("#l-mail").value = i.demo.mail; $("#l-code").value = i.demo.code; $("#l-go").click(); };
+  }).catch(()=>{});
   $("#l-go").onclick = ()=>{
     const mail = $("#l-mail").value.trim(), code = $("#l-code").value.trim();
     if(!mail || !code){ toast("Scrivi mail e codice"); return; }
