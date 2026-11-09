@@ -1,0 +1,17 @@
+{
+  "name": "ticketfarm-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Backend di Ticket Farm: API per l'app dei tecnici, invio mail a support@, lettura da ITSM, Halo e Office 365, console dell'ufficio.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js",
+    "codice": "node scripts/codice.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "express": "^4.21.2",
+    "nodemailer": "^6.9.16"
+  }
+}

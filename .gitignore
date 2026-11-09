@@ -1,0 +1,5 @@
+node_modules/
+backend/.env
+backend/data/
+backend/outbox/
+.DS_Store

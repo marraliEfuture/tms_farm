@@ -1,0 +1,729 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Ticket Farm">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Ticket Farm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: intro column beside a phone-sized working prototype; on phones the prototype fills the screen */
+/* Ticket Farm: nero, gradiente blu→turchese per le azioni, oro come accento (come brochure e sito) */
+:root{
+  --bg:#000000; --surface:#0c1016; --surface-2:#07090d; --ink:#ffffff; --muted:#9aa7b6; --line:#1a222d;
+  --accent:#2aa7ff; --accent-soft:rgba(42,167,255,.13); --on-accent:#ffffff;
+  --grad:linear-gradient(135deg,#1e6ff0 0%,#1aa0e8 50%,#19c9b8 100%);
+  --gold:#d9ab45; --gold-grad:linear-gradient(135deg,#f6dc8a,#d9ab45 55%,#b88424);
+  --amber:#d9ab45; --amber-soft:rgba(217,171,69,.13); --red:#ff7a66; --red-soft:rgba(255,122,102,.14); --blue:#19c2c9; --blue-soft:rgba(25,194,201,.13);
+  --wa:#0b1a22; --wa-edge:#1e4656;
+  --shadow:0 20px 60px rgba(30,136,240,.18), 0 0 0 1px rgba(42,167,255,.08);
+  --f-display:"Poppins", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-body:"Poppins", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){
+  --bg:#f3f6fa; --surface:#ffffff; --surface-2:#eaf0f6; --ink:#0b1622; --muted:#5a6a7b; --line:#d6dfe9;
+  --accent:#1570d6; --accent-soft:rgba(21,112,214,.10); --on-accent:#ffffff;
+  --amber:#9a6f12; --amber-soft:rgba(217,171,69,.18); --red:#c63f2b; --red-soft:rgba(198,63,43,.10); --blue:#0b878d; --blue-soft:rgba(11,135,141,.10);
+  --wa:#e9f5f7; --wa-edge:#9cccd5;
+  --shadow:0 20px 50px rgba(21,60,110,.16), 0 0 0 1px rgba(21,112,214,.06);
+  color-scheme:light;}}
+:root[data-theme="light"]{
+  --bg:#f3f6fa; --surface:#ffffff; --surface-2:#eaf0f6; --ink:#0b1622; --muted:#5a6a7b; --line:#d6dfe9;
+  --accent:#1570d6; --accent-soft:rgba(21,112,214,.10); --on-accent:#ffffff;
+  --amber:#9a6f12; --amber-soft:rgba(217,171,69,.18); --red:#c63f2b; --red-soft:rgba(198,63,43,.10); --blue:#0b878d; --blue-soft:rgba(11,135,141,.10);
+  --wa:#e9f5f7; --wa-edge:#9cccd5;
+  --shadow:0 20px 50px rgba(21,60,110,.16), 0 0 0 1px rgba(21,112,214,.06);
+  color-scheme:light;}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:28px}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1040px;margin:0 auto;display:flex;gap:56px;align-items:flex-start;justify-content:center;flex-wrap:wrap}
+.intro{flex:1 1 300px;max-width:420px;min-width:0;padding-top:24px;display:flex;flex-direction:column;gap:18px}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--blue);font-weight:600}
+.intro h1{font-family:var(--f-display);font-weight:700;font-size:44px;line-height:1;margin:0;letter-spacing:-.02em;text-wrap:balance}
+.intro h1 span{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.intro p{margin:0;color:var(--muted);max-width:60ch}
+.flow{display:flex;align-items:center;flex-wrap:wrap;align-items:center;gap:6px;font-size:12.5px;font-weight:600}
+.flow span{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:6px 9px}
+.flow span.me{background:var(--grad);border-color:transparent;color:#fff}
+.flow i{font-style:normal;color:var(--muted)}
+.try{display:flex;flex-direction:column;gap:10px;margin:0;padding:0;list-style:none}
+.try li{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start}
+.try b{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--amber-soft);color:var(--gold);font-size:13px}
+.demo{display:flex;flex-wrap:wrap;gap:8px}
+.demo button{border:1px solid var(--wa-edge);background:var(--wa);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600}
+.note{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
+.reset{align-self:flex-start;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600}
+
+/* phone */
+.phone{position:relative;flex:0 0 auto;width:390px;max-width:100%;height:780px;max-height:calc(100dvh - 56px);min-height:600px;
+  background:var(--surface-2);border-radius:42px;border:10px solid var(--frame,#1f2833);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
+.status{display:flex;justify-content:space-between;align-items:center;padding:10px 22px 4px;font-size:12px;font-weight:600;font-family:var(--f-mono)}
+.appbar{display:flex;justify-content:space-between;align-items:center;padding:6px 18px 10px}
+.brand{font-family:var(--f-display);font-weight:700;font-size:20px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+.brand svg{width:26px;height:26px;flex:0 0 auto}
+.brand b{font-weight:600}.brand em{font-style:normal;font-weight:600;background:linear-gradient(90deg,#2a8ff0,#2aa7ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.who{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.themebtn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 10px;font-size:12px;font-weight:600;color:var(--ink)}
+.avatar{width:30px;height:30px;border-radius:50%;background:var(--ink);color:var(--surface);display:grid;place-items:center;font-weight:700;font-size:12px}
+.screen{flex:1;overflow-y:auto;padding:0 16px 96px;display:flex;flex-direction:column;gap:14px;min-height:0}
+.screen[hidden]{display:none!important}
+.tabs{position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(3,1fr);background:var(--surface);border-top:1px solid var(--line);padding:8px 8px 14px;z-index:10}
+.tab{background:none;border:0;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11.5px;font-weight:600;color:var(--muted);padding:6px 0;border-radius:12px;position:relative}
+.tab svg{width:22px;height:22px}
+.tab[aria-selected="true"]{color:var(--accent)}
+.tab.new span.plus{width:34px;height:26px;border-radius:9px;background:var(--grad);color:#fff;display:grid;place-items:center}
+.count{position:absolute;top:2px;left:calc(50% + 6px);min-width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;font-size:11px;display:grid;place-items:center;padding:0 5px}
+
+h2.sec{font-family:var(--f-display);font-size:24px;font-weight:700;margin:4px 0 0;letter-spacing:-.01em}
+.sub{font-size:13px;color:var(--muted);margin:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.client{font-weight:700;font-size:16px;line-height:1.2}
+.mono{font-family:var(--f-mono);font-size:12px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:12px 10px;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn.primary{background:var(--grad);border-color:transparent;color:#fff;box-shadow:0 8px 24px rgba(30,136,240,.3)}
+.btn.block{width:100%;padding:14px}
+.btn.small{padding:7px 12px;font-size:13px;border-radius:10px}
+.btn:active{transform:scale(.98)}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.s-Halo{background:var(--blue-soft);color:var(--blue)}
+.s-ITSM{background:var(--accent-soft);color:var(--accent)}
+.s-O365{background:var(--amber-soft);color:var(--amber)}
+.p-urg{background:var(--red-soft);color:var(--red)}
+.field{display:flex;flex-direction:column;gap:6px}
+.field>span,.lbl{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.input,textarea.input{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:11px 12px;width:100%}
+textarea.input{min-height:96px;resize:vertical}
+.hint{font-size:12.5px;color:var(--muted)}
+.wa-tag{display:flex;gap:8px;align-items:center;background:var(--wa);border:1px solid var(--wa-edge);border-radius:12px;padding:8px 10px;font-size:13px;font-weight:600}
+.seg{display:flex;flex-direction:column;gap:6px}
+.opt{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 12px;text-align:left;font-size:14px;width:100%}
+.opt[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.opt small{color:var(--muted);font-size:12px;display:block;font-weight:500}
+.opt .why{font-size:11.5px;color:var(--accent);font-weight:700}
+.sel{border:1.5px solid var(--accent);background:var(--accent-soft);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.linkbtn{background:none;border:0;color:var(--accent);font-weight:700;font-size:13px;padding:0}
+.chk{display:flex;gap:10px;align-items:center;font-size:13.5px}
+.chk input{width:20px;height:20px;accent-color:var(--accent)}
+.list{display:flex;flex-direction:column;gap:8px}
+.item{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:4px;text-align:left;width:100%;position:relative}
+.item .nm{font-weight:700}
+.item .pv{font-size:13px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.item .tm{font-family:var(--f-mono);font-size:11.5px;color:var(--muted)}
+.item.unread{border-color:var(--accent)}
+.item.unread .nm::after{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-left:8px;vertical-align:middle}
+.paste{min-height:150px;border:2px dashed var(--wa-edge);background:var(--wa);text-align:center;font-weight:600;padding-top:58px}
+.paste::placeholder{color:var(--accent)}
+.how{margin:0;padding-left:20px;font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+.wam{display:grid;grid-template-columns:44px 1fr;gap:8px;font-size:13.5px;background:var(--wa);border-radius:10px;padding:8px 10px;white-space:pre-wrap;overflow-wrap:anywhere}
+.wam .mono{padding-top:1px;color:var(--muted)}
+.hint.ok{color:var(--accent);font-weight:600}
+.hint.warn{color:var(--amber);font-weight:600}
+.msg.fwd q+q{margin-top:4px}
+.mailprev{margin-top:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);font-size:13px}
+.mailprev summary{padding:10px 12px;font-weight:700;cursor:pointer}
+.mp{padding:0 12px 12px;display:flex;flex-direction:column;gap:4px;overflow-wrap:anywhere}
+.mp b{display:inline-block;min-width:58px;color:var(--muted);font-weight:600}
+.mp .hd{display:flex;flex-direction:column;gap:2px;background:var(--surface-2);border-radius:8px;padding:8px;margin-top:4px}
+.mp .hd .mono{font-size:11px}
+.empty{text-align:center;color:var(--muted);padding:14px;font-size:14px}
+
+/* chat */
+.chat{position:absolute;inset:0;background:var(--surface-2);z-index:15;display:flex;flex-direction:column}
+.chat[hidden]{display:none!important}
+.chead{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface);border-bottom:1px solid var(--line)}
+.back{border:0;background:none;font-size:22px;line-height:1;padding:4px 6px}
+.chead .client{font-size:15px}
+.msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;min-height:0}
+.msg{padding:10px 12px;border-radius:14px;font-size:13.5px;max-width:88%;white-space:pre-wrap;overflow-wrap:anywhere}
+.msg small{display:block;font-size:11px;color:var(--muted);margin-bottom:3px;font-weight:600;white-space:normal}
+.msg.in{background:var(--surface);border:1px solid var(--line);align-self:flex-start}
+.msg.out{background:var(--accent-soft);align-self:flex-end}
+.msg.fwd{background:var(--wa);border:1px solid var(--wa-edge);align-self:flex-end}
+.msg.fwd q{display:block;border-left:3px solid var(--wa-edge);padding-left:8px;quotes:none}
+.copybox{margin-top:8px;border:1px dashed var(--wa-edge);background:var(--wa);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;white-space:normal}
+.copybox p{margin:0;white-space:pre-wrap;user-select:text}
+.composer{background:var(--surface);border-top:1px solid var(--line);padding:10px 12px 16px;display:flex;flex-direction:column;gap:8px}
+.composer .line{display:flex;gap:8px;align-items:flex-end}
+.composer textarea{min-height:44px;height:44px;flex:1}
+.typing{font-size:12px;color:var(--muted);align-self:flex-start;font-style:italic}
+
+.sheet-bg{position:absolute;inset:0;background:rgba(10,20,14,.35);display:flex;align-items:flex-end;z-index:20}
+.sheet{background:var(--surface);width:100%;max-height:85%;overflow-y:auto;border-radius:24px 24px 0 0;padding:10px 16px 24px;display:flex;flex-direction:column;gap:12px}
+.grab{width:40px;height:5px;border-radius:5px;background:var(--line);margin:0 auto 4px}
+.kv{display:flex;flex-direction:column;gap:6px;font-size:13.5px}
+.toast{position:absolute;left:16px;right:16px;bottom:86px;background:var(--ink);color:var(--surface);padding:12px 14px;border-radius:14px;font-size:13.5px;font-weight:500;z-index:30;opacity:0;transform:translateY(8px);transition:.25s;pointer-events:none}
+.toast.show{opacity:1;transform:none}
+@media (max-width:520px){
+  body{padding-block:0;padding-left:0;padding-right:0}
+  .intro{padding:20px max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px))}
+  .intro h1{font-size:34px}
+  .wrap{gap:20px}
+  .phone{width:100%;border:0;border-radius:0;height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));max-height:none;box-shadow:none}
+  .status{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ---------- app installata: tutto schermo ---------- */
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{padding:0!important}
+.wrap{display:block;max-width:none;margin:0}
+.phone{width:100%;max-width:560px;margin:0 auto;height:100dvh;max-height:none;min-height:0;border:0!important;border-radius:0;box-shadow:none;padding-top:env(safe-area-inset-top,0px)}
+.status{display:none}
+.tabs{padding-bottom:max(14px, env(safe-area-inset-bottom,0px))}
+.composer{padding-bottom:max(16px, env(safe-area-inset-bottom,0px))}
+.avatar{border:0;cursor:pointer}
+.banner{background:var(--amber-soft);color:var(--amber);border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:600}
+.login{padding:28px 22px;gap:16px;justify-content:center}
+.login h2{font-size:24px;margin:0;color:var(--ink)}
+@media (min-width:561px){ body{background:var(--surface-2)} .phone{border-left:1px solid var(--line)!important;border-right:1px solid var(--line)!important} }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="phone" id="phone">
+    <div class="status"><span>8:20</span><span>●●● 5G</span></div>
+    <header class="appbar">
+      <div class="brand"><svg viewBox="0 0 80 80" aria-hidden="true"><defs><linearGradient id="lgo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1e6ff0"/><stop offset=".55" stop-color="#1aa0e8"/><stop offset="1" stop-color="#19c9c9"/></linearGradient><linearGradient id="lgg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6dc8a"/><stop offset=".5" stop-color="#d9ab45"/><stop offset="1" stop-color="#b88424"/></linearGradient></defs><path d="M40 6C25.6 6 15 16.8 15 30.4 15 48 40 70 40 70S65 48 65 30.4C65 16.8 54.4 6 40 6Z" fill="none" stroke="url(#lgo)" stroke-width="5.5" stroke-linejoin="round"/><rect x="27" y="21" width="26" height="19" rx="3.5" fill="none" stroke="url(#lgg)" stroke-width="4"/><path d="M28.5 23.5 L40 32 L51.5 23.5" fill="none" stroke="url(#lgg)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Ticket</b><em>Farm</em></span></div>
+      <div class="who"><button class="themebtn" id="theme" type="button" aria-label="Cambia tema"></button><span id="who-zona">Zona Sud</span><button class="avatar" id="who-ini" type="button" aria-label="Il tuo profilo">MB</button></div>
+    </header>
+
+    <main class="screen" id="s-messaggi"></main>
+    <main class="screen" id="s-inoltra" hidden></main>
+    <main class="screen" id="s-clienti" hidden></main>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" data-tab="messaggi" aria-selected="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>Messaggi<span class="count" id="count" hidden></span></button>
+      <button class="tab new" role="tab" data-tab="inoltra" aria-selected="false">
+        <span class="plus"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 5l6 6-6 6M20 11H9a5 5 0 0 0-5 5v2"/></svg></span>Inoltra</button>
+      <button class="tab" role="tab" data-tab="clienti" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V8l8-4 8 4v12"/><path d="M9 20v-6h6v6"/></svg>Clienti</button>
+    </nav>
+
+    <section class="chat" id="chat" hidden></section>
+    <section class="chat login" id="login" hidden></section>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <div id="sheet-root"></div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+(function(){
+const CFG = window.TF_CONFIG || {};
+const API = String(CFG.backendUrl || "").replace(/\/$/, "");
+let TOKEN = ""; try{ TOKEN = localStorage.getItem("tf-token") || ""; }catch(e){}
+let curSys = "";
+let SUPPORT = "support@efuture.it", ME = "mb@efuture.it";
+const SRC = {Halo:"Halo", ITSM:"ITSM", O365:"Office 365"};
+const CLIENTS_BASE = [
+  {id:"lab", name:"Laboratorio Esempio SA", city:"Lugano", sys:"Halo",
+   contacts:[{n:"Giulia Bernasconi", src:"Halo", tel:"+41 79 410 22 18"}],
+   open:[{id:"HALO-4821", t:"Spettrofotometro: errore lampada"}]},
+  {id:"cas", name:"Caseificio Valle SA", city:"Mendrisio", sys:"ITSM",
+   contacts:[{n:"Marco Rossi", src:"O365", tel:"+41 78 655 01 90"}],
+   open:[{id:"Tck #714139", t:"Analizzatore latte: letture instabili", urg:true}]},
+  {id:"acq", name:"Acque Lario Sagl", city:"Chiasso", sys:"Halo",
+   contacts:[{n:"Sara Fontana", src:"O365", tel:""}], open:[]},
+  {id:"alp", name:"Labor Alpina SA", city:"Bellinzona", sys:"ITSM",
+   contacts:[{n:"Luca Pedrazzini", src:"ITSM", tel:"+41 79 233 87 12"}], open:[]},
+  {id:"che", name:"Chemlab Ticino Sagl", city:"Mezzovico", sys:"ITSM",
+   contacts:[{n:"Anna Croci", src:"ITSM", tel:"+41 76 118 40 27"}],
+   open:[{id:"Tck #714133", t:"Titolatore: taratura annuale"}]},
+  {id:"far", name:"Farmacia Centrale Locarno", city:"Locarno", sys:"Halo",
+   contacts:[{n:"Elena Mariotta", src:"Halo", tel:"+41 79 512 66 03"}],
+   open:[{id:"HALO-4799", t:"Bilancia analitica: guasto"}]},
+  {id:"vin", name:"Vini Collina SA", city:"Taverne", sys:"Halo",
+   contacts:[{n:"Paolo Ghirlanda", src:"O365", tel:"+41 76 300 14 59"}], open:[]}
+];
+let CLIENTS = JSON.parse(JSON.stringify(CLIENTS_BASE));
+const SAMPLE_MAIL = "Da: Marco Rossi <m.rossi@caseificiovalle.ch>\nInviato: lunedì 9 novembre 2026 07:40\nA: mb.privato@gmail.com\nOggetto: Analizzatore latte\n\nBuongiorno, anche oggi l'analizzatore dà letture sballate. Riuscite a passare in giornata?\n\nMarco Rossi\nCaseificio Valle SA";
+const DOM = {lab:"laboratorioesempio.ch", cas:"caseificiovalle.ch", acq:"acquelario.ch", alp:"laboralpina.ch", che:"chemlab-ticino.ch", far:"farmaciacentrale-locarno.ch", vin:"vinicollina.ch"};
+const SAMPLE_COPY = "Buongiorno, l'analizzatore stamattina segna valori di grasso troppo alti\nabbiamo già rifatto la calibrazione ma niente\nriuscite a passare oggi?";
+const SAMPLE_SHARE = "Salve, sono Sara di Acque Lario. Il pH-metro da banco non si accende più. Lo portiamo noi da voi o passate?";
+
+function freshState(){
+  return {
+    tab:"messaggi", csearch:"", openThread:null, seq:4830,
+    threads:[
+      {ticket:"HALO-4821", client:"lab", unread:true, msgs:[
+        {k:"fwd", from:"Giulia Bernasconi", t:"ieri 18:05", text:"Buonasera, lo spettrofotometro dà di nuovo errore lampada all'accensione."},
+        {k:"tf", t:"ieri 18:06", text:"Ticket HALO-4821 aperto in Halo per Laboratorio Esempio SA."},
+        {k:"tf", t:"07:40", text:"La cliente ha scritto anche per mail (Office 365) e chiede un passaggio domani mattina. L'ufficio ha fissato le 9:00 in Halo.",
+         forClient:"Buongiorno, confermo il passaggio domani alle 9:00 per lo spettrofotometro (pratica HALO-4821). Buona giornata."}
+      ]},
+      {ticket:"Tck #714139", client:"cas", unread:true, msgs:[
+        {k:"tf", t:"07:55", text:"Nuovo ticket assegnato a te in ITSM: analizzatore latte con letture instabili. Priorità urgente."}
+      ]},
+      {ticket:"HALO-4799", client:"far", unread:false, msgs:[
+        {k:"me", t:"ven 16:20", text:"Serve la cella di carico, l'ho segnata nel rapporto."},
+        {k:"tf", t:"ven 16:21", text:"Nota aggiunta a HALO-4799. Il ticket è ora in attesa del ricambio."}
+      ]}
+    ],
+    f:blankForm()
+  };
+}
+function blankForm(){ return {files:[], text:"", via:"", msgs:[], time:"", timeAuto:false, note:"", reason:"", number:"", client:null, unknown:false, dest:"new", search:"", photos:0, remember:true}; }
+let S = freshState();
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const cl = id => CLIENTS.find(c => c.id === id);
+const badge = s => `<span class="pill s-${s}">${SRC[s]}</span>`;
+const nowStr = () => new Date().toTimeString().slice(0,5);
+const digits = s => String(s||"").replace(/\D/g,"").slice(-9);
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove("show"),2800); }
+
+/* ---------- riconoscimento del cliente ---------- */
+function waName(text){ const m = /^\[[^\]]+\]\s*([^:\n]+):/m.exec(text); return m ? m[1].trim() : ""; }
+function suggestions(f){
+  const out = [], seen = new Set();
+  const add = (c, why) => { if(!seen.has(c.id)){ seen.add(c.id); out.push({c, why}); } };
+  const n = digits(f.number);
+  if(n.length >= 7) CLIENTS.forEach(c => c.contacts.forEach(k => { if(digits(k.tel) === n) add(c, "Numero di "+k.n); }));
+  const who = waName(f.text).toLowerCase();
+  if(who) CLIENTS.forEach(c => c.contacts.forEach(k => { if(k.n.toLowerCase() === who || who.includes(k.n.toLowerCase())) add(c, k.n+" è un contatto in "+SRC[k.src]); }));
+  const em = /[\w.+-]+@([\w-]+(?:\.[\w-]+)+)/.exec(f.mailFrom||"");
+  if(em) CLIENTS.forEach(c => { if(DOM[c.id] === em[1].toLowerCase()) add(c, "La mail arriva da @"+em[1]); });
+  const low = f.text.toLowerCase();
+  CLIENTS.forEach(c => { const key = c.name.split(" ").slice(0,2).join(" ").toLowerCase(); if(low.includes(key)) add(c, "Nel testo c'è «"+c.name.split(" ").slice(0,2).join(" ")+"»"); });
+  return out;
+}
+
+/* ---------- MESSAGGI ---------- */
+function lastOf(th){ return th.msgs[th.msgs.length-1]; }
+function updateCount(){ const n = S.threads.filter(t=>t.unread).length; const c=$("#count"); c.hidden = !n; c.textContent = n; }
+function renderMessaggi(){
+  const el = $("#s-messaggi");
+  el.innerHTML = (API ? "" : `<div class="banner">Modalità prova: nessuna mail parte davvero. Per collegare l'app al backend imposta backendUrl in config.js.</div>`) + `<div><h2 class="sec">Messaggi</h2><p class="sub">Tu scrivi per mail a ${SUPPORT}, gli aggiornamenti arrivano da ITSM, Halo e Office 365</p></div>
+    <div class="list">${S.threads.map((th,i)=>{ const c=cl(th.client)||{name:"Cliente da identificare",sys:"Halo"}; const l=lastOf(th);
+      return `<button class="item${th.unread?" unread":""}" data-i="${i}">
+        <div class="row"><span class="nm">${esc(c.name)}</span><span class="tm">${esc(l.t)}</span></div>
+        <div class="row" style="justify-content:flex-start"><span class="mono">${esc(th.ticket)}</span>${th.client?badge(c.sys):""}</div>
+        <span class="pv">${l.k==="tf"?"Ticket Farm: ":l.k==="fwd"?"Dal cliente: ":"Tu: "}${esc(l.text)}</span></button>`;}).join("")}</div>`;
+  el.querySelectorAll(".item").forEach(b=>b.onclick=()=>openChat(+b.dataset.i));
+  updateCount();
+}
+
+function msgHTML(m, i){
+  if(m.k==="fwd") return `<div class="msg fwd"><small>${m.kind==="mail"?"Mail del cliente":"Dal WhatsApp del cliente"}${m.from?" · "+esc(m.from):""} · ${esc(m.t)}</small>${m.lines?m.lines.map(l=>`<q><span class="mono">${esc(l.time)}</span> ${esc(l.text)}</q>`).join(""):`<q>${esc(m.text)}</q>`}${m.photos?`<small style="margin-top:6px">${m.photos} foto allegate</small>`:""}</div>`;
+  if(m.k==="me") return `<div class="msg out"><small>Tua mail a ${SUPPORT} · ${esc(m.t)}</small>${esc(m.text)}</div>`;
+  return `<div class="msg in"><small>${API ? "Ticket Farm" : "Letto da "+(SRC[curSys]||"Ticket Farm")} · ${esc(m.t)}</small>${esc(m.text)}${m.forClient?`<div class="copybox"><span class="lbl">Da mandare al cliente</span><p id="cb-${i}">${esc(m.forClient)}</p><button class="btn small primary" data-copy="${i}" type="button">Copia per WhatsApp</button></div>`:""}</div>`;
+}
+function openChat(i){
+  S.openThread = i; const th = S.threads[i]; if(th.unread && API) api("/api/app/read", {ticket:th.ticket}).catch(()=>{}); th.unread = false;
+  const c = cl(th.client);
+  const ch = $("#chat"); ch.hidden = false;
+  ch.innerHTML = `<div class="chead"><button class="back" id="c-back" aria-label="Indietro">‹</button>
+      <div style="min-width:0;flex:1"><div class="client">${esc(c?c.name:"Cliente da identificare")}</div><div class="row" style="justify-content:flex-start"><span class="mono">${esc(th.ticket)}</span>${c?badge(c.sys):""}</div></div></div>
+    <div class="msgs" id="msgs"></div>
+    <div class="composer">
+      <div class="line"><textarea class="input" id="c-text" placeholder="Scrivi una mail su questo ticket…"></textarea><button class="btn primary" id="c-send" type="button">Invia</button></div>
+      <button class="linkbtn" id="c-fwd" type="button">+ Inoltra un altro messaggio del cliente su questo ticket</button>
+    </div>`;
+  drawMsgs();
+  $("#c-back").onclick = ()=>{ ch.hidden = true; S.openThread = null; renderMessaggi(); };
+  $("#c-send").onclick = ()=>{
+    const v = $("#c-text").value.trim(); if(!v){ toast("Scrivi prima il messaggio"); return; }
+    if(API){ const b=$("#c-send"); b.disabled=true;
+      api("/api/app/note", {ticket:th.ticket, text:v}).then(r=>{ applyData(r.data); reopen(th.ticket); toast("Mail inviata a "+SUPPORT); })
+        .catch(e=>{ b.disabled=false; toast("Invio non riuscito: "+e.message+". Riprova."); }); return; }
+    th.msgs.push({k:"me", t:nowStr(), text:v}); $("#c-text").value=""; drawMsgs();
+    reply(th, {k:"tf", t:nowStr(), text:"Aggiunto a "+th.ticket+" come nota del tecnico"+(c?" in "+SRC[c.sys]:"")+"."});
+  };
+  $("#c-fwd").onclick = ()=>{ ch.hidden = true; S.openThread = null; S.f = blankForm(); if(c){ S.f.client=c.id; S.f.dest=th.ticket; } show("inoltra"); };
+  updateCount();
+}
+function drawMsgs(){
+  const th = S.threads[S.openThread]; const tc = cl(th.client); curSys = tc ? tc.sys : ""; const box = $("#msgs"); if(!box) return;
+  box.innerHTML = th.msgs.map(msgHTML).join("") + (th.typing?`<div class="typing">Ticket Farm sta rispondendo…</div>`:"");
+  box.scrollTop = box.scrollHeight;
+  box.querySelectorAll("[data-copy]").forEach(b=>b.onclick=()=>{
+    const i = +b.dataset.copy, text = th.msgs[i].forClient;
+    const fallback = ()=>{ const p=document.getElementById("cb-"+i); const r=document.createRange(); r.selectNodeContents(p); const s=getSelection(); s.removeAllRanges(); s.addRange(r); toast("Testo selezionato: tieni premuto e scegli Copia"); };
+    try{ navigator.clipboard.writeText(text).then(()=>toast("Copiato. Incollalo nella chat WhatsApp del cliente."), fallback); }catch(e){ fallback(); }
+  });
+}
+function reply(th, m, delay){
+  th.typing = true; drawMsgs();
+  setTimeout(()=>{ th.typing=false; th.msgs.push(m); if(S.threads[S.openThread]!==th) th.unread = true; drawMsgs(); renderMessaggi(); }, delay||1300);
+}
+
+/* ---------- INOLTRA ---------- */
+/* Legge il testo copiato da WhatsApp: "[08:12, 9/11/2026] Marco Rossi: testo" (anche "9/11/26, 08:12 - Marco Rossi: testo") */
+function parseWA(text){
+  const A = /^\[(\d{1,2}[:.]\d{2})(?::\d{2})?,\s*(\d{1,2}[\/.]\d{1,2}[\/.]\d{2,4})\]\s*([^:\n]+):\s?(.*)$/;
+  const B = /^(\d{1,2}[\/.]\d{1,2}[\/.]\d{2,4}),?\s+(\d{1,2}[:.]\d{2})\s+-\s+([^:\n]+):\s?(.*)$/;
+  const out = [];
+  /* iPhone: "[09/11/26, 08:12:33] Marco Rossi: testo" (prima la data, ora con i secondi) */
+  const C = /^\[(\d{1,2}[\/.]\d{1,2}[\/.]\d{2,4}),\s*(\d{1,2}[:.]\d{2})(?::\d{2})?\]\s*([^:\n]+):\s?(.*)$/;
+  String(text).split(/\r?\n/).forEach(line=>{
+    line = line.replace(/^[‎‏﻿]+/, "");
+    let m = A.exec(line), r = null;
+    if(m) r = {time:m[1].replace(".",":"), date:m[2], from:m[3].trim(), text:m[4]};
+    else if((m = C.exec(line))) r = {time:m[2].replace(".",":"), date:m[1], from:m[3].trim(), text:m[4]};
+    else if((m = B.exec(line))) r = {time:m[2].replace(".",":"), date:m[1], from:m[3].trim(), text:m[4]};
+    if(r) out.push(r);
+    else if(out.length) out[out.length-1].text += "\n"+line;
+    else if(line.trim()) out.push({time:"", date:"", from:"", text:line});
+  });
+  return out.map(x=>({...x, text:x.text.trim()})).filter(x=>x.text);
+}
+function today(){ const d=new Date(); return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear(); }
+/* Mail copiata o inoltrata: legge Da / Inviato / Oggetto (anche From / Sent / Date / Subject) */
+function parseMail(text){
+  const get = re => { const m = re.exec(text); return m ? m[1].trim() : ""; };
+  const from = get(/^(?:Da|From)\s*:\s*(.+)$/mi);
+  if(!from || from.indexOf("@") < 0) return null;
+  const date = get(/^(?:Inviato|Data|Sent|Date)\s*:\s*(.+)$/mi), subj = get(/^(?:Oggetto|Subject)\s*:\s*(.+)$/mi);
+  const parts = text.split(/\r?\n\s*\r?\n/); const body = parts.slice(1).join("\n\n").trim() || text;
+  return {from, name:from.replace(/<.*>/,"").replace(/"/g,"").trim(), date, subj, body};
+}
+function ingest(text, via){
+  const f = S.f; f.text = text; f.via = via;
+  const ml = parseMail(text);
+  f.kind = ml ? "mail" : "wa"; f.mailFrom = ml ? ml.from : ""; f.subj = ml ? ml.subj : "";
+  f.msgs = ml ? [{time:"", date:"", from:ml.name, text:ml.body}] : parseWA(text);
+  const first = f.msgs.find(m=>m.time);
+  if(ml && ml.date){ f.time = ml.date; f.timeAuto = true; }
+  else if(first){ f.time = first.date+" "+first.time; f.timeAuto = true; } else { f.time = today()+" "+nowStr(); f.timeAuto = false; }
+  const s = suggestions(f);
+  if(s.length === 1){ f.client = s[0].c.id; f.reason = s[0].why; const c = cl(f.client); f.dest = c.open.length ? c.open[0].id : "new"; }
+  else { f.client = null; f.reason = ""; }
+  renderInoltra();
+}
+function renderInoltra(){
+  const f = S.f, el = $("#s-inoltra");
+  if(!f.msgs.length){
+    el.innerHTML = `<div><h2 class="sec">Messaggio di un cliente</h2><p class="sub">Incolla il WhatsApp o la mail che ti ha mandato: poi scegli il ticket o il cliente.</p></div>
+      <textarea class="input paste" id="f-paste" aria-label="Incolla qui i messaggi copiati da WhatsApp" placeholder="Tocca qui e scegli Incolla"></textarea>
+      <button class="btn primary block" id="f-clip" type="button">Incolla dagli appunti</button>
+      <ol class="how">
+        <li><strong>WhatsApp:</strong> tieni premuto il messaggio (o selezionane più di uno), tocca Copia.</li>
+        <li><strong>Mail:</strong> copia tutto il testo, comprese le righe Da, Inviato e Oggetto.</li>
+        <li>Torna qui e incolla.</li>
+      </ol>
+      <p class="hint">Da una mail l'app legge mittente e ora, e riconosce il cliente dall'indirizzo. Da WhatsApp arriva solo il testo: scegli tu il ticket o il cliente con un tocco.</p>
+      <div class="row"><label class="btn small" for="f-photo" style="cursor:pointer">+ Solo foto o screenshot</label><input type="file" id="f-photo" accept="image/*" multiple hidden></div>`;
+    const pa = $("#f-paste");
+    $("#f-clip").onclick = ()=>{
+      if(!navigator.clipboard || !navigator.clipboard.readText){ toast("Tieni premuto nel riquadro e scegli Incolla"); return; }
+      navigator.clipboard.readText().then(t=>{ if(t.trim()) ingest(t, "paste"); else toast("Negli appunti non c'è testo"); }).catch(()=>toast("Tieni premuto nel riquadro e scegli Incolla"));
+    };
+    pa.onpaste = e => {
+      /* WhatsApp Web: il testo semplice non ha ora e nome, ma l'HTML copiato porta su ogni messaggio l'attributo data-pre-plain-text "[08:12, 9/11/2026] Marco Rossi: " */
+      const html = e.clipboardData && e.clipboardData.getData("text/html");
+      if(!html || html.indexOf("data-pre-plain-text") < 0) return;
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const rows = [...doc.querySelectorAll("[data-pre-plain-text]")].map(n => n.getAttribute("data-pre-plain-text").trim()+" "+n.textContent.trim()).filter(r => r.length > 4);
+      if(!rows.length) return;
+      e.preventDefault();
+      ingest(rows.join("\n"), "web");
+    };
+    pa.oninput = ()=>{ if(pa.value.trim()) ingest(pa.value, "paste"); };
+    $("#f-photo").onchange = e => { addPhotos(e.target.files, ()=>{ if(f.photos){ f.msgs=[{time:"",date:"",from:"",text:"(foto del cliente)"}]; f.time=today()+" "+nowStr(); f.timeAuto=false; renderInoltra(); } }); };
+    return;
+  }
+  el.innerHTML = `<div><h2 class="sec">Messaggio di un cliente</h2><p class="sub">Controlla i dati compilati e invia a Ticket Farm.</p></div>
+    <div class="card" style="gap:8px">
+      <div class="row"><span class="lbl">${f.kind==="mail"?"Mail del cliente":"Copiato da WhatsApp"}</span><button class="linkbtn" id="f-clear" type="button">Incolla di nuovo</button></div>
+      ${f.subj?`<div class="hint">Oggetto: ${esc(f.subj)}</div>`:""}
+      ${f.msgs.map(m=>`<div class="wam"${m.time?"":' style="grid-template-columns:1fr"'}>${m.time?`<span class="mono">${esc(m.time)}</span>`:""}<span>${m.from?`<b>${esc(m.from)}</b><br>`:""}${esc(m.text)}</span></div>`).join("")}
+      <div class="row"><label class="btn small" for="f-photo" style="cursor:pointer">+ Foto</label><input type="file" id="f-photo" accept="image/*" multiple hidden><span class="hint" id="f-photos">${f.photos?f.photos+" foto allegate":""}</span></div>
+    </div>
+    <div class="field"><span>Ticket o cliente</span><div id="pick"></div></div>
+    <label class="field"><span>Ora del messaggio</span>
+      <input class="input" id="f-time" value="${esc(f.time)}">
+      <span class="hint ${f.timeAuto?"ok":"warn"}">${f.timeAuto?"Presa dal messaggio":"Messa all'ora attuale: cambiala se il messaggio è arrivato prima"}</span>
+      ${f.timeAuto?"":`<div class="row" style="justify-content:flex-start;flex-wrap:wrap;gap:6px">${[[0,"Adesso"],[15,"15 min fa"],[60,"1 ora fa"],[180,"3 ore fa"],[1440,"Ieri"]].map(([m,l])=>`<button class="btn small" type="button" data-ago="${m}">${l}</button>`).join("")}</div>`}</label>
+    <div id="dest"></div>
+    <label class="field"><span>Numero del cliente <em style="text-transform:none;font-style:normal;font-weight:500">(facoltativo)</em></span>
+      <input class="input" id="f-num" inputmode="tel" placeholder="+41 79 …" value="${esc(f.number)}"></label>
+    <label class="field"><span>Nota tua per l'ufficio <em style="text-transform:none;font-style:normal;font-weight:500">(facoltativa)</em></span>
+      <textarea class="input" id="f-note" style="min-height:60px" placeholder="Es. passo io domani mattina">${esc(f.note)}</textarea></label>
+    <button class="btn primary block" id="f-send" type="button">Invia a Ticket Farm</button>`;
+  $("#f-clear").onclick = ()=>{ S.f = blankForm(); renderInoltra(); };
+  $("#f-time").oninput = e => { f.time = e.target.value; drawDest(); };
+  el.querySelectorAll("[data-ago]").forEach(b=>b.onclick=()=>{ const d=new Date(Date.now()-b.dataset.ago*60000); f.time=d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear()+" "+d.toTimeString().slice(0,5); $("#f-time").value=f.time; drawDest(); });
+  $("#f-note").oninput = e => { f.note = e.target.value; };
+  $("#f-num").oninput = e => { f.number = e.target.value; if(!f.client && !f.unknown) drawSugg(); drawDest(); };
+  $("#f-photo").onchange = e => { addPhotos(e.target.files, ()=>{ $("#f-photos").textContent = f.photos+" foto allegate"; }); };
+  $("#f-send").onclick = send;
+  drawPick(); drawDest();
+}
+function drawPick(){
+  const f = S.f, box = $("#pick");
+  if(f.client){
+    const c = cl(f.client);
+    box.innerHTML = `<div class="sel"><div class="row"><span class="client">${esc(c.name)}</span>${badge(c.sys)}</div>
+      <span class="hint">${esc(c.city)} · ${c.contacts.map(k=>esc(k.n)).join(", ")}</span>${f.reason?`<span class="hint ok">Compilato da solo: ${esc(f.reason)}</span>`:""}
+      <button class="linkbtn" id="p-change" type="button" style="align-self:flex-start">Cambia cliente</button></div>`;
+    $("#p-change").onclick = ()=>{ f.client=null; f.reason=""; f.dest="new"; drawPick(); drawDest(); };
+    return;
+  }
+  if(f.unknown){
+    box.innerHTML = `<div class="sel"><span class="client">Cliente da identificare</span><span class="hint">L'ufficio lo identifica e ti scrive nella conversazione.</span>
+      <button class="linkbtn" id="p-change" type="button" style="align-self:flex-start">Scegli il cliente</button></div>`;
+    $("#p-change").onclick = ()=>{ f.unknown=false; drawPick(); drawDest(); };
+    return;
+  }
+  box.innerHTML = `<div id="sugg" class="seg"></div>
+    <input class="input" id="p-q" type="search" placeholder="Cerca per nome, città o persona" value="${esc(f.search)}">
+    <div id="plist" class="seg" style="margin-top:6px"></div>
+    <button class="linkbtn" id="p-unk" type="button" style="align-self:flex-start;margin-top:4px">Non lo trovo: lo identifica l'ufficio</button>`;
+  $("#p-q").oninput = e => { f.search = e.target.value; drawList(); };
+  $("#p-unk").onclick = ()=>{ f.unknown = true; drawPick(); drawDest(); };
+  drawSugg(); drawList();
+}
+function choose(id){ const f=S.f; f.client=id; f.reason=""; const c=cl(id); f.dest = c.open.length ? c.open[0].id : "new"; drawPick(); drawDest(); }
+function drawSugg(){
+  const box = $("#sugg"); if(!box) return;
+  const s = suggestions(S.f);
+  box.innerHTML = s.length ? `<span class="hint">Proposto da Ticket Farm</span>` + s.map(x=>`<button class="opt" type="button" data-c="${x.c.id}"><span>${esc(x.c.name)}<small class="why">${esc(x.why)}</small></span>${badge(x.c.sys)}</button>`).join("") : "";
+  box.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>choose(b.dataset.c));
+}
+function tix(){
+  const ts = S.threads.filter(t=>t.client);
+  return ts.length ? `<span class="hint">I tuoi ticket aperti</span>` + ts.map(t=>{ const c=cl(t.client), o=c.open.find(x=>x.id===t.ticket);
+    return `<button class="opt" type="button" data-t="${t.ticket}"><span>${esc(c.name)}<small>${t.ticket}${o?" · "+esc(o.t):""}</small></span>${badge(c.sys)}</button>`; }).join("") : "";
+}
+function drawList(){
+  const box = $("#plist"); if(!box) return;
+  const q = S.f.search.trim().toLowerCase();
+  let list;
+  if(q) list = CLIENTS.filter(c => (c.name+" "+c.city+" "+c.contacts.map(k=>k.n).join(" ")).toLowerCase().includes(q));
+  else { const ids=[...new Set(S.threads.map(t=>t.client).filter(Boolean))]; list = ids.map(cl).filter(Boolean); }
+  box.innerHTML = (q?"":tix()+`<span class="hint">Clienti recenti</span>`) + (list.length ? list.map(c=>`<button class="opt" type="button" data-c="${c.id}"><span>${esc(c.name)}<small>${esc(c.city)} · ${c.contacts.map(k=>esc(k.n)).join(", ")}</small></span>${badge(c.sys)}</button>`).join("") : `<div class="empty">Nessun cliente con «${esc(q)}»</div>`);
+  box.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>choose(b.dataset.c));
+  box.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{ const th=S.threads.find(t=>t.ticket===b.dataset.t); choose(th.client); S.f.dest=th.ticket; drawDest(); });
+}
+/* Come le mail di oggi verso support@: la 1ª apre il ticket, dalle successive ITSM lo riconosce da oggetto "Re: Tck #…" e da In-Reply-To/References */
+function msgId(ticket, sys){
+  let h = 0, out = ""; const A = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  for(let i=0;i<43;i++){ h = (h*31 + ticket.charCodeAt(i % ticket.length) + i*7) % 2147483647; out += A[h % 62]; }
+  return "<"+out+"@"+(sys==="Halo"?"halo":"itsm")+".efuture.it>";
+}
+function mailPreview(){
+  const f = S.f, c = f.client ? cl(f.client) : null, rows = [], hidden = [];
+  const old = c && f.dest !== "new";
+  if(old){
+    const o = c.open.find(x=>x.id===f.dest);
+    rows.push(["Oggetto", "Re: "+f.dest+" - "+(o?o.t:"")]);
+    hidden.push(["In-Reply-To", msgId(f.dest, c.sys)], ["References", msgId(f.dest, c.sys)]);
+  } else {
+    rows.push(["Oggetto", (f.kind==="mail"&&f.subj?f.subj:(f.kind==="mail"?"Mail del cliente":"Messaggio WhatsApp"))+(c?" - "+c.name:" - cliente da identificare")]);
+    hidden.push(["X-TicketFarm-Cliente", c ? c.name : "da identificare"]);
+  }
+  hidden.push(["X-TicketFarm-Ora-Messaggio", f.time]);
+  hidden.push(["X-TicketFarm-Origine", f.kind==="mail" ? "mail del cliente ("+f.mailFrom+")" : "WhatsApp del tecnico"]);
+  return `<details class="mailprev" open><summary>La mail che parte</summary>
+    <div class="mp"><div><b>Da</b> ${ME}</div><div><b>A</b> ${SUPPORT}</div>${rows.map(([k,v])=>`<div><b>${k}</b> ${esc(v)}</div>`).join("")}
+    <div class="hd">${hidden.map(([k,v])=>`<span class="mono">${k}: ${esc(v)}</span>`).join("")}</div>
+    <span class="hint">${old
+      ? "Come una risposta del cliente: il ticket viene riconosciuto dall'oggetto e da In-Reply-To, che punta all'ultima mail del ticket letta dal backend."
+      : "Prima mail, senza riferimenti: viene aperto un ticket nuovo. Il mittente è il tecnico, quindi il cliente va indicato in X-TicketFarm-Cliente."}</span></div></details>`;
+}
+function drawDest(){
+  const f = S.f, box = $("#dest"); if(!box) return;
+  if(!f.client){ box.innerHTML = f.unknown ? mailPreview() : ""; return; }
+  const c = cl(f.client);
+  const known = c.contacts.some(k => digits(k.tel) && digits(k.tel) === digits(f.number));
+  const opts = c.open.map(o=>`<button class="opt" type="button" data-d="${o.id}" aria-pressed="${f.dest===o.id}"><span>Aggiungi a ${o.id}<small>${esc(o.t)}</small></span>${o.urg?'<span class="pill p-urg">Urgente</span>':""}</button>`).join("")
+    + `<button class="opt" type="button" data-d="new" aria-pressed="${f.dest==="new"}"><span>Nuova richiesta<small>Ticket Farm apre il ticket in ${SRC[c.sys]}</small></span></button>`;
+  box.innerHTML = `<div class="field"><span>Dove va</span><div class="seg">${opts}</div></div>
+    ${digits(f.number).length>=7 && !known ? `<label class="chk" style="margin-top:10px"><input type="checkbox" id="f-rem" ${f.remember?"checked":""}> Salva ${esc(f.number)} sul cliente in ${SRC[c.sys]}</label>`:""}`;
+  box.insertAdjacentHTML("beforeend", mailPreview());
+  box.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{ f.dest=b.dataset.d; drawDest(); });
+  const r = $("#f-rem"); if(r) r.onchange = e => f.remember = e.target.checked;
+}
+function send(){
+  const f = S.f;
+  if(!f.msgs.length){ toast("Incolla il messaggio del cliente o allega una foto"); return; }
+  if(!f.client && !f.unknown){ toast("Indica il cliente: scegline uno o tocca «Non lo trovo»"); return; }
+  const c = f.client ? cl(f.client) : null;
+  const from = (f.msgs.find(m=>m.from)||{}).from || "";
+  const body = f.msgs.map(m=>m.text).join("\n");
+  const fwd = {k:"fwd", kind:f.kind, from, t:f.time, text:body, lines:f.msgs.some(m=>m.time)?f.msgs:null, photos:f.photos};
+  const note = f.note.trim();
+  const saveNum = c && digits(f.number).length>=7 && f.remember && !c.contacts.some(k=>digits(k.tel)===digits(f.number));
+  if(API) return sendLive(f, c, from, body, fwd, note, saveNum);
+  if(saveNum){ c.contacts[0].tel = f.number; }
+  let th, answer;
+  if(c && f.dest !== "new"){
+    th = S.threads.find(t=>t.ticket===f.dest);
+    if(!th){ th = {ticket:f.dest, client:c.id, unread:false, msgs:[]}; S.threads.unshift(th); }
+    th.msgs.push(fwd);
+    answer = {k:"tf", t:"", text:"Messaggio aggiunto a "+f.dest+" in "+SRC[c.sys]+" e segnalato all'ufficio."+(saveNum?" Numero salvato sul contatto.":"")};
+  } else if(c){
+    ++S.seq; const id = c.sys==="Halo" ? "HALO-"+S.seq : "Tck #7142"+String(S.seq).slice(-2);
+    th = {ticket:id, client:c.id, unread:false, msgs:[fwd]}; S.threads.unshift(th);
+    c.open.unshift({id, t:body.slice(0,46)+(body.length>46?"…":"")});
+    answer = {k:"tf", t:"", text:"Ticket "+id+" aperto in "+SRC[c.sys]+" per "+c.name+"."+(saveNum?" Numero salvato sul contatto.":""),
+      forClient:"Buongiorno, abbiamo registrato la sua richiesta con il numero "+id+". La ricontattiamo al più presto. Grazie."};
+  } else {
+    const id = "TF-"+(++S.seq);
+    th = {ticket:id, client:null, unread:false, msgs:[fwd]}; S.threads.unshift(th);
+    answer = {k:"tf", t:"", text:"Ricevuto come "+id+". Non ho trovato il cliente: l'ufficio lo identifica e ti scrive qui."};
+  }
+  if(note) th.msgs.push({k:"me", t:nowStr(), text:note});
+  answer.text += " Ora della richiesta: "+f.time+".";
+  S.f = blankForm();
+  show("messaggi");
+  openChat(S.threads.indexOf(th));
+  answer.t = nowStr();
+  reply(th, answer);
+  toast("Prova: la mail a "+SUPPORT+" non è partita davvero");
+}
+
+/* ---------- CLIENTI ---------- */
+function renderClienti(){
+  const el = $("#s-clienti"), q = S.csearch.toLowerCase();
+  const list = CLIENTS.filter(c => !q || (c.name+" "+c.city+" "+c.contacts.map(k=>k.n+" "+k.tel).join(" ")).toLowerCase().includes(q));
+  el.innerHTML = `<div><h2 class="sec">Clienti</h2><p class="sub">Letti da Ticket Farm: anagrafiche da ITSM e Halo, contatti da Office 365</p></div>
+    <input class="input" id="c-q" type="search" placeholder="Cerca cliente, persona o numero" value="${esc(S.csearch)}">
+    <div class="list">${list.length ? list.map(c=>`<button class="item" data-c="${c.id}">
+      <div class="row"><span class="nm">${esc(c.name)}</span>${badge(c.sys)}</div>
+      <span class="pv">${esc(c.city)} · ${c.open.length} ticket aperti</span></button>`).join("") : `<div class="empty">Nessun cliente trovato</div>`}</div>`;
+  const qi = $("#c-q"); qi.oninput = ()=>{ S.csearch = qi.value; const p = qi.selectionStart; renderClienti(); const n=$("#c-q"); n.focus(); n.setSelectionRange(p,p); };
+  el.querySelectorAll(".item").forEach(b=>b.onclick=()=>clientSheet(b.dataset.c));
+}
+function clientSheet(id){
+  const c = cl(id), root = $("#sheet-root");
+  root.innerHTML = `<div class="sheet-bg" id="sb"><div class="sheet" role="dialog" aria-label="${esc(c.name)}">
+    <div class="grab"></div>
+    <div class="row"><div class="client">${esc(c.name)}</div>${badge(c.sys)}</div>
+    <span class="sub">${esc(c.city)} · ticket in ${SRC[c.sys]}</span>
+    <div class="field"><span>Contatti</span><div class="kv">${c.contacts.map(k=>`<div class="row"><span>${esc(k.n)}<br><span class="mono">${esc(k.tel||"numero non presente")}</span></span>${badge(k.src)}</div>`).join("")}</div></div>
+    <div class="field"><span>Ticket aperti</span><div class="kv">${c.open.length ? c.open.map(o=>`<div><span class="mono">${o.id}</span> · ${esc(o.t)}</div>`).join("") : `<span class="sub">Nessuno</span>`}</div></div>
+    <button class="btn primary block" id="cs-fwd" type="button">Inoltra un messaggio di questo cliente</button>
+    <button class="btn block" id="cs-x" type="button">Chiudi</button>
+  </div></div>`;
+  const close = ()=>{ root.innerHTML = ""; };
+  $("#sb").onclick = e => { if(e.target.id==="sb") close(); };
+  $("#cs-x").onclick = close;
+  $("#cs-fwd").onclick = ()=>{ close(); S.f = blankForm(); S.f.client=id; S.f.dest = c.open.length ? c.open[0].id : "new"; show("inoltra"); };
+}
+
+/* ---------- navigazione ---------- */
+function show(tab){
+  S.tab = tab; $("#chat").hidden = true; S.openThread = null; $("#sheet-root").innerHTML = "";
+  document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected", b.dataset.tab===tab));
+  ["messaggi","inoltra","clienti"].forEach(t=>$("#s-"+t).hidden = t!==tab);
+  if(tab==="messaggi") renderMessaggi();
+  if(tab==="inoltra") renderInoltra();
+  if(tab==="clienti") renderClienti();
+}
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>show(b.dataset.tab));
+
+/* ---------- collegamento al backend ---------- */
+function api(path, body){
+  return fetch(API + path, {method: body ? "POST" : "GET", headers: {"Content-Type":"application/json", "Authorization":"Bearer "+TOKEN}, body: body ? JSON.stringify(body) : undefined})
+    .then(async r => { const j = await r.json().catch(()=>({}));
+      if(r.status === 401 && path !== "/api/app/login"){ logout(); throw new Error("accesso scaduto"); }
+      if(!r.ok) throw new Error(j.error || ("errore "+r.status)); return j; });
+}
+function applyData(d){
+  if(!d) return;
+  CLIENTS = d.clients; S.threads = d.threads; SUPPORT = d.support; ME = d.me.mail;
+  $("#who-zona").textContent = "Zona "+d.me.zona; $("#who-ini").textContent = d.me.ini;
+  updateCount();
+}
+function reopen(ticket){ const i = S.threads.findIndex(t=>t.ticket===ticket); if(i>=0) openChat(i); }
+function refresh(){
+  api("/api/app/data").then(d=>{
+    const open = S.openThread!=null && S.threads[S.openThread] ? S.threads[S.openThread].ticket : null;
+    applyData(d);
+    if(open){ S.openThread = S.threads.findIndex(t=>t.ticket===open); if(S.openThread>=0) drawMsgs(); }
+    else if(S.tab==="messaggi") renderMessaggi();
+  }).catch(()=>{});
+}
+function sendLive(f, c, from, body, fwd, note, saveNum){
+  const b = $("#f-send"); b.disabled = true; b.textContent = "Invio…";
+  api("/api/app/send", {kind:f.kind||"wa", from:(f.msgs.find(m=>m.from)||{}).from||"", body, lines:fwd.lines, time:f.time, client:c?c.id:null, dest:f.dest, number:f.number, remember:!!saveNum,
+      note, mailFrom:f.mailFrom||"", subj:f.subj||"", files:f.files})
+    .then(r=>{ S.f = blankForm(); applyData(r.data); show("messaggi"); reopen(r.ticket); toast("Mail inviata a "+SUPPORT); })
+    .catch(e=>{ b.disabled = false; b.textContent = "Invia a Ticket Farm"; toast("Invio non riuscito: "+e.message+". Il messaggio resta qui, riprova."); });
+}
+/* foto ridotte a 1600 px in JPEG, così la mail resta leggera */
+function shrink(file){
+  return new Promise((ok)=>{
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = ()=>{ const k = Math.min(1, 1600/Math.max(img.width, img.height)); const cv = document.createElement("canvas");
+      cv.width = Math.round(img.width*k); cv.height = Math.round(img.height*k); cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+      URL.revokeObjectURL(url); ok({name:(file.name||"foto").replace(/\.\w+$/,"")+".jpg", type:"image/jpeg", data:cv.toDataURL("image/jpeg", .82).split(",")[1]}); };
+    img.onerror = ()=>{ URL.revokeObjectURL(url); ok(null); };
+    img.src = url;
+  });
+}
+function addPhotos(list, done){
+  const f = S.f;
+  Promise.all([...list].map(shrink)).then(arr=>{ f.files = (f.files||[]).concat(arr.filter(Boolean)); f.photos = f.files.length; done(); });
+}
+function renderLogin(){
+  const el = $("#login"); el.hidden = false;
+  el.innerHTML = `<h2>Accedi a Ticket Farm</h2><p class="sub">Usa la tua mail aziendale e il codice che ti ha dato l'ufficio.</p>
+    <label class="field"><span>Mail</span><input class="input" id="l-mail" type="email" autocomplete="username" placeholder="nome@efuture.it"></label>
+    <label class="field"><span>Codice</span><input class="input" id="l-code" type="password" inputmode="numeric" autocomplete="current-password"></label>
+    <button class="btn primary block" id="l-go" type="button">Accedi</button>`;
+  $("#l-go").onclick = ()=>{
+    const mail = $("#l-mail").value.trim(), code = $("#l-code").value.trim();
+    if(!mail || !code){ toast("Scrivi mail e codice"); return; }
+    api("/api/app/login", {mail, code}).then(r=>{ TOKEN = r.token; try{ localStorage.setItem("tf-token", TOKEN); }catch(e){} el.hidden = true; start(); })
+      .catch(e=>toast("Accesso non riuscito: "+e.message));
+  };
+}
+function logout(){ TOKEN = ""; try{ localStorage.removeItem("tf-token"); }catch(e){} renderLogin(); }
+function profile(){
+  const root = $("#sheet-root");
+  root.innerHTML = `<div class="sheet-bg" id="sb"><div class="sheet" role="dialog" aria-label="Profilo"><div class="grab"></div>
+    <div class="client">${esc(ME)}</div><span class="sub">Le mail partono da questo indirizzo verso ${esc(SUPPORT)}.</span>
+    ${API ? `<button class="btn block" id="p-out" type="button">Esci</button>` : `<span class="sub">Modalità prova: non serve accedere.</span>`}
+    <button class="btn block" id="p-x" type="button">Chiudi</button></div></div>`;
+  $("#sb").onclick = e => { if(e.target.id==="sb") root.innerHTML = ""; };
+  $("#p-x").onclick = ()=>{ root.innerHTML = ""; };
+  if(API) $("#p-out").onclick = ()=>{ root.innerHTML = ""; logout(); };
+}
+function handleShare(){
+  const q = new URLSearchParams(location.search);
+  const shared = [q.get("title"), q.get("text"), q.get("url")].filter(Boolean).join("\n").trim();
+  if(!shared) return;
+  history.replaceState(null, "", location.pathname);
+  S.f = blankForm(); show("inoltra"); ingest(shared, "share");
+}
+function start(){
+  if(!API){ show("messaggi"); handleShare(); return; }
+  if(!TOKEN){ renderLogin(); return; }
+  api("/api/app/data").then(d=>{ applyData(d); show("messaggi"); handleShare(); setInterval(refresh, 60000); })
+    .catch(e=>{ if(TOKEN){ show("messaggi"); toast("Backend non raggiungibile: "+e.message); } });
+}
+function curTheme(){ return document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"); }
+function setTheme(t){ document.documentElement.dataset.theme = t; try{ localStorage.setItem("tf-theme", t); }catch(e){} paintTheme(); }
+function paintTheme(){ $("#theme").textContent = curTheme()==="dark" ? "☀ Chiaro" : "☾ Scuro"; }
+try{ const t = localStorage.getItem("tf-theme"); if(t) document.documentElement.dataset.theme = t; }catch(e){}
+$("#theme").onclick = ()=>setTheme(curTheme()==="dark" ? "light" : "dark");
+paintTheme();
+$("#who-ini").onclick = profile;
+if(API){ CLIENTS = []; S.threads = []; }
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+start();
+})();
+</script>
+</body>
+</html>
