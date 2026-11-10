@@ -217,6 +217,16 @@ td.act{white-space:nowrap;text-align:right}
 .crow{display:grid;grid-template-columns:1.1fr 1.3fr 1fr auto;gap:8px;margin-bottom:8px;align-items:center}
 .code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:28px;font-weight:700;letter-spacing:.12em;color:var(--ink);background:var(--surface-2);border-radius:12px;padding:14px;text-align:center;margin:0}
 @media (max-width:600px){.crow{grid-template-columns:minmax(0,1fr)}}
+.o365state{flex-direction:row;align-items:center;gap:12px;flex-wrap:wrap;border-left:4px solid var(--ok)}
+.o365state.bad{border-left-color:var(--red)}
+.tsteps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.tsteps li{display:grid;grid-template-columns:24px minmax(0,1fr);gap:4px 10px;align-items:start}
+.tsteps li::before{content:"✓";grid-row:span 2;width:22px;height:22px;border-radius:50%;background:var(--ok);color:#fff;font-weight:700;font-size:12px;display:grid;place-items:center}
+.tsteps li.ko::before{content:"✕";background:var(--red)}
+.tsteps b{color:var(--ink);font-weight:600}.tsteps span{color:var(--muted);font-size:13px;overflow-wrap:anywhere}
+.howto summary{cursor:pointer;list-style:none}.howto summary::-webkit-details-marker{display:none}
+.howto summary::after{content:" ›";color:var(--accent)}
+.howto[open] summary{margin-bottom:6px}
 .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,10px);background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:12px;font-size:13.5px;font-weight:500;opacity:0;transition:.25s;pointer-events:none;z-index:50;max-width:calc(100% - 32px)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 .note{font-size:12.5px;color:var(--muted)}
@@ -377,7 +387,8 @@ function fresh(){
 }
 let S = fresh();
 S.tut = null;
-let LIVE = false, CONN = null, BACKEND = false, ME = null;
+let LIVE = false, CONN = null, BACKEND = false, ME = null, O365 = null;
+let SETTINGS = (()=>{ try{ return JSON.parse(localStorage.getItem("tf-admin-settings")||"null"); }catch(e){ return null; } })() || {support:"support@efuture.it", graph:{tenant:"", clientId:"", secretSet:false, mailbox:"", readMail:true, readContacts:true, every:5}};
 let TOKEN = ""; try{ TOKEN = localStorage.getItem("tf-admin-token") || ""; }catch(e){}
 const H = () => TOKEN ? {Authorization: "Bearer "+TOKEN} : {};
 const post = (u, b) => fetch(u, {method:"POST", headers:{"Content-Type":"application/json", ...H()}, body:JSON.stringify(b)}).then(r => r.ok ? r.json() : r.json().then(j => Promise.reject(new Error(j.error || r.status))));
@@ -396,14 +407,14 @@ const toCheck = () => S.mails.filter(m=>m.res.state==="warn").length;
 /* menu diviso: il lavoro di ogni giorno, la configurazione, i tutorial */
 const GROUPS = [
   ["Operativo", [["cruscotto","Cruscotto"],["posta","Posta in arrivo"],["ticket","Ticket"],["clienti","Clienti"]]],
-  ["Configurazione", [["tecnici","Tecnici"],["collegamenti","Collegamenti"],["regole","Riconoscimento"]]],
+  ["Configurazione", [["tecnici","Tecnici"],["office365","Office 365"],["collegamenti","Collegamenti"],["regole","Riconoscimento"]]],
   ["Tutorial", [["tutorial","Casi d'uso"]]]
 ];
 function nav(){
   $("#nav").innerHTML = GROUPS.map(([g,items])=>`<span class="grp">${g}</span>`+items.map(([k,l])=>`<button type="button" data-v="${k}" ${S.view===k?'aria-current="page"':""}>${l}${k==="posta"&&toCheck()?`<span class="n">${toCheck()}</span>`:""}${k==="tutorial"?`<span class="n">${TUTORIALS.length}</span>`:""}</button>`).join("")).join("");
   $("#nav").querySelectorAll("button").forEach(b=>b.onclick=()=>{ S.view=b.dataset.v; S.sel=null; S.tut=null; render(); window.scrollTo(0,0); });
 }
-function render(){ nav(); ({cruscotto,posta,ticket,clienti,tecnici,collegamenti,regole,tutorial})[S.view](); }
+function render(){ nav(); ({cruscotto,posta,ticket,clienti,tecnici,office365,collegamenti,regole,tutorial})[S.view](); }
 
 /* ---------- Tutorial: 5 casi d'uso operativi, ognuno con video e procedura ---------- */
 const TUTORIALS = [
@@ -798,6 +809,70 @@ function techForm(t){
     });
 }
 
+
+/* ---------- Office 365: casella di raccolta e lettura della posta ---------- */
+function office365(){
+  const g = SETTINGS.graph || {};
+  $("#main").innerHTML = `<div class="top"><div><h1>Office 365</h1><p class="sub">La casella di raccolta riceve le mail dei clienti e quelle inoltrate dall'app. Il backend la legge con Microsoft Graph e la mostra in Posta in arrivo.</p></div></div>
+    ${O365 ? `<div class="panel o365state ${O365.error?"bad":"good"}"><b>${O365.error ? "Lettura non riuscita" : "Collegato"}</b><span>${O365.error ? esc(O365.error) : "Lette "+O365.count+" mail da "+esc(O365.mailbox)}</span></div>` : ""}
+    <form class="panel" id="o-form">
+      <h2>Casella di raccolta</h2>
+      <label class="field"><span>Indirizzo a cui l'app manda le mail</span><input class="input" id="o-support" type="email" required value="${esc(SETTINGS.support||"")}"></label>
+      <p class="note">È la casella «support». Per le prove può essere una casella personale (per esempio la tua): non è quella del tecnico né quella del cliente.</p>
+      <h2 style="margin-top:6px">Collegamento a Microsoft (Entra ID)</h2>
+      <div class="formgrid">
+        <label class="field"><span>Tenant ID</span><input class="input mono" id="o-tenant" placeholder="00000000-0000-0000-0000-000000000000" value="${esc(g.tenant||"")}"></label>
+        <label class="field"><span>Client ID (ID applicazione)</span><input class="input mono" id="o-client" placeholder="00000000-0000-0000-0000-000000000000" value="${esc(g.clientId||"")}"></label>
+        <label class="field wide"><span>Segreto client</span><input class="input mono" id="o-secret" type="password" autocomplete="new-password" placeholder="${g.secretSet ? "•••••••• salvato: lascia vuoto per non cambiarlo" : "incolla il valore del segreto"}"></label>
+        <label class="field wide"><span>Casella da leggere</span><input class="input" id="o-mailbox" type="email" placeholder="uguale alla casella di raccolta" value="${esc(g.mailbox||"")}"></label>
+      </div>
+      <h2 style="margin-top:6px">Cosa leggere</h2>
+      <label class="check"><input type="checkbox" id="o-mail" ${g.readMail!==false?"checked":""}> Posta in arrivo (per riconoscere ticket e clienti)</label>
+      <label class="check"><input type="checkbox" id="o-contacts" ${g.readContacts!==false?"checked":""}> Contatti (per completare i contatti dei clienti)</label>
+      <label class="field" style="max-width:260px"><span>Ogni quanto</span><select class="input" id="o-every">${[1,5,15].map(m=>`<option value="${m}" ${Number(g.every||5)===m?"selected":""}>ogni ${m} minut${m===1?"o":"i"}</option>`).join("")}</select></label>
+      <div class="actions"><button class="btn primary" type="submit">Salva</button><button class="btn" type="button" id="o-test">Prova collegamento</button></div>
+    </form>
+    <div id="o-result"></div>
+    <details class="panel howto"><summary><b>Come preparare il collegamento in Microsoft (una volta sola)</b></summary>
+      <ol class="proc">
+        <li>Su <b>entra.microsoft.com</b> → <b>Registrazioni app</b> → <b>Nuova registrazione</b>, nome «Ticket Farm».</li>
+        <li>Copia <b>ID applicazione (client)</b> e <b>ID directory (tenant)</b> nei campi qui sopra.</li>
+        <li><b>Certificati e segreti</b> → <b>Nuovo segreto client</b>: copia il <b>Valore</b> nel campo Segreto client.</li>
+        <li><b>Autorizzazioni API</b> → Microsoft Graph → <b>Autorizzazioni applicazione</b>: <b>Mail.Read</b> e <b>Contacts.Read</b>. Poi <b>Concedi consenso amministratore</b>.</li>
+        <li>Importante: limita l'app alla sola casella di raccolta con una <b>Application Access Policy</b> (Exchange Online PowerShell: <span class="mono">New-ApplicationAccessPolicy</span>), così non può leggere altre caselle.</li>
+        <li>Torna qui, <b>Salva</b> e tocca <b>Prova collegamento</b>.</li>
+      </ol></details>`;
+  $("#o-form").onsubmit = e => {
+    e.preventDefault();
+    const body = {support:$("#o-support").value.trim(), graph:{tenant:$("#o-tenant").value.trim(), clientId:$("#o-client").value.trim(), clientSecret:$("#o-secret").value.trim(),
+      mailbox:$("#o-mailbox").value.trim(), readMail:$("#o-mail").checked, readContacts:$("#o-contacts").checked, every:Number($("#o-every").value)}};
+    if(LIVE){ post("/api/admin/settings", body).then(r=>{ SETTINGS = r.settings; toast("Impostazioni salvate"); office365(); }).catch(err=>toast("Non salvate: "+err.message)); return; }
+    SETTINGS = {support:body.support, graph:Object.assign({}, body.graph, {clientSecret:undefined, secretSet: !!(body.graph.clientSecret || (SETTINGS.graph||{}).secretSet)})};
+    try{ localStorage.setItem("tf-admin-settings", JSON.stringify(SETTINGS)); }catch(e){}
+    toast("Impostazioni salvate in questo browser (prova)"); office365();
+  };
+  $("#o-test").onclick = ()=>{
+    const out = $("#o-result"); out.innerHTML = `<div class="panel"><b>Prova in corso…</b></div>`;
+    const show = (r, example) => { out.innerHTML = `<div class="panel">
+      <h2>${r.ok ? "Collegamento riuscito" : "Collegamento non riuscito"}${example ? ' <span class="pill p-warn">esempio</span>' : ""}</h2>
+      <ul class="tsteps">${r.steps.map(x=>`<li class="${x.ok?"ok":"ko"}"><b>${esc(x.t)}</b><span>${esc(x.d)}</span></li>`).join("")}</ul>
+      ${(r.messages||[]).length ? `<h2 style="margin-top:8px">Ultime mail lette</h2><div class="tbl"><table><thead><tr><th>Ricevuta</th><th>Da</th><th>Oggetto</th><th>Ticket Farm</th></tr></thead><tbody>
+        ${r.messages.map(m=>`<tr><td class="mono">${esc(m.at)}</td><td><span class="strong">${esc(m.fromName||m.from)}</span><div class="dim">${esc(m.from)}</div></td><td>${esc(m.subj)}</td><td>${m.hdr && m.hdr.length ? '<span class="pill p-ok">'+esc(m.hdr.map(h=>h[0]).join(", "))+'</span>' : '<span class="dim">—</span>'}</td></tr>`).join("")}</tbody></table></div>` : ""}
+      ${example ? `<p class="note">Questa è la versione di prova online, senza backend: il risultato qui sopra è un esempio di come appare. La prova vera parte dal backend acceso (sul PC o sul server).</p>` : ""}</div>`; };
+    if(LIVE){ post("/api/admin/settings/test-o365", {}).then(r=>show(r,false)).catch(err=>show({ok:false, steps:[{ok:false,t:"Prova",d:err.message}]},false)); return; }
+    const mb = (SETTINGS.graph && SETTINGS.graph.mailbox) || SETTINGS.support;
+    setTimeout(()=>show({ok:true, steps:[
+      {ok:true, t:"Accesso a Microsoft (tenant "+((SETTINGS.graph||{}).tenant||"…")+")", d:"token ottenuto"},
+      {ok:true, t:"Posta in arrivo di "+mb, d:"128 mail, 3 da leggere"},
+      {ok:true, t:"Contatti di "+mb, d:"42 contatti"}],
+      messages:[
+        {at:"10/11 09:12", fromName:"Tecnico Zona Sud", from:"mb@efuture.it", subj:"Re: Tck #714139 - Analizzatore latte: letture instabili", hdr:[["In-Reply-To",""],["X-TicketFarm-Ora-Messaggio",""]]},
+        {at:"10/11 08:47", fromName:"Giulia Bernasconi", from:"g.bernasconi@laboratorioesempio.ch", subj:"Re: HALO-4821 - Spettrofotometro: errore lampada", hdr:[["In-Reply-To",""]]},
+        {at:"10/11 08:05", fromName:"Tecnico Zona Sud", from:"mb@efuture.it", subj:"Messaggio WhatsApp - Acque Lario Sagl", hdr:[["X-TicketFarm-Cliente",""]]},
+        {at:"09/11 17:48", fromName:"Marco Rossi", from:"m.rossi@caseificiovalle.ch", subj:"Analizzatore latte", hdr:[]}]}, true), 700);
+  };
+}
+
 /* ---------- Collegamenti ---------- */
 function collegamenti(){
   const C = (LIVE && CONN) ? CONN : [
@@ -827,7 +902,7 @@ function load(){
   return fetch("/api/admin/state", {headers:H()}).then(r=>{ if(r.status===401) throw {auth:true}; return r.ok ? r.json() : Promise.reject(new Error("errore "+r.status)); }).then(d=>{
     LIVE = true; CONN = d.connections; ME = d.me || ME; paintMe();
     CLIENTS.splice(0, CLIENTS.length, ...d.clients); TECHS.splice(0, TECHS.length, ...d.techs);
-    S.mails = d.mails; S.tickets = d.tickets; S.rules = d.rules;
+    S.mails = d.mails; S.tickets = d.tickets; S.rules = d.rules; SETTINGS = d.settings || SETTINGS; O365 = d.o365 || null;
     $("#foot-mode").textContent = d.mode==="live" ? "Collegato a ITSM, Halo e Office 365" : "Backend in modalità prova: mail salvate in outbox, non spedite";
     if(d.appUrl){ const a=$("#app-link"); a.href=d.appUrl; a.hidden=false; }
     render();

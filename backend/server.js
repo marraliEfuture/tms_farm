@@ -11,6 +11,8 @@ const sources = require("./src/connectors");
 const mail = require("./src/mail");
 const { recognize } = require("./src/recognize");
 const logos = require("./src/logos");
+const settings = require("./src/settings");
+const graph = require("./src/connectors/graph");
 
 const app = express();
 app.use(express.json({ limit: "20mb" }));
@@ -42,7 +44,7 @@ async function clientsWithOpen() {
 async function appData(tech) {
   const st = store.load();
   if (!st.threads[tech.mail]) { st.threads[tech.mail] = JSON.parse(JSON.stringify((cfg.mode === "demo" && sources.demo.seedThreads[tech.mail]) || [])); store.save(); }
-  return { me: { mail: tech.mail, ini: tech.ini, zona: tech.zona, nome: tech.nome }, support: cfg.support, mode: cfg.mode,
+  return { me: { mail: tech.mail, ini: tech.ini, zona: tech.zona, nome: tech.nome }, support: settings.support(), mode: cfg.mode,
     clients: await clientsWithOpen(), threads: st.threads[tech.mail] };
 }
 /* registra la mail nel registro della console, con il riconoscimento che ne farebbe il backend */
@@ -54,7 +56,7 @@ async function logMail(msg, sent) {
   const entry = { id: "m" + Date.now(), at: now(), from: msg.from.address, fromName: msg.from.name, subj: msg.subject, hdr, body: msg.text,
     sent: { real: sent.real, messageId: sent.messageId, file: sent.file ? path.basename(sent.file) : "" } };
   const r = recognize({ from: entry.from, subject: entry.subj, headers: hdr }, { techs: auth.techs(), clients, tickets, rules: st.rules });
-  entry.res = { ...r, act: sent.real ? "Mail spedita a " + cfg.support + "." : "Modalità prova: mail salvata in outbox/" + path.basename(sent.file || "") + ", non spedita." };
+  entry.res = { ...r, act: sent.real ? "Mail spedita a " + settings.support() + "." : "Modalità prova: mail salvata in outbox/" + path.basename(sent.file || "") + ", non spedita." };
   st.mails.unshift(entry); st.mails = st.mails.slice(0, 500); store.save();
   return entry;
 }
@@ -108,7 +110,7 @@ app.post("/api/app/send", auth.requireTech, async (req, res, next) => {
     if (!th) { th = { ticket, client: c ? c.id : null, unread: false, msgs: [] }; threads.unshift(th); }
     th.msgs.push({ k: "fwd", kind: b.kind, from: b.from || "", t: b.time || now(), text: b.body, lines: b.lines || null, photos: (b.files || []).length });
     if (b.note) th.msgs.push({ k: "me", t: now(), text: b.note });
-    const where = sent.real ? "Mail spedita a " + cfg.support : "Modalità prova: mail preparata ma non spedita";
+    const where = sent.real ? "Mail spedita a " + settings.support() : "Modalità prova: mail preparata ma non spedita";
     th.msgs.push({ k: "tf", t: now(), text: where + (existing ? ", collegata a " + ticket + "." : isNew && c ? ". " + (cfg.mode === "demo" ? "Ticket " + ticket + " aperto (simulato)." : "Il numero del ticket comparirà quando " + c.sys + " lo apre.") : ". L'ufficio identificherà il cliente."),
       forClient: isNew && c && cfg.mode === "demo" ? "Buongiorno, abbiamo registrato la sua richiesta con il numero " + ticket + ". La ricontattiamo al più presto. Grazie." : undefined });
     store.save();
@@ -128,7 +130,7 @@ app.post("/api/app/note", auth.requireTech, async (req, res, next) => {
     const sent = await mail.send(msg);
     await logMail(msg, sent);
     th.msgs.push({ k: "me", t: now(), text });
-    th.msgs.push({ k: "tf", t: now(), text: sent.real ? "Mail spedita a " + cfg.support + "." : "Modalità prova: mail preparata ma non spedita." });
+    th.msgs.push({ k: "tf", t: now(), text: sent.real ? "Mail spedita a " + settings.support() + "." : "Modalità prova: mail preparata ma non spedita." });
     store.save();
     res.json({ data: await appData(tech) });
   } catch (e) { next(e); }
@@ -161,12 +163,22 @@ app.get("/api/admin/state", async (req, res, next) => {
     const st = store.load();
     const { clients, tickets } = await sources.data();
     let mails = st.mails;
+    /* posta in arrivo letta davvero dalla casella di raccolta (Office 365), se configurata */
+    let o365 = null;
+    if (graph.configured() && settings.graph().readMail) {
+      try {
+        if (!inboxCache.at || Date.now() - inboxCache.at > settings.graph().every * 60000) { inboxCache.list = await graph.inbox(25); inboxCache.at = Date.now(); inboxCache.err = ""; }
+      } catch (e) { inboxCache.err = e.message; inboxCache.at = Date.now(); }
+      o365 = { mailbox: settings.graph().mailbox, error: inboxCache.err, count: (inboxCache.list || []).length };
+      const read = (inboxCache.list || []).map(m => ({ ...m, res: { ...recognize({ from: m.from, subject: m.subj, headers: m.hdr }, { techs: auth.techs(), clients, tickets, rules: st.rules }), act: "Letta dalla casella " + settings.graph().mailbox + " (Office 365)." } }));
+      mails = [...read, ...st.mails.filter(x => !read.some(r => r.subj === x.subj && r.from === x.from))];
+    }
     if (cfg.mode === "demo") {
       const extra = sources.demo.inbound.filter(m => !st.mails.some(x => x.id === m.id)).map(m => ({ ...m,
         res: { ...recognize({ from: m.from, subject: m.subj, headers: m.hdr }, { techs: auth.techs(), clients, tickets, rules: st.rules }), act: "Esempio di mail arrivata direttamente da un cliente." } }));
       mails = [...st.mails, ...extra];
     }
-    res.json({ me: auth.publicAdmin(req.admin), mode: cfg.mode, support: cfg.support, appUrl: cfg.appUrl, clients, tickets, techs: techsPublic(), mails, rules: st.rules, connections: await sources.status() });
+    res.json({ o365, settings: settings.publicView(), me: auth.publicAdmin(req.admin), mode: cfg.mode, support: settings.support(), appUrl: cfg.appUrl, clients, tickets, techs: techsPublic(), mails, rules: st.rules, connections: await sources.status() });
   } catch (e) { next(e); }
 });
 app.post("/api/admin/mails/:id/resolve", async (req, res, next) => {
@@ -224,6 +236,16 @@ app.delete("/api/admin/clients/:id", (req, res) => {
 app.post("/api/admin/techs", (req, res) => { const r = auth.addTech(req.body || {}); if (r.error) return res.status(400).json(r); res.json(r); });
 app.put("/api/admin/techs/:mail", (req, res) => { const r = auth.editTech(req.params.mail, req.body || {}); if (r.error) return res.status(404).json(r); res.json(r); });
 app.delete("/api/admin/techs/:mail", (req, res) => { if (!auth.removeTech(req.params.mail)) return res.status(404).json({ error: "tecnico non trovato" }); res.json({ ok: true }); });
+/* impostazioni: casella di raccolta e Office 365 */
+const inboxCache = { at: 0, list: [], err: "" };
+app.get("/api/admin/settings", (req, res) => res.json(settings.publicView()));
+app.post("/api/admin/settings", (req, res) => {
+  const r = settings.update(req.body || {});
+  if (r.error) return res.status(400).json(r);
+  inboxCache.at = 0; sources.invalidate();
+  res.json(r);
+});
+app.post("/api/admin/settings/test-o365", async (req, res, next) => { try { res.json(await graph.test()); } catch (e) { next(e); } });
 app.post("/api/admin/rules", (req, res) => {
   const st = store.load(); const r = st.rules.find(x => x.k === req.body.k);
   if (r) { r.on = !!req.body.on; store.save(); }

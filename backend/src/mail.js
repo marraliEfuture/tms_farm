@@ -5,6 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const nodemailer = require("nodemailer");
 const cfg = require("./config");
+const settings = require("./settings");
 
 let transport = null;
 function getTransport() {
@@ -31,7 +32,7 @@ function buildMessage(o) {
   }
   const msg = {
     from: { name: o.tech.nome || o.tech.mail, address: o.tech.mail },
-    to: cfg.support,
+    to: settings.support(),
     subject: o.subject,
     text: o.text,
     headers,

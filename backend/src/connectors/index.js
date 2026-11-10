@@ -32,7 +32,7 @@ async function status() {
   return [
     row("ITSM", "API di itsm.efuture.it", "Ticket, clienti, identificativi delle mail inviate", itsm.configured()),
     row("Halo", "API REST di Halo", "Ticket, clienti, contatti", halo.configured()),
-    row("Office 365", "Microsoft Graph", "Contatti della casella " + cfg.graph.mailbox, graph.configured()),
+    row("Office 365", "Microsoft Graph", "Posta e contatti della casella " + require("../settings").graph().mailbox, graph.configured()),
   ];
 }
 function invalidate() { cache = null; }
