@@ -52,6 +52,7 @@ button{cursor:pointer}
 .nav button[aria-current="page"]{background:var(--accent-soft);color:var(--ink)}
 .nav .grp{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px 12px 4px;opacity:.8}
 .nav .grp:first-child{padding-top:2px}
+.tgroup{font-size:15px;color:var(--ink);margin:10px 0 0;font-weight:600}
 .tuts{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
 .tut{display:flex;flex-direction:column;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;padding:0;cursor:pointer;color:var(--text)}
 .tut:hover{border-color:var(--accent)}
@@ -68,6 +69,25 @@ button{cursor:pointer}
 .proc li{counter-increment:p;display:grid;grid-template-columns:30px minmax(0,1fr);gap:12px;align-items:start;line-height:1.55}
 .proc li::before{content:counter(p);width:28px;height:28px;border-radius:50%;background:var(--grad);color:#fff;font-weight:700;font-size:13px;display:grid;place-items:center}
 .proc b,.tip b{color:var(--ink);font-weight:600}
+.swim{display:grid;grid-template-columns:repeat(var(--lanes),minmax(0,1fr));column-gap:12px;row-gap:14px;position:relative}
+.lane-h{grid-row:1;font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:8px 12px;border-radius:10px;color:var(--lc);background:var(--lb);text-align:center}
+.lane-bg{border-radius:12px;background:var(--lb);opacity:.35;z-index:0}
+.step{position:relative;z-index:1;display:flex;flex-direction:column;gap:4px;padding:12px 14px 13px;border-radius:12px;background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--lc);box-shadow:0 6px 18px rgba(0,0,0,.08);font-size:13.5px;line-height:1.45}
+.step b{color:var(--ink);font-size:14.5px;font-weight:600}
+.step .num{position:absolute;top:-12px;right:10px;width:26px;height:26px;border-radius:50%;background:var(--lc);color:#fff;font-weight:700;font-size:12.5px;display:grid;place-items:center}
+.step .who{display:none;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--lc)}
+.step .arrow{position:absolute;top:-19px;left:14px;font-size:15px;color:var(--muted);line-height:1}
+.step.result{border-top-color:transparent;background:var(--grad);color:#fff;border:0;flex-direction:row;align-items:center;gap:12px;flex-wrap:wrap}
+.step.result b,.step.result span{color:#fff}
+.step.result .num{position:static;background:rgba(255,255,255,.25)}
+.l-tel{--lc:#b07d12;--lb:rgba(217,171,69,.16)} .l-wa{--lc:#1a9a4f;--lb:rgba(31,168,85,.14)} .l-mail{--lc:#c2581b;--lb:rgba(230,120,50,.14)}
+.l-app{--lc:#1570d6;--lb:rgba(42,167,255,.14)} .l-con{--lc:#0b8a91;--lb:rgba(25,194,201,.14)}
+@media (max-width:760px){
+  .swim{grid-template-columns:minmax(0,1fr)!important}
+  .lane-h,.lane-bg{display:none}
+  .step{grid-column:1!important;grid-row:auto!important}
+  .step .who{display:block}
+}
 .tip{margin:0;background:var(--gold-soft);border-radius:12px;padding:12px 14px;font-size:14px}
 .linkback{background:none;border:0;padding:0;color:var(--accent);font-weight:600;cursor:pointer;font-size:14px}
 #tut-next{align-self:flex-start}
@@ -387,80 +407,159 @@ function render(){ nav(); ({cruscotto,posta,ticket,clienti,tecnici,collegamenti,
 
 /* ---------- Tutorial: 5 casi d'uso operativi, ognuno con video e procedura ---------- */
 const TUTORIALS = [
-  { id:"whatsapp", n:1, title:"Inoltrare un messaggio WhatsApp del cliente", where:"App del tecnico", time:"1 minuto",
-    intro:"Un cliente scrive sul numero personale del tecnico. Il tecnico porta il messaggio in Ticket Farm in pochi tocchi e l'ufficio lo vede subito in Posta in arrivo.",
+  { id:"profilo", n:1, group:"setup", title:"Primo accesso alla console e profilo", where:"Console", time:"40 secondi",
+    intro:"Al primo accesso l'ufficio entra nella console, completa il profilo e sostituisce la password di prova.",
     steps:[
-      "In WhatsApp tieni premuto il messaggio del cliente. Se sono più messaggi, selezionali tutti. Tocca <b>Copia</b>.",
-      "Apri l'app Ticket Farm e tocca <b>Inoltra</b> in basso.",
-      "Tocca il riquadro e scegli <b>Incolla</b>, oppure tocca <b>Incolla dagli appunti</b>.",
-      "In <b>Ticket o cliente</b> tocca il ticket aperto del cliente. Se non c'è, tocca il cliente e lascia <b>Nuova richiesta</b>. Se non lo trovi, cercalo per nome o tocca <b>Non lo trovo</b>: lo identifica l'ufficio.",
-      "Controlla <b>Ora del messaggio</b>. Se il cliente ha scritto prima, tocca <b>15 min fa</b>, <b>1 ora fa</b>, <b>3 ore fa</b> o <b>Ieri</b>.",
-      "Se serve, scrivi una <b>nota per l'ufficio</b> (per esempio «Passo io alle 14»).",
-      "Tocca <b>Invia a Ticket Farm</b>. Dalla tua casella parte una mail a support@efuture.it con il numero del ticket nell'intestazione.",
-      "Nella console, in <b>Posta in arrivo</b>, la mail compare come <b>Riconosciuta</b> (ticket esistente) o <b>Nuovo ticket</b>."
+      {who:"Console", t:"Accedi", d:"All'indirizzo della console compare la schermata di accesso: scrivi <b>utente</b> e <b>password</b>."},
+      {who:"Console", t:"Menu utente", d:"In alto a destra tocca l'icona con le tue <b>iniziali</b>."},
+      {who:"Console", t:"Modifica profilo", d:"Scrivi <b>nome</b> e <b>mail</b>."},
+      {who:"Console", t:"Nuova password", d:"Almeno 8 caratteri, ripetuta due volte. Per salvare serve la <b>password attuale</b>."},
+      {who:"Console", t:"Chiaro o scuro", d:"L'interruttore <b>sole/luna</b> accanto all'icona cambia il tema; vale anche per l'app."},
+      {who:"Console", t:"Esci", d:"Dal menu utente tocca <b>Esci</b>."}
     ],
-    tip:"Il riquadro <b>La mail che parte</b> mostra mittente, oggetto e intestazioni prima dell'invio." },
-  { id:"mail", n:2, title:"Inoltrare una mail arrivata alla casella personale", where:"App del tecnico", time:"1 minuto",
+    result:"Console personale, protetta dalla tua password.",
+    tip:"Nella versione di prova online profilo e password restano solo in quel browser." },
+  { id:"tecnico", n:2, group:"setup", title:"Aggiungere un tecnico e dargli l'accesso", where:"Console", time:"1 minuto",
+    intro:"Ogni tecnico ha il suo accesso all'app. La sua mail aziendale è anche la casella da cui partono i messaggi inoltrati.",
+    steps:[
+      {who:"Console", t:"Nuovo tecnico", d:"In <b>Configurazione → Tecnici</b> tocca <b>+ Nuovo tecnico</b>."},
+      {who:"Console", t:"Dati del tecnico", d:"Nome, iniziali, zona e <b>mail aziendale</b>."},
+      {who:"Console", t:"Crea tecnico", d:"Compare il <b>codice di accesso</b> di 6 cifre: si vede una sola volta, consegnalo al tecnico."},
+      {who:"App", t:"Il tecnico accede", d:"Apre l'app e scrive la sua mail e il codice."},
+      {who:"Console", t:"Codice perso", d:"<b>Modifica</b> → <b>Genera un nuovo codice</b>: quello vecchio smette di funzionare."},
+      {who:"Console", t:"Tecnico che lascia", d:"<b>Elimina</b>: non può più entrare nell'app."}
+    ],
+    result:"Il tecnico ha il suo accesso e le sue mail sono riconosciute come messaggi inoltrati.",
+    tip:"Nella colonna <b>App</b> vedi chi l'ha già usata e quando ha inviato l'ultimo messaggio." },
+  { id:"installa", n:3, group:"setup", title:"Installare l'app sul telefono del tecnico", where:"App del tecnico", time:"1 minuto",
+    intro:"L'app si installa dal browser, senza App Store, e compare sulla schermata Home come le altre.",
+    steps:[
+      {who:"App", t:"Apri l'indirizzo", d:"Sul telefono apri l'indirizzo dell'app con <b>Chrome</b> (Android) o <b>Safari</b> (iPhone)."},
+      {who:"App", t:"Installa", d:"Android: tocca <b>Installa</b> nel messaggio in alto (o menu ⋮ → <b>Installa app</b>). iPhone: <b>Condividi</b> → <b>Aggiungi alla schermata Home</b>."},
+      {who:"App", t:"Primo avvio", d:"Parte l'introduzione con il logo; <b>Salta</b> per andare avanti."},
+      {who:"App", t:"Accedi", d:"Mail aziendale e codice ricevuto dall'ufficio."},
+      {who:"App", t:"Chiaro o scuro", d:"Interruttore <b>sole/luna</b> in alto."},
+      {who:"WhatsApp", t:"Condividi (Android)", d:"Ticket Farm compare nel menu <b>Condividi</b>: i testi arrivano direttamente nell'app."}
+    ],
+    result:"L'app è sul telefono, pronta per inoltrare i messaggi dei clienti.",
+    tip:"Toccando <b>Ticket Farm</b> in alto si rivede l'introduzione e si torna alla home." },
+  { id:"cliente", n:4, group:"setup", title:"Aggiungere un cliente con i suoi contatti", where:"Console", time:"1 minuto",
+    intro:"Dominio e contatti servono a riconoscere le mail del cliente e ad aprire WhatsApp con un tocco.",
+    steps:[
+      {who:"Console", t:"Nuovo cliente", d:"In <b>Clienti</b> tocca <b>+ Nuovo cliente</b>."},
+      {who:"Console", t:"Dati principali", d:"Ragione sociale, città e dove vanno i ticket: <b>ITSM</b> o <b>Halo</b>."},
+      {who:"Console", t:"Dominio delle mail", d:"Per esempio <b>caseificiovalle.ch</b>: le mail da quel dominio vengono riconosciute."},
+      {who:"Console", t:"Contatti", d:"Nome, mail e <b>telefono</b> (con +39 o il prefisso del paese). <b>+ Aggiungi contatto</b> per altri."},
+      {who:"Console", t:"Crea cliente", d:"Compare con logo e pulsante <b>WhatsApp</b>."},
+      {who:"App", t:"Il tecnico lo trova", d:"In <b>Clienti</b> e tra le proposte di <b>Inoltra</b>, con il pulsante verde."}
+    ],
+    result:"Le mail del cliente si riconoscono da sole e WhatsApp è a un tocco.",
+    tip:"Collegati ITSM e Halo, le anagrafiche arrivano da lì; qui si completano i dati che mancano." },
+  { id:"riconoscimento", n:5, group:"setup", title:"Regolare il riconoscimento delle mail", where:"Console", time:"1 minuto",
+    intro:"Le regole decidono come una mail che arriva a support@ trova il suo ticket e il suo cliente.",
+    steps:[
+      {who:"Console", t:"Le regole", d:"In <b>Configurazione → Riconoscimento</b>: risposta al ticket, numero nell'oggetto, cliente dall'app, mittente noto, dominio."},
+      {who:"Console", t:"Attiva o disattiva", d:"Con l'interruttore accanto alla regola. Esempio: spegni <b>Dominio</b> se più clienti usano lo stesso dominio."},
+      {who:"Console", t:"Indirizzo e intestazioni", d:"Sotto le regole: l'indirizzo di raccolta e le intestazioni usate dall'app."},
+      {who:"Console", t:"Collegamenti", d:"In <b>Collegamenti</b> lo stato di ITSM, Halo e Office 365; <b>Prova collegamento</b> rilegge i dati."},
+      {who:"Console", t:"Controlla in Posta", d:"Apri una mail: vedi quali regole l'hanno riconosciuta."}
+    ],
+    result:"Più mail riconosciute da sole, meno lavoro in «Da verificare».",
+    tip:"Le regole si provano in ordine: la prima che trova ticket o cliente decide." },
+  { id:"whatsapp", n:6, group:"day", title:"Inoltrare un messaggio WhatsApp del cliente", where:"App del tecnico", time:"1 minuto",
+    intro:"Un cliente scrive sul numero personale del tecnico. Il tecnico porta il messaggio in Ticket Farm in pochi tocchi e l'ufficio lo vede subito.",
+    steps:[
+      {who:"WhatsApp", t:"Copia il messaggio", d:"Tieni premuto il messaggio del cliente (anche più di uno) e tocca <b>Copia</b>."},
+      {who:"App", t:"Inoltra e incolla", d:"Tocca <b>Inoltra</b>, poi il riquadro → <b>Incolla</b>, oppure <b>Incolla dagli appunti</b>."},
+      {who:"App", t:"Scegli ticket o cliente", d:"Tocca il ticket aperto. Se non c'è, il cliente con <b>Nuova richiesta</b>. Se non lo trovi, <b>Non lo trovo</b>."},
+      {who:"App", t:"Controlla l'ora", d:"Se il cliente ha scritto prima: <b>15 min fa</b>, <b>1 ora fa</b>, <b>3 ore fa</b> o <b>Ieri</b>."},
+      {who:"App", t:"Nota per l'ufficio", d:"Facoltativa, per esempio «Passo io alle 14»."},
+      {who:"App", t:"Invia a Ticket Farm", d:"Parte una mail dalla tua casella a support@efuture.it, con il ticket nell'intestazione."},
+      {who:"Console", t:"Arriva in Posta in arrivo", d:"<b>Riconosciuta</b> sul ticket esistente oppure <b>Nuovo ticket</b>."}
+    ],
+    result:"Il messaggio del cliente è nel ticket con l'ora giusta e l'ufficio lo vede.",
+    tip:"Prima di inviare, il riquadro <b>La mail che parte</b> mostra mittente, oggetto e intestazioni." },
+  { id:"mail", n:7, group:"day", title:"Inoltrare una mail arrivata alla casella personale", where:"App del tecnico", time:"1 minuto",
     intro:"Il cliente ha scritto alla mail personale del tecnico. Dal testo della mail l'app riconosce da sola cliente, ora e oggetto.",
     steps:[
-      "Apri la mail del cliente e copia <b>tutto il testo</b>, comprese le righe <b>Da</b>, <b>Inviato</b> e <b>Oggetto</b>.",
-      "Nell'app Ticket Farm tocca <b>Inoltra</b> e incolla nel riquadro.",
-      "L'app legge mittente, ora e oggetto. Il cliente viene proposto dal <b>dominio della mail</b> (per esempio @caseificiovalle.ch).",
-      "Controlla <b>Dove va</b>: il ticket aperto del cliente oppure <b>Nuova richiesta</b>.",
-      "Tocca <b>Invia a Ticket Farm</b>. La conversazione del ticket si apre con la mail del cliente e la conferma."
+      {who:"Mail", t:"Copia la mail", d:"Tutto il testo, comprese le righe <b>Da</b>, <b>Inviato</b> e <b>Oggetto</b>."},
+      {who:"App", t:"Inoltra e incolla", d:"Tocca <b>Inoltra</b> e incolla nel riquadro."},
+      {who:"App", t:"Controlla i dati", d:"Mittente, ora e oggetto sono letti dalla mail. Il cliente è riconosciuto dal <b>dominio</b> (es. @caseificiovalle.ch)."},
+      {who:"App", t:"Dove va", d:"Il ticket aperto del cliente oppure <b>Nuova richiesta</b>."},
+      {who:"App", t:"Invia a Ticket Farm", d:"La conversazione del ticket si apre con la mail del cliente."},
+      {who:"Console", t:"Arriva in Posta in arrivo", d:"Collegata al ticket, con mittente e ora originali."}
     ],
-    tip:"In alternativa la mail si può inoltrare direttamente a support@efuture.it dal programma di posta: mittente e data restano nel testo inoltrato." },
-  { id:"verifica", n:3, title:"Sistemare le mail da verificare", where:"Console", time:"1 minuto",
-    intro:"Quando una mail arriva senza ticket e senza un cliente riconosciuto, resta in Posta in arrivo come «Da verificare». Basta indicare il cliente e aprire il ticket.",
+    result:"La mail del cliente è nel ticket senza doverla ricopiare.",
+    tip:"In alternativa la mail si può inoltrare direttamente a support@efuture.it dal programma di posta." },
+  { id:"verifica", n:9, group:"day", title:"Sistemare le mail da verificare", where:"Console", time:"1 minuto",
+    intro:"Una mail senza ticket e senza cliente riconosciuto resta «Da verificare». Basta indicare il cliente e aprire il ticket.",
     steps:[
-      "Nel <b>Cruscotto</b> guarda il riquadro <b>Da verificare</b>, oppure il numero oro accanto a <b>Posta in arrivo</b>.",
-      "Apri <b>Posta in arrivo</b> e tocca il filtro <b>Da verificare</b>.",
-      "Tocca la mail: a destra vedi mittente, intestazioni, testo e i passaggi del riconoscimento.",
-      "In <b>Cliente</b> scegli il cliente giusto.",
-      "Lascia attivo <b>Ricorda il mittente</b> se l'indirizzo è di quel cliente: la prossima volta sarà riconosciuto da solo.",
-      "Tocca <b>Apri il ticket</b>. La mail passa a <b>Nuovo ticket</b> e il ticket compare in <b>Ticket</b>."
+      {who:"Console", t:"Guarda il cruscotto", d:"Il riquadro <b>Da verificare</b> o il numero oro accanto a <b>Posta in arrivo</b>."},
+      {who:"Console", t:"Filtra Da verificare", d:"In <b>Posta in arrivo</b> tocca il filtro <b>Da verificare</b>."},
+      {who:"Console", t:"Apri la mail", d:"A destra: mittente, intestazioni, testo e i passaggi del riconoscimento."},
+      {who:"Console", t:"Scegli il cliente", d:"Lascia attivo <b>Ricorda il mittente</b>: la prossima volta sarà riconosciuto da solo."},
+      {who:"Console", t:"Apri il ticket", d:"Finisce nel sistema del cliente, ITSM o Halo."},
+      {who:"App", t:"Il tecnico lo vede", d:"Il ticket compare nell'app del tecnico assegnato."}
     ],
-    tip:"Le mail dei tecnici con «cliente da identificare» arrivano qui: sono i messaggi per cui il tecnico non ha trovato il cliente." },
-  { id:"telefono", n:4, title:"Aprire un ticket per una richiesta al telefono", where:"Console", time:"40 secondi",
-    intro:"Un cliente chiama l'ufficio. Il ticket si apre dalla console e finisce nel sistema giusto, ITSM o Halo.",
+    result:"La mail diventa un ticket del cliente giusto.",
+    tip:"I messaggi dei tecnici con «cliente da identificare» arrivano qui." },
+  { id:"telefono", n:10, group:"day", title:"Aprire un ticket per una richiesta al telefono", where:"Console", time:"40 secondi",
+    intro:"Un cliente chiama l'ufficio. Il ticket si apre dalla console e finisce nel sistema giusto.",
     steps:[
-      "Vai in <b>Ticket</b> e tocca <b>+ Nuovo ticket</b> in alto a destra.",
-      "Scegli il <b>Cliente</b>: sotto la console dice se il ticket va in ITSM o in Halo.",
-      "Scegli il <b>Tecnico</b> oppure lascia <b>Da assegnare</b>.",
-      "Scrivi la <b>Richiesta</b> in poche parole (per esempio «Bilancia analitica: non si accende»).",
-      "Se serve, spunta <b>Urgente</b>.",
-      "Tocca <b>Crea ticket</b>: il ticket compare in cima all'elenco con il suo numero e il tecnico lo vede nell'app."
+      {who:"Telefono", t:"Il cliente chiama", d:"Annota cliente e problema."},
+      {who:"Console", t:"Nuovo ticket", d:"In <b>Ticket</b> tocca <b>+ Nuovo ticket</b>."},
+      {who:"Console", t:"Scegli il cliente", d:"La console dice se il ticket va in <b>ITSM</b> o in <b>Halo</b>."},
+      {who:"Console", t:"Tecnico e richiesta", d:"Scegli il tecnico (o <b>Da assegnare</b>) e scrivi la richiesta. Spunta <b>Urgente</b> se serve."},
+      {who:"Console", t:"Crea ticket", d:"Compare in cima all'elenco con il suo numero."},
+      {who:"App", t:"Il tecnico lo vede", d:"Il ticket è nell'app del tecnico scelto."}
     ],
-    tip:"Un ticket creato per errore si toglie con <b>Elimina</b> in fondo alla riga, dopo la conferma." },
-  { id:"rispondi", n:5, title:"Rispondere al cliente e aggiornare il ticket", where:"App del tecnico", time:"1 minuto",
-    intro:"Nelle conversazioni il tecnico legge gli aggiornamenti dei suoi ticket, risponde al cliente su WhatsApp e scrive all'ufficio.",
+    result:"La richiesta telefonica è un ticket tracciato come le altre.",
+    tip:"Un ticket creato per errore si toglie con <b>Elimina</b>, dopo la conferma." },
+  { id:"rispondi", n:8, group:"day", title:"Rispondere al cliente e aggiornare il ticket", where:"App del tecnico", time:"1 minuto",
+    intro:"Nelle conversazioni il tecnico legge gli aggiornamenti, risponde al cliente su WhatsApp e scrive all'ufficio.",
     steps:[
-      "Nell'app apri <b>Messaggi</b>: il pallino blu indica le conversazioni con novità.",
-      "Tocca la conversazione del ticket e leggi gli aggiornamenti.",
-      "Se c'è un riquadro <b>Da mandare al cliente</b>, tocca <b>Apri in WhatsApp</b>: si apre la chat del cliente con il testo già scritto. In alternativa tocca <b>Copia per WhatsApp</b> e incollalo nella chat.",
-      "Per scrivere all'ufficio usa il campo in basso e tocca <b>Invia</b>: parte una mail collegata al ticket.",
-      "Se il cliente ti manda un altro messaggio sullo stesso problema, tocca <b>+ Inoltra un altro messaggio del cliente su questo ticket</b>.",
-      "Per scrivere al cliente in qualsiasi momento, in <b>Clienti</b> tocca il pulsante verde di WhatsApp."
+      {who:"App", t:"Apri Messaggi", d:"Il tag <b>da leggere</b> indica le conversazioni con novità."},
+      {who:"App", t:"Leggi l'aggiornamento", d:"Tocca la conversazione del ticket."},
+      {who:"App", t:"Testo per il cliente", d:"Nel riquadro <b>Da mandare al cliente</b> tocca <b>Apri chat cliente</b>, oppure <b>Copia su WhatsApp</b>."},
+      {who:"WhatsApp", t:"Invia al cliente", d:"La chat del cliente si apre con il testo già scritto: controllalo e invia."},
+      {who:"App", t:"Scrivi all'ufficio", d:"Nel campo in basso, poi <b>Invia</b>: parte una mail collegata al ticket."},
+      {who:"Console", t:"L'ufficio la riceve", d:"In <b>Posta in arrivo</b>, sul ticket giusto."}
     ],
-    tip:"Toccando <b>Ticket Farm</b> in alto si torna sempre alla schermata iniziale." }
+    result:"Cliente informato e ticket aggiornato, senza cambiare app più del necessario.",
+    tip:"Se il cliente manda un altro messaggio sullo stesso problema: <b>+ Inoltra un altro messaggio del cliente su questo ticket</b>." }
 ];
+TUTORIALS.sort((a,b)=>a.n-b.n);
+/* corsie del diagramma, sempre in questo ordine */
+const LANES = [["Telefono","☎"],["WhatsApp","💬"],["Mail","✉"],["App","📱"],["Console","🖥"]];
+const laneKey = w => ({Telefono:"tel",WhatsApp:"wa",Mail:"mail",App:"app",Console:"con"})[w];
 function tutorial(){
   const t = TUTORIALS.find(x=>x.id===S.tut);
   if(!t){
-    $("#main").innerHTML = `<div class="top"><div><h1>Tutorial</h1><p class="sub">Cinque casi d'uso di tutti i giorni. Ognuno ha un video breve e la procedura passo per passo.</p></div></div>
-      <div class="tuts">${TUTORIALS.map(x=>`<button class="tut" type="button" data-t="${x.id}">
+    $("#main").innerHTML = `<div class="top"><div><h1>Tutorial</h1><p class="sub">Dieci casi d'uso: prima la configurazione, poi il lavoro di tutti i giorni. Ognuno ha un video breve e la procedura passo per passo.</p></div></div>
+      ${[["setup","Configurazione e primo avvio"],["day","Lavoro di tutti i giorni"]].map(([g,gl])=>`<h2 class="tgroup">${gl}</h2><div class="tuts">${TUTORIALS.filter(x=>x.group===g).map(x=>`<button class="tut" type="button" data-t="${x.id}">
         <span class="thumb"><img src="tutorial/${x.n}-${x.id}.jpg" alt="" loading="lazy" onerror="this.remove()"><span class="play" aria-hidden="true">▶</span></span>
-        <span class="tbody"><span class="dim">${x.n} · ${x.where} · ${x.time}</span><b>${x.title}</b><span class="dim">${x.intro}</span></span></button>`).join("")}</div>`;
+        <span class="tbody"><span class="dim">${x.n} · ${x.where} · ${x.time}</span><b>${x.title}</b><span class="dim">${x.intro}</span></span></button>`).join("")}</div>`).join("")}`;
     document.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{ S.tut=b.dataset.t; tutorial(); window.scrollTo(0,0); });
     return;
   }
   const next = TUTORIALS[t.n % TUTORIALS.length];
+  const lanes = LANES.filter(([w])=>t.steps.some(x=>x.who===w));
+  const col = w => lanes.findIndex(([x])=>x===w) + 1;
   $("#main").innerHTML = `<div><button class="linkback" type="button" id="tut-back">‹ Tutti i tutorial</button></div>
     <article class="article">
       <header><span class="dim">Caso ${t.n} di ${TUTORIALS.length} · ${t.where} · ${t.time}</span><h1>${t.title}</h1><p class="sub">${t.intro}</p></header>
-      <video class="tvideo" controls playsinline preload="none" poster="tutorial/${t.n}-${t.id}.jpg" src="tutorial/${t.n}-${t.id}.mp4"></video>
-      <section><h2>Procedura</h2><ol class="proc">${t.steps.map(x=>`<li>${x}</li>`).join("")}</ol></section>
-      <p class="tip">${t.tip}</p>
+      <video class="tvideo" controls playsinline preload="metadata" poster="tutorial/${t.n}-${t.id}.jpg" src="tutorial/${t.n}-${t.id}.mp4"></video>
+      <section><h2>Procedura</h2>
+        <div class="swim" style="--lanes:${lanes.length}">
+          ${lanes.map(([w,ic],i)=>`<div class="lane-h l-${laneKey(w)}" style="grid-column:${i+1}"><span aria-hidden="true">${ic}</span> ${w}</div>`).join("")}
+          ${lanes.map((_,i)=>`<div class="lane-bg" style="grid-column:${i+1};grid-row:2 / span ${t.steps.length+1}"></div>`).join("")}
+          ${t.steps.map((x,i)=>`<div class="step l-${laneKey(x.who)}" style="grid-column:${col(x.who)};grid-row:${i+2}">
+              ${i?`<span class="arrow" aria-hidden="true">${t.steps[i-1].who===x.who?"↓":"↘"}</span>`:""}
+              <span class="num">${i+1}</span><span class="who">${x.who}</span><b>${x.t}</b><span>${x.d}</span></div>`).join("")}
+          <div class="step result" style="grid-column:1 / -1;grid-row:${t.steps.length+2}"><span class="num">✓</span><b>Risultato</b><span>${t.result}</span></div>
+        </div>
+      </section>
+      <p class="tip">💡 ${t.tip}</p>
       <button class="btn" type="button" id="tut-next">Prossimo: ${next.title} ›</button>
     </article>`;
   $("#tut-back").onclick = ()=>{ S.tut=null; tutorial(); };

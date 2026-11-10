@@ -89,7 +89,7 @@ button{cursor:pointer}
 .avatar{width:30px;height:30px;border-radius:50%;background:var(--ink);color:var(--surface);display:grid;place-items:center;font-weight:700;font-size:12px}
 .screen{flex:1;overflow-y:auto;padding:0 16px 96px;display:flex;flex-direction:column;gap:14px;min-height:0}
 .screen[hidden]{display:none!important}
-.tabs{position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(3,1fr);background:var(--surface);border-top:1px solid var(--line);padding:8px 8px 14px;z-index:10}
+.tabs{position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border-top:1px solid var(--line);padding:8px 8px 14px;z-index:10}
 .tab{background:none;border:0;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11.5px;font-weight:600;color:var(--muted);padding:6px 0;border-radius:12px;position:relative}
 .tab svg{width:22px;height:22px}
 .tab[aria-selected="true"]{color:var(--accent)}
@@ -133,7 +133,7 @@ textarea.input{min-height:96px;resize:vertical}
 .item .pv{font-size:13px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .item .tm{font-family:var(--f-mono);font-size:11.5px;color:var(--muted)}
 .item.unread{border-color:var(--accent)}
-.item.unread .nm::after{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-left:8px;vertical-align:middle}
+.item.unread .nm::after{content:"da leggere";display:inline-block;margin-left:8px;vertical-align:middle;background:#1aa0e8;color:#fff;font-size:10.5px;font-weight:700;letter-spacing:.02em;line-height:1;padding:4px 8px;border-radius:999px;white-space:nowrap}
 .paste{min-height:150px;border:2px dashed var(--wa-edge);background:var(--wa);text-align:center;font-weight:600;padding-top:58px}
 .paste::placeholder{color:var(--accent)}
 .how{margin:0;padding-left:20px;font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
@@ -215,6 +215,20 @@ body{padding:0!important}
 .copybox .wa{align-self:flex-start;padding:8px 12px}
 .item{cursor:pointer}
 .login-brand{align-self:flex-start;margin-bottom:8px}
+.mapbox{height:320px;flex:0 0 320px;border-radius:16px;overflow:hidden;border:1px solid var(--line);background:var(--surface-2);position:relative;z-index:0}
+.mapbox .empty{padding-top:130px}
+.seg2{display:inline-flex;gap:2px;padding:3px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line)}
+.seg2 button{border:0;background:none;border-radius:999px;padding:7px 14px;font-weight:600;font-size:13px;color:var(--muted);cursor:pointer}
+.seg2 button[aria-pressed="true"]{background:var(--grad);color:#fff}
+.stops{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.stop{display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;background:var(--surface);border:1px solid var(--line);border-left:4px solid #1aa0e8;border-radius:14px;padding:12px}
+.stop.urg{border-left-color:var(--red)}
+.stop .sn{width:30px;height:30px;border-radius:50%;background:var(--grad);color:#fff;font-weight:700;display:grid;place-items:center}
+.stop.urg .sn{background:var(--red)}
+.sbody{display:flex;flex-direction:column;gap:2px;min-width:0}
+a.btn{text-decoration:none}
+.mk{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#1aa0e8;color:#fff;font:700 13px var(--f-body);border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+.mk.urg{background:#d64a35}.mk.me{width:34px;height:34px;background:#0b1622;font-size:11px}.mk.off{width:16px;height:16px;background:#8a99aa;border-width:2px}
 .banner{background:var(--amber-soft);color:var(--amber);border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:600}
 .login{padding:28px 22px;gap:16px;justify-content:center}
 .login h2{font-size:24px;margin:0;color:var(--ink)}
@@ -265,10 +279,13 @@ body{padding:0!important}
     <main class="screen" id="s-messaggi"></main>
     <main class="screen" id="s-inoltra" hidden></main>
     <main class="screen" id="s-clienti" hidden></main>
+    <main class="screen" id="s-mappa" hidden></main>
 
     <nav class="tabs" role="tablist">
       <button class="tab" role="tab" data-tab="messaggi" aria-selected="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>Messaggi<span class="count" id="count" hidden></span></button>
+      <button class="tab" role="tab" data-tab="mappa" aria-selected="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>Mappa</button>
       <button class="tab new" role="tab" data-tab="inoltra" aria-selected="false">
         <span class="plus"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 5l6 6-6 6M20 11H9a5 5 0 0 0-5 5v2"/></svg></span>Inoltra</button>
       <button class="tab" role="tab" data-tab="clienti" aria-selected="false">
@@ -292,23 +309,23 @@ let curSys = "", curTel = "";
 let SUPPORT = "support@efuture.it", ME = "mb@efuture.it";
 const SRC = {Halo:"Halo", ITSM:"ITSM", O365:"Office 365"};
 const CLIENTS_BASE = [
-  {id:"lab", name:"Laboratorio Esempio SA", city:"Lugano", sys:"Halo",
+  {id:"lab", lat:46.0037, lng:8.9511, name:"Laboratorio Esempio SA", city:"Lugano", sys:"Halo",
    contacts:[{n:"Giulia Bernasconi", src:"Halo", tel:"+41 79 410 22 18"}],
    open:[{id:"HALO-4821", t:"Spettrofotometro: errore lampada"}]},
-  {id:"cas", name:"Caseificio Valle SA", city:"Mendrisio", sys:"ITSM",
+  {id:"cas", lat:45.8706, lng:8.9817, name:"Caseificio Valle SA", city:"Mendrisio", sys:"ITSM",
    contacts:[{n:"Marco Rossi", src:"O365", tel:"+41 78 655 01 90"}],
    open:[{id:"Tck #714139", t:"Analizzatore latte: letture instabili", urg:true}]},
-  {id:"acq", name:"Acque Lario Sagl", city:"Chiasso", sys:"Halo",
+  {id:"acq", lat:45.834, lng:9.03, name:"Acque Lario Sagl", city:"Chiasso", sys:"Halo",
    contacts:[{n:"Sara Fontana", src:"O365", tel:""}], open:[]},
-  {id:"alp", name:"Labor Alpina SA", city:"Bellinzona", sys:"ITSM",
+  {id:"alp", lat:46.1946, lng:9.0244, name:"Labor Alpina SA", city:"Bellinzona", sys:"ITSM",
    contacts:[{n:"Luca Pedrazzini", src:"ITSM", tel:"+41 79 233 87 12"}], open:[]},
-  {id:"che", name:"Chemlab Ticino Sagl", city:"Mezzovico", sys:"ITSM",
+  {id:"che", lat:46.0937, lng:8.918, name:"Chemlab Ticino Sagl", city:"Mezzovico", sys:"ITSM",
    contacts:[{n:"Anna Croci", src:"ITSM", tel:"+41 76 118 40 27"}],
    open:[{id:"Tck #714133", t:"Titolatore: taratura annuale"}]},
-  {id:"far", name:"Farmacia Centrale Locarno", city:"Locarno", sys:"Halo",
+  {id:"far", lat:46.1709, lng:8.7995, name:"Farmacia Centrale Locarno", city:"Locarno", sys:"Halo",
    contacts:[{n:"Elena Mariotta", src:"Halo", tel:"+41 79 512 66 03"}],
    open:[{id:"HALO-4799", t:"Bilancia analitica: guasto"}]},
-  {id:"vin", name:"Vini Collina SA", city:"Taverne", sys:"Halo",
+  {id:"vin", lat:46.059, lng:8.931, name:"Vini Collina SA", city:"Taverne", sys:"Halo",
    contacts:[{n:"Paolo Ghirlanda", src:"O365", tel:"+41 76 300 14 59"}], open:[]}
 ];
 let CLIENTS = JSON.parse(JSON.stringify(CLIENTS_BASE));
@@ -406,7 +423,7 @@ function renderMessaggi(){
 function msgHTML(m, i){
   if(m.k==="fwd") return `<div class="msg fwd"><small>${m.kind==="mail"?"Mail del cliente":"Dal WhatsApp del cliente"}${m.from?" · "+esc(m.from):""} · ${esc(m.t)}</small>${m.lines?m.lines.map(l=>`<q><span class="mono">${esc(l.time)}</span> ${esc(l.text)}</q>`).join(""):`<q>${esc(m.text)}</q>`}${m.photos?`<small style="margin-top:6px">${m.photos} foto allegate</small>`:""}</div>`;
   if(m.k==="me") return `<div class="msg out"><small>Tua mail a ${SUPPORT} · ${esc(m.t)}</small>${esc(m.text)}</div>`;
-  return `<div class="msg in"><small>${API ? "Ticket Farm" : "Letto da "+(SRC[curSys]||"Ticket Farm")} · ${esc(m.t)}</small>${esc(m.text)}${m.forClient?`<div class="copybox"><span class="lbl">Da mandare al cliente</span><p id="cb-${i}">${esc(m.forClient)}</p><button class="btn small primary" data-copy="${i}" type="button">Copia per WhatsApp</button>${waBtn(curTel, m.forClient, "Apri in WhatsApp")}</div>`:""}</div>`;
+  return `<div class="msg in"><small>${API ? "Ticket Farm" : "Letto da "+(SRC[curSys]||"Ticket Farm")} · ${esc(m.t)}</small>${esc(m.text)}${m.forClient?`<div class="copybox"><span class="lbl">Da mandare al cliente</span><p id="cb-${i}">${esc(m.forClient)}</p><button class="btn small primary" data-copy="${i}" type="button">Copia su WhatsApp</button>${waBtn(curTel, m.forClient, "Apri chat cliente")}</div>`:""}</div>`;
 }
 function openChat(i){
   S.openThread = i; const th = S.threads[i]; if(th.unread && API) api("/api/app/read", {ticket:th.ticket}).catch(()=>{}); th.unread = false;
@@ -702,11 +719,102 @@ function clientSheet(id){
   $("#cs-fwd").onclick = ()=>{ close(); S.f = blankForm(); S.f.client=id; S.f.dest = c.open.length ? c.open[0].id : "new"; show("inoltra"); };
 }
 
+
+/* ---------- MAPPA: clienti e tappe consigliate ---------- */
+/* Mappa OpenStreetMap con Leaflet 1.9.4 (copia in vendor/leaflet, caricata solo quando serve). Tappe = clienti con ticket aperti,
+   ordinate per vicinanza (giro più corto partendo da dove sei) o per priorità (prima gli urgenti). */
+const BASE_POS = {lat:46.0101, lng:8.9600, label:"Magazzino Lugano"};
+S.map = {order:"vicinanza", all:false, pos:null};
+let LMAP = null, LLAYER = null;
+function loadLeaflet(){
+  if(window.L) return Promise.resolve();
+  if(loadLeaflet.p) return loadLeaflet.p;
+  return loadLeaflet.p = new Promise((ok, ko)=>{
+    const css = document.createElement("link"); css.rel = "stylesheet"; css.href = "vendor/leaflet/leaflet.css"; document.head.appendChild(css);
+    const js = document.createElement("script"); js.src = "vendor/leaflet/leaflet.js"; js.onload = ok; js.onerror = ()=>{ loadLeaflet.p = null; ko(new Error("mappa non disponibile senza rete")); }; document.head.appendChild(js);
+  });
+}
+function km(a, b){ const R = 6371, t = x=>x*Math.PI/180, dLa = t(b.lat-a.lat), dLo = t(b.lng-a.lng);
+  const h = Math.sin(dLa/2)**2 + Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dLo/2)**2; return 2*R*Math.asin(Math.sqrt(h)); }
+const roadKm = d => d*1.3;   /* in linea d'aria ×1,3: stima della strada */
+function plan(){
+  const start = S.map.pos || BASE_POS;
+  const stops = CLIENTS.filter(c=>c.lat && c.open && c.open.length).map(c=>({c, urg:c.open.some(o=>o.urg), ticket:c.open[0]}));
+  const route = [];
+  let here = start, left = stops.slice();
+  if(S.map.order === "priorita"){
+    /* prima tutti gli urgenti (dal più vicino), poi gli altri, sempre scegliendo il più vicino */
+    for(const grp of [left.filter(x=>x.urg), left.filter(x=>!x.urg)]){
+      let g = grp.slice();
+      while(g.length){ g.sort((a,b)=>km(here,a.c)-km(here,b.c)); const n = g.shift(); n.d = km(here,n.c); route.push(n); here = n.c; }
+    }
+  } else {
+    while(left.length){ left.sort((a,b)=>km(here,a.c)-km(here,b.c)); const n = left.shift(); n.d = km(here,n.c); route.push(n); here = n.c; }
+  }
+  return {start, route};
+}
+function renderMappa(){
+  const el = $("#s-mappa"), {start, route} = plan();
+  const tot = route.reduce((a,x)=>a+roadKm(x.d), 0);
+  el.innerHTML = `<div><h2 class="sec">Mappa</h2><p class="sub">Clienti con ticket aperti e giro consigliato, partendo da ${S.map.pos ? "dove sei" : esc(BASE_POS.label)}</p></div>
+    <div class="row" style="flex-wrap:wrap;gap:8px">
+      <div class="seg2" role="group" aria-label="Ordina le tappe">
+        <button type="button" data-o="vicinanza" aria-pressed="${S.map.order==="vicinanza"}">Vicinanza</button>
+        <button type="button" data-o="priorita" aria-pressed="${S.map.order==="priorita"}">Priorità</button>
+      </div>
+      <button class="btn small" type="button" id="m-pos">📍 ${S.map.pos ? "Aggiorna posizione" : "Usa la mia posizione"}</button>
+    </div>
+    <div class="mapbox" id="mapbox"><div class="empty">Carico la mappa…</div></div>
+    <label class="chk"><input type="checkbox" id="m-all" ${S.map.all?"checked":""}> Mostra anche i clienti senza ticket aperti</label>
+    <div class="row"><b>${route.length} tappe consigliate</b><span class="sub">circa ${Math.round(tot)} km</span></div>
+    <ol class="stops">${route.map((x,i)=>`<li class="stop${x.urg?" urg":""}">
+      <span class="sn">${i+1}</span>
+      <div class="sbody"><div class="row" style="justify-content:flex-start;gap:8px">${logo(x.c)}<b>${esc(x.c.name)}</b>${x.urg?'<span class="pill p-urg">Urgente</span>':""}</div>
+        <span class="sub">${esc(x.ticket.id)} · ${esc(x.ticket.t)}</span>
+        <span class="sub">${esc(x.c.city||"")} · ${i?"dalla tappa prima":"da qui"} circa ${roadKm(x.d).toFixed(0)} km</span>
+        <div class="row" style="justify-content:flex-start;gap:8px;margin-top:6px">
+          <a class="btn small primary" href="https://www.google.com/maps/dir/?api=1&destination=${x.c.lat},${x.c.lng}" target="_blank" rel="noopener">Naviga</a>
+          ${waBtn(firstTel(x.c), "", "WhatsApp")}
+          <button class="btn small" type="button" data-fly="${x.c.id}">Sulla mappa</button></div></div></li>`).join("") || `<div class="empty">Nessun cliente con ticket aperti da visitare</div>`}</ol>
+    <p class="hint">Distanze stimate in linea d'aria più il 30%. «Naviga» apre Google Maps (o l'app di navigazione del telefono) con la destinazione.</p>`;
+  el.querySelectorAll("[data-o]").forEach(b=>b.onclick=()=>{ S.map.order = b.dataset.o; renderMappa(); });
+  $("#m-all").onchange = e => { S.map.all = e.target.checked; renderMappa(); };
+  $("#m-pos").onclick = ()=>{
+    if(!navigator.geolocation){ toast("Questo dispositivo non dà la posizione"); return; }
+    navigator.geolocation.getCurrentPosition(p=>{ S.map.pos = {lat:p.coords.latitude, lng:p.coords.longitude}; renderMappa(); toast("Giro ricalcolato da dove sei"); },
+      ()=>toast("Posizione non disponibile: parto da "+BASE_POS.label), {enableHighAccuracy:false, timeout:8000});
+  };
+  loadLeaflet().then(()=>drawMap(start, route)).catch(e=>{ $("#mapbox").innerHTML = `<div class="empty">${esc(e.message)}</div>`; });
+  el.querySelectorAll("[data-fly]").forEach(b=>b.onclick=()=>{ const c = cl(b.dataset.fly); if(LMAP){ LMAP.flyTo([c.lat,c.lng], 13); $("#mapbox").scrollIntoView({behavior:"smooth", block:"center"}); } });
+}
+function drawMap(start, route){
+  const box = $("#mapbox"); if(!box) return;
+  if(LMAP){ LMAP.remove(); LMAP = null; }
+  box.innerHTML = "";
+  LMAP = L.map(box, {zoomControl:true, attributionControl:true});
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:18, attribution:"© OpenStreetMap"}).addTo(LMAP);
+  const pts = [[start.lat, start.lng]];
+  L.marker([start.lat, start.lng], {icon:L.divIcon({className:"", html:'<span class="mk me">Tu</span>', iconSize:[34,34], iconAnchor:[17,17]})}).addTo(LMAP).bindPopup(S.map.pos ? "La tua posizione" : BASE_POS.label);
+  route.forEach((x,i)=>{
+    pts.push([x.c.lat, x.c.lng]);
+    L.marker([x.c.lat, x.c.lng], {icon:L.divIcon({className:"", html:`<span class="mk${x.urg?" urg":""}">${i+1}</span>`, iconSize:[30,30], iconAnchor:[15,15]})}).addTo(LMAP)
+      .bindPopup(`<b>${esc(x.c.name)}</b><br>${esc(x.ticket.id)} · ${esc(x.ticket.t)}<br><a href="https://www.google.com/maps/dir/?api=1&destination=${x.c.lat},${x.c.lng}" target="_blank" rel="noopener">Naviga</a>`);
+  });
+  if(S.map.all) CLIENTS.filter(c=>c.lat && !route.some(x=>x.c.id===c.id)).forEach(c=>{
+    L.marker([c.lat, c.lng], {icon:L.divIcon({className:"", html:'<span class="mk off"></span>', iconSize:[16,16], iconAnchor:[8,8]})}).addTo(LMAP).bindPopup(`<b>${esc(c.name)}</b><br>Nessun ticket aperto`);
+    pts.push([c.lat, c.lng]);
+  });
+  if(route.length) L.polyline([[start.lat,start.lng], ...route.map(x=>[x.c.lat,x.c.lng])], {color:"#1aa0e8", weight:4, opacity:.8, dashArray:"8 8"}).addTo(LMAP);
+  LMAP.fitBounds(pts, {padding:[30,30]});
+  setTimeout(()=>LMAP && LMAP.invalidateSize(), 150);
+}
+
 /* ---------- navigazione ---------- */
 function show(tab){
   S.tab = tab; $("#chat").hidden = true; S.openThread = null; $("#sheet-root").innerHTML = "";
   document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected", b.dataset.tab===tab));
-  ["messaggi","inoltra","clienti"].forEach(t=>$("#s-"+t).hidden = t!==tab);
+  ["messaggi","mappa","inoltra","clienti"].forEach(t=>$("#s-"+t).hidden = t!==tab);
+  if(tab==="mappa") renderMappa();
   if(tab==="messaggi") renderMessaggi();
   if(tab==="inoltra") renderInoltra();
   if(tab==="clienti") renderClienti();

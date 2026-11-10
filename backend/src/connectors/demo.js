@@ -1,12 +1,12 @@
 /* Dati di esempio: gli stessi del prototipo. Usati con MODE=demo. */
 const CLIENTS = [
-  { id: "lab", name: "Laboratorio Esempio SA", city: "Lugano", sys: "Halo", dom: "laboratorioesempio.ch", contacts: [{ n: "Giulia Bernasconi", src: "Halo", mail: "g.bernasconi@laboratorioesempio.ch", tel: "+41 79 410 22 18" }] },
-  { id: "cas", name: "Caseificio Valle SA", city: "Mendrisio", sys: "ITSM", dom: "caseificiovalle.ch", contacts: [{ n: "Marco Rossi", src: "O365", mail: "m.rossi@caseificiovalle.ch", tel: "+41 78 655 01 90" }] },
-  { id: "acq", name: "Acque Lario Sagl", city: "Chiasso", sys: "Halo", dom: "acquelario.ch", contacts: [{ n: "Sara Fontana", src: "O365", mail: "s.fontana@acquelario.ch", tel: "" }] },
-  { id: "alp", name: "Labor Alpina SA", city: "Bellinzona", sys: "ITSM", dom: "laboralpina.ch", contacts: [{ n: "Luca Pedrazzini", src: "ITSM", mail: "l.pedrazzini@laboralpina.ch", tel: "+41 79 233 87 12" }] },
-  { id: "che", name: "Chemlab Ticino Sagl", city: "Mezzovico", sys: "ITSM", dom: "chemlab-ticino.ch", contacts: [{ n: "Anna Croci", src: "ITSM", mail: "a.croci@chemlab-ticino.ch", tel: "+41 76 118 40 27" }] },
-  { id: "far", name: "Farmacia Centrale Locarno", city: "Locarno", sys: "Halo", dom: "farmaciacentrale-locarno.ch", contacts: [{ n: "Elena Mariotta", src: "Halo", mail: "e.mariotta@farmaciacentrale-locarno.ch", tel: "+41 79 512 66 03" }] },
-  { id: "vin", name: "Vini Collina SA", city: "Taverne", sys: "Halo", dom: "vinicollina.ch", contacts: [{ n: "Paolo Ghirlanda", src: "O365", mail: "p.ghirlanda@vinicollina.ch", tel: "+41 76 300 14 59" }] },
+  { id: "lab", lat: 46.0037, lng: 8.9511, name: "Laboratorio Esempio SA", city: "Lugano", sys: "Halo", dom: "laboratorioesempio.ch", contacts: [{ n: "Giulia Bernasconi", src: "Halo", mail: "g.bernasconi@laboratorioesempio.ch", tel: "+41 79 410 22 18" }] },
+  { id: "cas", lat: 45.8706, lng: 8.9817, name: "Caseificio Valle SA", city: "Mendrisio", sys: "ITSM", dom: "caseificiovalle.ch", contacts: [{ n: "Marco Rossi", src: "O365", mail: "m.rossi@caseificiovalle.ch", tel: "+41 78 655 01 90" }] },
+  { id: "acq", lat: 45.834, lng: 9.03, name: "Acque Lario Sagl", city: "Chiasso", sys: "Halo", dom: "acquelario.ch", contacts: [{ n: "Sara Fontana", src: "O365", mail: "s.fontana@acquelario.ch", tel: "" }] },
+  { id: "alp", lat: 46.1946, lng: 9.0244, name: "Labor Alpina SA", city: "Bellinzona", sys: "ITSM", dom: "laboralpina.ch", contacts: [{ n: "Luca Pedrazzini", src: "ITSM", mail: "l.pedrazzini@laboralpina.ch", tel: "+41 79 233 87 12" }] },
+  { id: "che", lat: 46.0937, lng: 8.918, name: "Chemlab Ticino Sagl", city: "Mezzovico", sys: "ITSM", dom: "chemlab-ticino.ch", contacts: [{ n: "Anna Croci", src: "ITSM", mail: "a.croci@chemlab-ticino.ch", tel: "+41 76 118 40 27" }] },
+  { id: "far", lat: 46.1709, lng: 8.7995, name: "Farmacia Centrale Locarno", city: "Locarno", sys: "Halo", dom: "farmaciacentrale-locarno.ch", contacts: [{ n: "Elena Mariotta", src: "Halo", mail: "e.mariotta@farmaciacentrale-locarno.ch", tel: "+41 79 512 66 03" }] },
+  { id: "vin", lat: 46.059, lng: 8.931, name: "Vini Collina SA", city: "Taverne", sys: "Halo", dom: "vinicollina.ch", contacts: [{ n: "Paolo Ghirlanda", src: "O365", mail: "p.ghirlanda@vinicollina.ch", tel: "+41 76 300 14 59" }] },
 ];
 const TICKETS = [
   { id: "Tck #714139", sys: "ITSM", client: "cas", title: "Analizzatore latte: letture instabili", state: "In lavorazione", tech: "MB", urg: true, origin: "ITSM", upd: "08:20", msgIds: ["<Ws7WB6YiYyB2lUu50cay1nFeKHjUiw5YWv2h8WHnx4T@itsm.efuture.it>"] },
