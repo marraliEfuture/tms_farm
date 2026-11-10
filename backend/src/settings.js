@@ -43,7 +43,7 @@ const DEFAULT_PROFILES = {
   resp: { nome: "Responsabile service", desc: "Lavoro quotidiano, tecnici e regole; vede utenti e registro", perm: {
     cruscotto: "v", posta: "vm", ticket: "vme", clienti: "vme", utenti: "v", profili: "v", tecnici: "vme", office365: "", collegamenti: "v", regole: "vm", backup: "", audit: "v", tutorial: "v" } },
   op: { nome: "Tecnico", desc: "I suoi interventi, posta, ticket e clienti; nessuna configurazione", perm: {
-    cruscotto: "v", posta: "vm", ticket: "vm", clienti: "v", utenti: "", profili: "", tecnici: "", office365: "", collegamenti: "", regole: "", backup: "", audit: "", tutorial: "v" } },
+    cruscotto: "v", posta: "", ticket: "vm", clienti: "v", utenti: "", profili: "", tecnici: "", office365: "", collegamenti: "", regole: "", backup: "", audit: "", tutorial: "v" } },
 };
 function profiles() {
   const saved = load().profiles || {};

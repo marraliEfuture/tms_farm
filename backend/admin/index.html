@@ -449,16 +449,16 @@ const toCheck = () => S.mails.filter(m=>m.res.state==="warn").length;
 
 /* menu diviso: il lavoro di ogni giorno, la configurazione, i tutorial */
 const GROUPS = [
-  ["Operativo", [["cruscotto","Cruscotto"],["posta","Posta in arrivo"],["ticket","Ticket"],["clienti","Clienti"]]],
-  ["Configurazione", [["utenti","Utenti"],["profili","Profili e permessi"],["tecnici","Tecnici"],["office365","Office 365"],["collegamenti","Collegamenti"],["regole","Riconoscimento"],["backup","Backup e ripristino"],["audit","Registro attività"]]],
+  ["Operativo", [["cruscotto","Cruscotto"],["ticket","Ticket"],["clienti","Clienti"]]],
+  ["Configurazione", [["utenti","Utenti"],["profili","Profili e permessi"],["tecnici","Tecnici"],["office365","Office 365"],["posta","Posta in arrivo"],["regole","Riconoscimento"],["collegamenti","Collegamenti"],["backup","Backup e ripristino"],["audit","Registro attività"]]],
   ["Tutorial", [["tutorial","Casi d'uso"]]]
 ];
 /* profili: v vedere, m creare/modificare, e eliminare (in uso reale arrivano dal backend) */
-const AREE = [["cruscotto","Cruscotto"],["posta","Posta in arrivo"],["ticket","Ticket"],["clienti","Clienti"],["utenti","Utenti"],["profili","Profili e permessi"],["tecnici","Tecnici"],["office365","Office 365"],["collegamenti","Collegamenti"],["regole","Riconoscimento"],["backup","Backup e ripristino"],["audit","Registro attività"],["tutorial","Tutorial"]];
+const AREE = [["cruscotto","Cruscotto"],["ticket","Ticket"],["clienti","Clienti"],["utenti","Utenti"],["profili","Profili e permessi"],["tecnici","Tecnici"],["office365","Office 365"],["posta","Posta in arrivo"],["regole","Riconoscimento"],["collegamenti","Collegamenti"],["backup","Backup e ripristino"],["audit","Registro attività"],["tutorial","Tutorial"]];
 let PROFILES = {
   admin:{nome:"Amministratore", desc:"Tutto, compresa la configurazione", perm:Object.fromEntries(AREE.map(([a])=>[a,"vme"]))},
   resp:{nome:"Responsabile service", desc:"Lavoro quotidiano, tecnici e regole; vede utenti e registro", perm:{cruscotto:"v",posta:"vm",ticket:"vme",clienti:"vme",utenti:"v",profili:"v",tecnici:"vme",office365:"",collegamenti:"v",regole:"vm",backup:"",audit:"v",tutorial:"v"}},
-  op:{nome:"Tecnico", desc:"I suoi interventi, posta, ticket e clienti; nessuna configurazione", perm:{cruscotto:"v",posta:"vm",ticket:"vm",clienti:"v",utenti:"",profili:"",tecnici:"",office365:"",collegamenti:"",regole:"",backup:"",audit:"",tutorial:"v"}}
+  op:{nome:"Tecnico", desc:"I suoi interventi, ticket e clienti; nessuna configurazione", perm:{cruscotto:"v",posta:"",ticket:"vm",clienti:"v",utenti:"",profili:"",tecnici:"",office365:"",collegamenti:"",regole:"",backup:"",audit:"",tutorial:"v"}}
 };
 let ROLE = "op", REAL_ROLE = "admin";   /* all'ingresso si vede la console come Tecnico, sul cruscotto */
 const can = (area, right) => ((PROFILES[ROLE]||{perm:{}}).perm[area]||"").includes(right||"v");
@@ -558,7 +558,7 @@ const TUTORIALS = [
     ],
     result:"La mail del cliente è nel ticket senza doverla ricopiare.",
     tip:"In alternativa la mail si può inoltrare direttamente a support@efuture.it dal programma di posta." },
-  { id:"verifica", for:["admin","resp","op"], n:9, group:"day", title:"Sistemare le mail da verificare", where:"Console", time:"1 minuto",
+  { id:"verifica", for:["admin","resp"], n:9, group:"day", title:"Sistemare le mail da verificare", where:"Console", time:"1 minuto",
     intro:"Una mail senza ticket e senza cliente riconosciuto resta «Da verificare». Basta indicare il cliente e aprire il ticket.",
     steps:[
       {who:"Console", t:"Guarda il cruscotto", d:"Il riquadro <b>Da verificare</b> o il numero oro accanto a <b>Posta in arrivo</b>."},
@@ -899,7 +899,7 @@ function reminderText(a){
   else parts.push("Oggi non hai interventi pianificati.");
   if(a.later.length) parts.push((a.later[0].plan.day===1?"Domani":"Il "+giorno(a.later[0].plan.day))+" alle "+a.later[0].plan.time+": "+c(a.later[0])+".");
   if(a.waiting.length) parts.push(a.waiting.map(t=>t.id+" ("+c(t)+") è in attesa del ricambio: se è arrivato, avvisa il cliente.").join(" "));
-  if(a.toCheck) parts.push(a.toCheck===1 ? "In Posta c'è una mail da verificare." : "In Posta ci sono "+a.toCheck+" mail da verificare.");
+  if(a.toCheck && can("posta","v")) parts.push(a.toCheck===1 ? "In Posta c'è una mail da verificare." : "In Posta ci sono "+a.toCheck+" mail da verificare.");
   return parts.join(" ");
 }
 function actRow(t, when, tone){
@@ -924,11 +924,11 @@ function tecnicoHome(){
     <div class="glance">
       <button class="gl ${a.urgent.length?"hot":""}" type="button" data-go="ticket"><b>${a.urgent.length}</b><span>urgenze da pianificare</span></button>
       <button class="gl" type="button" data-go="ticket"><b>${a.today.length}</b><span>interventi oggi</span></button>
-      <button class="gl ${a.toCheck?"warm":""}" type="button" data-go="posta"><b>${a.toCheck}</b><span>mail da verificare</span></button>
+      <button class="gl" type="button" data-go="ticket"><b>${a.later.length}</b><span>interventi nei prossimi giorni</span></button>
     </div>
     <section><h2 class="h2s">Prossime attività</h2>
       <ol class="acts">${rows.join("") || `<li class="dim">Nessuna attività aperta: ottimo lavoro.</li>`}</ol></section>`;
-  document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{ S.view=b.dataset.go; if(b.dataset.go==="posta") S.filt="warn"; render(); });
+  document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{ S.view=b.dataset.go; render(); });
   document.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{ S.view="ticket"; S.tfilt="aperti"; render(); });
 }
 
@@ -941,7 +941,7 @@ function paintRole(){
 function setRole(r){
   ROLE = r; S.sel = null; S.tut = null;
   /* filtri e vista d'ingresso sensati per profilo */
-  if(r==="op"){ S.filt = "warn"; S.tfilt = "aperti"; S.view = "cruscotto"; }
+  if(r==="op"){ S.filt = "tutti"; S.tfilt = "aperti"; S.view = "cruscotto"; }
   else if(r==="resp"){ S.filt = "tutti"; S.tfilt = "aperti"; S.view = "cruscotto"; }
   else { S.filt = "tutti"; S.tfilt = "tutti"; S.view = "cruscotto"; }
   $("#me-menu").hidden = true; render(); toast("Vista: "+PROFILES[r].nome);

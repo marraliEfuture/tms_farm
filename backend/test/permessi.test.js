@@ -17,7 +17,7 @@ const login = async (user, password) => (await call("POST", "/api/admin/login", 
 test.before(() => new Promise(ok => { fs.rmSync(cfg.dataDir, { recursive: true, force: true }); srv = app.listen(0, () => { base = "http://127.0.0.1:" + srv.address().port; ok(); }); }));
 test.after(() => { srv.close(); fs.rmSync(cfg.dataDir, { recursive: true, force: true }); fs.rmSync(path.join(cfg.dataDir, "..", "outbox"), { recursive: true, force: true }); });
 
-test("l'operatore crea ticket ma non li elimina e non vede il registro", async () => {
+test("il tecnico crea ticket ma non li elimina, non vede la posta né il registro", async () => {
   const op = await login("g.verdi", "admin123");
   assert.ok(op);
   const st = await call("GET", "/api/admin/state", op);
@@ -27,6 +27,7 @@ test("l'operatore crea ticket ma non li elimina e non vede il registro", async (
   assert.equal((await call("DELETE", "/api/admin/tickets/" + encodeURIComponent(t.json.ticket.id), op)).status, 403);
   assert.equal((await call("GET", "/api/admin/audit", op)).status, 403);
   assert.equal((await call("GET", "/api/admin/backup", op)).status, 403);
+  assert.equal((await call("POST", "/api/admin/mails/d5/resolve", op, { client: "cas" })).status, 403, "la posta in arrivo è dell'ufficio");
 });
 
 test("l'amministratore gestisce utenti, vede il registro e fa backup e ripristino", async () => {
