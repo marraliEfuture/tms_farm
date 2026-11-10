@@ -194,6 +194,11 @@ body{padding:0!important}
 .lav img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;padding:3px}
 .who-row{display:flex;align-items:center;gap:10px;min-width:0}
 .opt{gap:10px}
+.wa{display:inline-flex;align-items:center;gap:6px;color:#fff;background:#1fa855;border-radius:999px;padding:6px;text-decoration:none;font-size:12.5px;font-weight:600;flex:0 0 auto;line-height:1}
+.wa span{padding-right:4px}
+.wa:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.copybox .wa{align-self:flex-start;padding:8px 12px}
+.item{cursor:pointer}
 .banner{background:var(--amber-soft);color:var(--amber);border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:600}
 .login{padding:28px 22px;gap:16px;justify-content:center}
 .login h2{font-size:24px;margin:0;color:var(--ink)}
@@ -238,7 +243,7 @@ body{padding:0!important}
 const CFG = window.TF_CONFIG || {};
 const API = String(CFG.backendUrl || "").replace(/\/$/, "");
 let TOKEN = ""; try{ TOKEN = localStorage.getItem("tf-token") || ""; }catch(e){}
-let curSys = "";
+let curSys = "", curTel = "";
 let SUPPORT = "support@efuture.it", ME = "mb@efuture.it";
 const SRC = {Halo:"Halo", ITSM:"ITSM", O365:"Office 365"};
 const CLIENTS_BASE = [
@@ -303,6 +308,20 @@ function logo(c, size){
   const src = dom ? (API ? API+"/api/app/logo?d="+encodeURIComponent(dom) : "https://www.google.com/s2/favicons?sz=128&domain="+encodeURIComponent(dom)) : "";
   return `<span class="lav" style="--h:${h};width:${size}px;height:${size}px;font-size:${Math.round(size*.38)}px" aria-hidden="true">${esc(ini)}${src?`<img src="${src}" alt="" loading="lazy" onload="if(this.naturalWidth&&this.naturalWidth<=16)this.remove()" onerror="this.remove()">`:""}</span>`;
 }
+/* WhatsApp: link wa.me dal numero del contatto. Numeri senza prefisso internazionale: si assume l'Italia (+39). */
+function waNum(tel){
+  const t = String(tel||"").trim(); if(!t) return "";
+  let d = t.replace(/[^\d+]/g,"");
+  if(d.startsWith("+")) d = d.slice(1); else if(d.startsWith("00")) d = d.slice(2); else d = "39"+d;
+  d = d.replace(/\D/g,""); return d.length >= 8 ? d : "";
+}
+function waUrl(tel, text){ const n = waNum(tel); return n ? "https://wa.me/"+n+(text ? "?text="+encodeURIComponent(text) : "") : ""; }
+const WA_ICON = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.6.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.4.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.8 2.8 0 0 0 1.8-1.3 2.3 2.3 0 0 0 .2-1.3c-.1-.1-.3-.2-.6-.3Z"/></svg>`;
+function waBtn(tel, text, label){
+  const u = waUrl(tel, text); if(!u) return "";
+  return `<a class="wa" href="${u}" target="_blank" rel="noopener" aria-label="${esc(label||"Apri WhatsApp")}" title="WhatsApp ${esc(tel)}" onclick="event.stopPropagation()">${WA_ICON}${label?`<span>${esc(label)}</span>`:""}</a>`;
+}
+const firstTel = c => c ? ((c.contacts||[]).find(k=>k.tel)||{}).tel || "" : "";
 const badge = s => `<span class="pill s-${s}">${SRC[s]}</span>`;
 const nowStr = () => new Date().toTimeString().slice(0,5);
 const digits = s => String(s||"").replace(/\D/g,"").slice(-9);
@@ -342,14 +361,14 @@ function renderMessaggi(){
 function msgHTML(m, i){
   if(m.k==="fwd") return `<div class="msg fwd"><small>${m.kind==="mail"?"Mail del cliente":"Dal WhatsApp del cliente"}${m.from?" · "+esc(m.from):""} · ${esc(m.t)}</small>${m.lines?m.lines.map(l=>`<q><span class="mono">${esc(l.time)}</span> ${esc(l.text)}</q>`).join(""):`<q>${esc(m.text)}</q>`}${m.photos?`<small style="margin-top:6px">${m.photos} foto allegate</small>`:""}</div>`;
   if(m.k==="me") return `<div class="msg out"><small>Tua mail a ${SUPPORT} · ${esc(m.t)}</small>${esc(m.text)}</div>`;
-  return `<div class="msg in"><small>${API ? "Ticket Farm" : "Letto da "+(SRC[curSys]||"Ticket Farm")} · ${esc(m.t)}</small>${esc(m.text)}${m.forClient?`<div class="copybox"><span class="lbl">Da mandare al cliente</span><p id="cb-${i}">${esc(m.forClient)}</p><button class="btn small primary" data-copy="${i}" type="button">Copia per WhatsApp</button></div>`:""}</div>`;
+  return `<div class="msg in"><small>${API ? "Ticket Farm" : "Letto da "+(SRC[curSys]||"Ticket Farm")} · ${esc(m.t)}</small>${esc(m.text)}${m.forClient?`<div class="copybox"><span class="lbl">Da mandare al cliente</span><p id="cb-${i}">${esc(m.forClient)}</p><button class="btn small primary" data-copy="${i}" type="button">Copia per WhatsApp</button>${waBtn(curTel, m.forClient, "Apri in WhatsApp")}</div>`:""}</div>`;
 }
 function openChat(i){
   S.openThread = i; const th = S.threads[i]; if(th.unread && API) api("/api/app/read", {ticket:th.ticket}).catch(()=>{}); th.unread = false;
   const c = cl(th.client);
   const ch = $("#chat"); ch.hidden = false;
   ch.innerHTML = `<div class="chead"><button class="back" id="c-back" aria-label="Indietro">‹</button>
-      ${c?logo(c,36):""}<div style="min-width:0;flex:1"><div class="client">${esc(c?c.name:"Cliente da identificare")}</div><div class="row" style="justify-content:flex-start"><span class="mono">${esc(th.ticket)}</span>${c?badge(c.sys):""}</div></div></div>
+      ${c?logo(c,36):""}<div style="min-width:0;flex:1"><div class="client">${esc(c?c.name:"Cliente da identificare")}</div><div class="row" style="justify-content:flex-start"><span class="mono">${esc(th.ticket)}</span>${c?badge(c.sys):""}</div></div>${waBtn(firstTel(c))}</div>
     <div class="msgs" id="msgs"></div>
     <div class="composer">
       <div class="line"><textarea class="input" id="c-text" placeholder="Scrivi una mail su questo ticket…"></textarea><button class="btn primary" id="c-send" type="button">Invia</button></div>
@@ -369,7 +388,7 @@ function openChat(i){
   updateCount();
 }
 function drawMsgs(){
-  const th = S.threads[S.openThread]; const tc = cl(th.client); curSys = tc ? tc.sys : ""; const box = $("#msgs"); if(!box) return;
+  const th = S.threads[S.openThread]; const tc = cl(th.client); curSys = tc ? tc.sys : ""; curTel = firstTel(tc); const box = $("#msgs"); if(!box) return;
   box.innerHTML = th.msgs.map(msgHTML).join("") + (th.typing?`<div class="typing">Ticket Farm sta rispondendo…</div>`:"");
   box.scrollTop = box.scrollHeight;
   box.querySelectorAll("[data-copy]").forEach(b=>b.onclick=()=>{
@@ -615,11 +634,11 @@ function renderClienti(){
   const list = CLIENTS.filter(c => !q || (c.name+" "+c.city+" "+c.contacts.map(k=>k.n+" "+k.tel).join(" ")).toLowerCase().includes(q));
   el.innerHTML = `<div><h2 class="sec">Clienti</h2><p class="sub">Letti da Ticket Farm: anagrafiche da ITSM e Halo, contatti da Office 365</p></div>
     <input class="input" id="c-q" type="search" placeholder="Cerca cliente, persona o numero" value="${esc(S.csearch)}">
-    <div class="list">${list.length ? list.map(c=>`<button class="item" data-c="${c.id}">
-      <div class="row"><span class="nm who-row">${logo(c)}${esc(c.name)}</span>${badge(c.sys)}</div>
-      <span class="pv">${esc(c.city)} · ${c.open.length} ticket aperti</span></button>`).join("") : `<div class="empty">Nessun cliente trovato</div>`}</div>`;
+    <div class="list">${list.length ? list.map(c=>`<div class="item" data-c="${c.id}" role="button" tabindex="0">
+      <div class="row"><span class="nm who-row">${logo(c)}${esc(c.name)}</span><span class="row" style="gap:8px">${waBtn(firstTel(c))}${badge(c.sys)}</span></div>
+      <span class="pv">${esc(c.city)} · ${c.open.length} ticket aperti</span></div>`).join("") : `<div class="empty">Nessun cliente trovato</div>`}</div>`;
   const qi = $("#c-q"); qi.oninput = ()=>{ S.csearch = qi.value; const p = qi.selectionStart; renderClienti(); const n=$("#c-q"); n.focus(); n.setSelectionRange(p,p); };
-  el.querySelectorAll(".item").forEach(b=>b.onclick=()=>clientSheet(b.dataset.c));
+  el.querySelectorAll(".item").forEach(b=>{ b.onclick=()=>clientSheet(b.dataset.c); b.onkeydown=e=>{ if(e.key==="Enter") clientSheet(b.dataset.c); }; });
 }
 function clientSheet(id){
   const c = cl(id), root = $("#sheet-root");
@@ -627,7 +646,7 @@ function clientSheet(id){
     <div class="grab"></div>
     <div class="row"><div class="client who-row">${logo(c,40)}${esc(c.name)}</div>${badge(c.sys)}</div>
     <span class="sub">${esc(c.city)} · ticket in ${SRC[c.sys]}</span>
-    <div class="field"><span>Contatti</span><div class="kv">${c.contacts.map(k=>`<div class="row"><span>${esc(k.n)}<br><span class="mono">${esc(k.tel||"numero non presente")}</span></span>${badge(k.src)}</div>`).join("")}</div></div>
+    <div class="field"><span>Contatti</span><div class="kv">${c.contacts.map(k=>`<div class="row"><span>${esc(k.n)}<br><span class="mono">${esc(k.tel||"numero non presente")}</span></span><span class="row" style="gap:8px">${waBtn(k.tel, "", "WhatsApp")}${badge(k.src)}</span></div>`).join("")}</div></div>
     <div class="field"><span>Ticket aperti</span><div class="kv">${c.open.length ? c.open.map(o=>`<div><span class="mono">${o.id}</span> · ${esc(o.t)}</div>`).join("") : `<span class="sub">Nessuno</span>`}</div></div>
     <button class="btn primary block" id="cs-fwd" type="button">Inoltra un messaggio di questo cliente</button>
     <button class="btn block" id="cs-x" type="button">Chiudi</button>
