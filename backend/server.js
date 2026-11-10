@@ -32,11 +32,16 @@ app.use("/api/app", (req, res, next) => {
   next();
 });
 
+/* contatti: persone di un'azienda cliente o fornitrice */
+const contactOf = (clients, id) => { for (const c of clients) { const k = (c.contacts || []).find(x => x.id && x.id === id); if (k) return { ...k, azienda: c }; } return null; };
 const mailAddr = x => { const m = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/.exec(String(x || "")); return m ? m[0].toLowerCase() : ""; };
 /* mail del cliente per la copia: quella salvata sulla conversazione, l'ultima mail inoltrata, o una mail arrivata a support sul ticket (mai un tecnico) */
+let clientsCache = null;
 function clientMailOf(th, st, tech) {
   const techMails = new Set(auth.techs().map(t => String(t.mail).toLowerCase()));
   const ok = a => a && !techMails.has(a) && a !== String(settings.support()).toLowerCase();
+  /* prima la mail del contatto a cui si sta rispondendo */
+  if (th.contatto && clientsCache) { const k = contactOf(clientsCache, th.contatto); if (k && ok(mailAddr(k.mail))) return mailAddr(k.mail); }
   if (ok(th.clientMail)) return th.clientMail;
   const f = [...(th.msgs || [])].reverse().find(m => m.k === "fwd" && ok(mailAddr(m.mailFrom)));
   if (f) return mailAddr(f.mailFrom);
@@ -54,7 +59,7 @@ async function clientsWithOpen() {
   return clients.map(c => ({
     ...c,
     contacts: c.contacts.map((k, i) => (i === 0 && !k.tel && st.phones[c.id] ? { ...k, tel: st.phones[c.id] } : k)),
-    open: tickets.filter(t => t.client === c.id && t.state !== "Chiuso").map(t => ({ id: t.id, t: t.title, urg: !!t.urg, state: t.state, plan: t.plan || null, tech: t.tech || "" })),
+    open: tickets.filter(t => t.client === c.id && t.state !== "Chiuso").map(t => ({ id: t.id, t: t.title, urg: !!t.urg, state: t.state, plan: t.plan || null, tech: t.tech || "", contatto: t.contatto || "", fornitore: t.fornitore || "" })),
   }));
 }
 async function appData(tech) {
@@ -124,6 +129,8 @@ app.post("/api/app/send", auth.requireTech, async (req, res, next) => {
     const c = b.client ? clients.find(x => x.id === b.client) : null;
     if (b.client && !c) return res.status(400).json({ error: "cliente non trovato" });
     const existing = c && b.dest && b.dest !== "new" ? tickets.find(t => t.id === b.dest) : null;
+    /* chi ha scritto: un contatto dell'azienda scelta */
+    const k = c && b.contatto ? (c.contacts || []).find(x => x.id === b.contatto) : null;
 
     let ticket, subject, inReplyTo = "", isNew = false;
     if (existing) {
@@ -132,7 +139,7 @@ app.post("/api/app/send", auth.requireTech, async (req, res, next) => {
       isNew = true;
       subject = (b.kind === "mail" && b.subj ? b.subj : (b.kind === "mail" ? "Mail del cliente" : "Messaggio WhatsApp")) + " - " + (c ? c.name : "cliente da identificare");
       /* in prova simuliamo il numero che ITSM/Halo assegnerebbero; dal vivo il numero arriva quando il sistema lo apre */
-      ticket = c && cfg.mode === "demo" ? sources.demo.createTicket(c, String(b.body).slice(0, 60), tech.ini) : "In attesa-" + (++st.seq);
+      ticket = c && cfg.mode === "demo" ? sources.demo.createTicket(c, String(b.body).slice(0, 60), tech.ini, { contatto: k ? k.id : "" }) : "In attesa-" + (++st.seq);
     }
     const text = mail.bodyText({ kind: b.kind, from: b.from, mailFrom: b.mailFrom, time: b.time, lines: b.lines, body: b.body, note: b.note });
     const msg = mail.buildMessage({ tech, client: c, ticket: existing ? ticket : "", isNew, subject, text, inReplyTo, time: b.time,
@@ -147,7 +154,8 @@ app.post("/api/app/send", auth.requireTech, async (req, res, next) => {
     if (!th) { th = { ticket, client: c ? c.id : null, unread: false, msgs: [] }; threads.unshift(th); }
     const cm = b.kind === "mail" ? mailAddr(b.mailFrom) : "";
     if (cm) th.clientMail = cm;
-    th.msgs.push({ k: "fwd", kind: b.kind, mailFrom: cm || undefined, from: b.from || "", t: b.time || now(), text: b.body, lines: b.lines || null, photos: (b.files || []).length });
+    if (k) { th.contatto = k.id; if (existing && !existing.contatto && cfg.mode === "demo") sources.demo.updateTicket(existing.id, { contatto: k.id }); }
+    th.msgs.push({ k: "fwd", kind: b.kind, mailFrom: cm || undefined, contatto: k ? k.id : undefined, from: (k && k.n) || b.from || "", t: b.time || now(), text: b.body, lines: b.lines || null, photos: (b.files || []).length });
     if (b.note) th.msgs.push({ k: "me", t: now(), text: b.note });
     /* nessun messaggio di conferma: solo, per un ticket nuovo, il numero e il testo da girare al cliente */
     if (isNew && c && cfg.mode === "demo") th.msgs.push({ k: "tf", t: now(), text: "Nuovo ticket " + ticket + ".",
@@ -163,8 +171,9 @@ app.post("/api/app/note", auth.requireTech, async (req, res, next) => {
     const st = store.load(), tech = req.tech, text = String(req.body.text || "").trim();
     const th = (st.threads[tech.mail] || []).find(t => t.ticket === req.body.ticket);
     if (!th || !text) return res.status(400).json({ error: "conversazione o testo mancante" });
-    const { tickets } = await sources.data();
+    const { tickets, clients } = await sources.data(); clientsCache = clients;
     const t = tickets.find(x => x.id === th.ticket);
+    if (!th.contatto && t && t.contatto) th.contatto = t.contatto;
     /* se il cliente ha scritto per mail, la risposta del tecnico gli arriva in copia (si può togliere dall'app) */
     const cc = req.body.cc ? clientMailOf(th, st, tech) : "";
     const msg = mail.buildMessage({ tech, client: null, ticket: th.ticket, isNew: false, subject: "Re: " + th.ticket + (t ? " - " + t.title : ""), cc,
@@ -352,20 +361,25 @@ app.post("/api/admin/tickets", need("ticket", "m"), async (req, res, next) => {
     const own = req.admin.profilo === "cliente" ? req.admin.cliente : "";
     const c = clients.find(x => x.id === (own || req.body.client) && !x.eliminato), title = String(req.body.title || "").trim().slice(0, 120);
     if (!c || !title) return res.status(400).json({ error: "cliente o richiesta mancanti" });
-    if (own) req.body.tech = "";
+    if (c.tipo === "fornitore") return res.status(400).json({ error: "i ticket si aprono per un cliente, non per un fornitore" });
+    if (own) { req.body.tech = ""; req.body.fornitore = ""; if (!req.body.contatto) { const me = (c.contacts || []).find(x => x.mail && x.mail.toLowerCase() === String(req.admin.mail || "").toLowerCase()); if (me) req.body.contatto = me.id; } }
     if (req.body.tech && !auth.techs().some(t => t.ini === req.body.tech && t.attivo !== false && !t.eliminato)) return res.status(400).json({ error: "tecnico non attivo: scegline un altro" });
     if (cfg.mode !== "demo") return res.status(501).json({ error: "dal vivo il ticket va aperto nel sistema dei ticket collegato: collegamento non ancora disponibile" });
-    const id = sources.demo.createTicket(c, title, String(req.body.tech || ""), { urg: !!req.body.urg, origin: "Console" });
+    const kk = (c.contacts || []).find(x => x.id === req.body.contatto), fo = clients.find(x => x.id === req.body.fornitore && x.tipo === "fornitore");
+    const id = sources.demo.createTicket(c, title, String(req.body.tech || ""), { urg: !!req.body.urg, origin: own ? "Portale cliente" : "Console", contatto: kk ? kk.id : "", fornitore: fo ? fo.id : "" });
     log(req, "Ticket creato", id + " · " + c.name + " · " + title, "ticket");
     res.json({ ticket: { id, sys: c.sys, client: c.id, title } });
   } catch (e) { next(e); }
 });
 /* modificare un ticket: stato, tecnico, urgenza, data dell'intervento, richiesta */
-app.put("/api/admin/tickets/:id", need("ticket", "m"), (req, res) => {
+app.put("/api/admin/tickets/:id", need("ticket", "m"), async (req, res) => {
   if (req.admin.profilo === "cliente") return res.status(403).json({ error: "il cliente apre ticket ma non li modifica" });
   if (cfg.mode !== "demo") return res.status(501).json({ error: "dal vivo il ticket si modifica nel sistema dei ticket collegato: collegamento non ancora disponibile" });
   const b = req.body || {};
   if (b.tech && !auth.techs().some(t => t.ini === b.tech && t.attivo !== false && !t.eliminato)) return res.status(400).json({ error: "tecnico non attivo: scegline un altro" });
+  const { clients } = await sources.data(), cur = (await sources.data()).tickets.find(x => x.id === req.params.id);
+  if (b.contatto && cur) { const az = clients.find(x => x.id === cur.client); if (!az || !(az.contacts || []).some(x => x.id === b.contatto)) return res.status(400).json({ error: "il contatto non è di questo cliente" }); }
+  if (b.fornitore && !clients.some(x => x.id === b.fornitore && x.tipo === "fornitore")) return res.status(400).json({ error: "fornitore non valido" });
   const t = sources.demo.updateTicket(req.params.id, b);
   if (!t) return res.status(404).json({ error: "ticket non trovato" });
   log(req, "Ticket modificato", t.id + " · " + t.state + (t.tech ? " · " + t.tech : ""), "ticket");
@@ -378,9 +392,9 @@ app.delete("/api/admin/tickets/:id", need("ticket", "e"), (req, res) => {
   res.json({ ok: true });
 });
 /* clienti: in prova sui dati di esempio; dal vivo le anagrafiche si gestiscono in ITSM o Halo */
-const cleanClient = b => ({ name: String(b.name || "").trim().slice(0, 120), city: String(b.city || "").slice(0, 60), sys: b.sys === "Halo" ? "Halo" : "ITSM",
+const cleanClient = b => ({ tipo: b.tipo === "fornitore" ? "fornitore" : "cliente", name: String(b.name || "").trim().slice(0, 120), city: String(b.city || "").slice(0, 60), sys: settings.sistema(),
   dom: String(b.dom || "").toLowerCase().replace(/^@/, "").slice(0, 120),
-  contacts: (Array.isArray(b.contacts) ? b.contacts : []).slice(0, 20).map(k => ({ n: String(k.n || "").slice(0, 80), mail: String(k.mail || "").slice(0, 120), tel: String(k.tel || "").slice(0, 30), src: k.src === "Halo" ? "Halo" : k.src === "O365" ? "O365" : "ITSM" })) });
+  contacts: (Array.isArray(b.contacts) ? b.contacts : []).slice(0, 20).map(k => ({ id: /^[\w-]{1,40}$/.test(k.id || "") ? k.id : "k" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), n: String(k.n || "").slice(0, 80), ruolo: String(k.ruolo || "").slice(0, 60), ...(k.eliminato ? { eliminato: String(k.eliminato).slice(0, 40) } : {}), mail: String(k.mail || "").slice(0, 120), tel: String(k.tel || "").slice(0, 30), src: k.src === "Halo" ? "Halo" : k.src === "O365" ? "O365" : "ITSM" })) });
 const liveOnly = (res, what) => res.status(501).json({ error: "dal vivo " + what + " si gestiscono in ITSM o Halo: collegamento non ancora disponibile" });
 app.post("/api/admin/clients", need("clienti", "m"), (req, res) => {
   if (cfg.mode !== "demo") return liveOnly(res, "i clienti");
@@ -501,7 +515,7 @@ app.post("/api/admin/threads", need("ticket", "m"), async (req, res, next) => {
     if (!tech || !t || !text) return res.status(400).json({ error: "scegli ticket, tecnico attivo e scrivi il messaggio" });
     const list = st.threads[m] = st.threads[m] || [];
     let th = list.find(x => x.ticket === t.id);
-    if (!th) { th = { ticket: t.id, client: t.client, unread: true, msgs: [] }; list.unshift(th); }
+    if (!th) { th = { ticket: t.id, client: t.client, contatto: t.contatto || "", unread: true, msgs: [] }; list.unshift(th); }
     const msg = { k: "tf", t: now(), text, by: req.admin.nome || req.admin.user, id: "o" + Date.now().toString(36) };
     th.msgs.push(msg); th.unread = true; store.save(); log(req, "Conversazione aperta con il tecnico", t.id + " · " + m, "ticket");
     res.json({ ok: true, msg });

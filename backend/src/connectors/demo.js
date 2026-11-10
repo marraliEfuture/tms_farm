@@ -1,33 +1,42 @@
 /* Dati di esempio: gli stessi del prototipo. Usati con MODE=demo. */
+/* aziende: tipo «cliente» o «fornitore»; ogni azienda ha i suoi contatti (persone) con un id */
 const CLIENTS = [
-  { id: "lab", lat: 46.0037, lng: 8.9511, name: "Laboratorio Esempio SA", city: "Lugano", sys: "ITSM", dom: "laboratorioesempio.ch", contacts: [{ n: "Giulia Bernasconi", src: "Halo", mail: "g.bernasconi@laboratorioesempio.ch", tel: "+41 79 410 22 18" }] },
-  { id: "cas", lat: 45.8706, lng: 8.9817, name: "Caseificio Valle SA", city: "Mendrisio", sys: "ITSM", dom: "caseificiovalle.ch", contacts: [{ n: "Marco Rossi", src: "O365", mail: "m.rossi@caseificiovalle.ch", tel: "+41 78 655 01 90" }] },
-  { id: "acq", lat: 45.834, lng: 9.03, name: "Acque Lario Sagl", city: "Chiasso", sys: "ITSM", dom: "acquelario.ch", contacts: [{ n: "Sara Fontana", src: "O365", mail: "s.fontana@acquelario.ch", tel: "" }] },
-  { id: "alp", lat: 46.1946, lng: 9.0244, name: "Labor Alpina SA", city: "Bellinzona", sys: "ITSM", dom: "laboralpina.ch", contacts: [{ n: "Luca Pedrazzini", src: "ITSM", mail: "l.pedrazzini@laboralpina.ch", tel: "+41 79 233 87 12" }] },
-  { id: "che", lat: 46.0937, lng: 8.918, name: "Chemlab Ticino Sagl", city: "Mezzovico", sys: "ITSM", dom: "chemlab-ticino.ch", contacts: [{ n: "Anna Croci", src: "ITSM", mail: "a.croci@chemlab-ticino.ch", tel: "+41 76 118 40 27" }] },
-  { id: "far", lat: 46.1709, lng: 8.7995, name: "Farmacia Centrale Locarno", city: "Locarno", sys: "ITSM", dom: "farmaciacentrale-locarno.ch", contacts: [{ n: "Elena Mariotta", src: "Halo", mail: "e.mariotta@farmaciacentrale-locarno.ch", tel: "+41 79 512 66 03" }] },
-  { id: "vin", lat: 46.059, lng: 8.931, name: "Vini Collina SA", city: "Taverne", sys: "ITSM", dom: "vinicollina.ch", contacts: [{ n: "Paolo Ghirlanda", src: "O365", mail: "p.ghirlanda@vinicollina.ch", tel: "+41 76 300 14 59" }] },
+  { id: "lab", tipo: "cliente", lat: 46.0037, lng: 8.9511, name: "Laboratorio Esempio SA", city: "Lugano", sys: "ITSM", dom: "laboratorioesempio.ch", contacts: [
+    { id: "lab-1", n: "Giulia Bernasconi", ruolo: "Responsabile laboratorio", src: "ITSM", mail: "g.bernasconi@laboratorioesempio.ch", tel: "+41 79 410 22 18" },
+    { id: "lab-2", n: "Davide Rezzonico", ruolo: "Acquisti", src: "O365", mail: "d.rezzonico@laboratorioesempio.ch", tel: "+41 91 600 12 40" }] },
+  { id: "cas", tipo: "cliente", lat: 45.8706, lng: 8.9817, name: "Caseificio Valle SA", city: "Mendrisio", sys: "ITSM", dom: "caseificiovalle.ch", contacts: [
+    { id: "cas-1", n: "Marco Rossi", ruolo: "Titolare", src: "O365", mail: "m.rossi@caseificiovalle.ch", tel: "+41 78 655 01 90" },
+    { id: "cas-2", n: "Lucia Rossi", ruolo: "Amministrazione", src: "ITSM", mail: "l.rossi@caseificiovalle.ch", tel: "" }] },
+  { id: "acq", tipo: "cliente", lat: 45.834, lng: 9.03, name: "Acque Lario Sagl", city: "Chiasso", sys: "ITSM", dom: "acquelario.ch", contacts: [{ id: "acq-1", n: "Sara Fontana", ruolo: "Qualità", src: "O365", mail: "s.fontana@acquelario.ch", tel: "" }] },
+  { id: "alp", tipo: "cliente", lat: 46.1946, lng: 9.0244, name: "Labor Alpina SA", city: "Bellinzona", sys: "ITSM", dom: "laboralpina.ch", contacts: [{ id: "alp-1", n: "Luca Pedrazzini", ruolo: "Capo laboratorio", src: "ITSM", mail: "l.pedrazzini@laboralpina.ch", tel: "+41 79 233 87 12" }] },
+  { id: "che", tipo: "cliente", lat: 46.0937, lng: 8.918, name: "Chemlab Ticino Sagl", city: "Mezzovico", sys: "ITSM", dom: "chemlab-ticino.ch", contacts: [{ id: "che-1", n: "Anna Croci", ruolo: "Responsabile qualità", src: "ITSM", mail: "a.croci@chemlab-ticino.ch", tel: "+41 76 118 40 27" }] },
+  { id: "far", tipo: "cliente", lat: 46.1709, lng: 8.7995, name: "Farmacia Centrale Locarno", city: "Locarno", sys: "ITSM", dom: "farmaciacentrale-locarno.ch", contacts: [{ id: "far-1", n: "Elena Mariotta", ruolo: "Farmacista titolare", src: "ITSM", mail: "e.mariotta@farmaciacentrale-locarno.ch", tel: "+41 79 512 66 03" }] },
+  { id: "vin", tipo: "cliente", lat: 46.059, lng: 8.931, name: "Vini Collina SA", city: "Taverne", sys: "ITSM", dom: "vinicollina.ch", contacts: [{ id: "vin-1", n: "Paolo Ghirlanda", ruolo: "Cantina", src: "O365", mail: "p.ghirlanda@vinicollina.ch", tel: "+41 76 300 14 59" }] },
+  { id: "sta", tipo: "fornitore", name: "Strumenti Analitici SA", city: "Manno", sys: "ITSM", dom: "strumentianalitici.ch", contacts: [
+    { id: "sta-1", n: "Pietro Galli", ruolo: "Ufficio ricambi", src: "ITSM", mail: "p.galli@strumentianalitici.ch", tel: "+41 91 610 55 20" },
+    { id: "sta-2", n: "Chiara Fumagalli", ruolo: "Assistenza tecnica", src: "ITSM", mail: "c.fumagalli@strumentianalitici.ch", tel: "+41 79 880 41 07" }] },
+  { id: "lmp", tipo: "fornitore", name: "LabLamp Sagl", city: "Lugano", sys: "ITSM", dom: "lablamp.ch", contacts: [{ id: "lmp-1", n: "Nicola Bianchi", ruolo: "Vendite", src: "O365", mail: "n.bianchi@lablamp.ch", tel: "+41 91 922 30 11" }] },
 ];
 const dago = n => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); };
 const TICKETS = [
-  { id: "Tck #714139", opened: dago(0), plan: null, sys: "ITSM", client: "cas", title: "Analizzatore latte: letture instabili", state: "In lavorazione", tech: "MB", urg: true, origin: "Mail cliente", upd: "08:20", msgIds: ["<Ws7WB6YiYyB2lUu50cay1nFeKHjUiw5YWv2h8WHnx4T@itsm.efuture.it>"] },
-  { id: "Tck #714133", opened: dago(6), plan: { day: 0, time: "14:00" }, sys: "ITSM", client: "che", title: "Titolatore: taratura annuale", state: "Pianificato", tech: "MB", origin: "Mail cliente", upd: "ieri", msgIds: ["<Qa1KfP0nBv7cX2mL9sR4tY6uW8zE3hJ5dG0iO1pN2qM@itsm.efuture.it>"] },
-  { id: "Tck #714128", opened: dago(12), plan: null, sys: "ITSM", client: "alp", title: "HPLC: manutenzione ordinaria", state: "Chiuso", tech: "LC", origin: "Mail cliente", upd: "ven", msgIds: [] },
-  { id: "Tck #714821", opened: dago(1), plan: { day: 1, time: "09:00" }, sys: "ITSM", client: "lab", title: "Spettrofotometro: errore lampada", state: "Pianificato", tech: "MB", origin: "WhatsApp tecnico", upd: "07:40", msgIds: ["<p8Hh2kQmL0aZ1x@itsm.efuture.it>"] },
-  { id: "Tck #714799", opened: dago(9), plan: null, sys: "ITSM", client: "far", title: "Bilancia analitica: guasto", state: "In attesa ricambio", tech: "MB", origin: "Telefono", upd: "ven", msgIds: ["<r2Df9sLw0Pq4@itsm.efuture.it>"] },
-  { id: "Tck #714812", opened: dago(1), sys: "ITSM", client: "vin", title: "Ordine reagenti e agenti", state: "Aperto", tech: "", origin: "Mail cliente", upd: "ieri", msgIds: [] },
-  { id: "Tck #714136", opened: dago(3), plan: null, sys: "ITSM", client: "alp", title: "Centrifuga: vibrazioni anomale", state: "In lavorazione", tech: "LC", origin: "Telefono", upd: "09:05", msgIds: [] },
-  { id: "Tck #714806", opened: dago(5), plan: null, sys: "ITSM", client: "acq", title: "pH-metro: calibrazione", state: "In attesa cliente", tech: "GN", origin: "Mail cliente", upd: "lun", msgIds: [] },
-  { id: "Tck #714121", opened: dago(24), plan: null, sys: "ITSM", client: "che", title: "Bilancia di precisione: verifica metrica", state: "Chiuso", tech: "MB", origin: "Mail cliente", upd: "21/10", msgIds: [] },
+  { id: "Tck #714139", contatto: "cas-1", opened: dago(0), plan: null, sys: "ITSM", client: "cas", title: "Analizzatore latte: letture instabili", state: "In lavorazione", tech: "MB", urg: true, origin: "Mail cliente", upd: "08:20", msgIds: ["<Ws7WB6YiYyB2lUu50cay1nFeKHjUiw5YWv2h8WHnx4T@itsm.efuture.it>"] },
+  { id: "Tck #714133", contatto: "che-1", opened: dago(6), plan: { day: 0, time: "14:00" }, sys: "ITSM", client: "che", title: "Titolatore: taratura annuale", state: "Pianificato", tech: "MB", origin: "Mail cliente", upd: "ieri", msgIds: ["<Qa1KfP0nBv7cX2mL9sR4tY6uW8zE3hJ5dG0iO1pN2qM@itsm.efuture.it>"] },
+  { id: "Tck #714128", contatto: "alp-1", opened: dago(12), plan: null, sys: "ITSM", client: "alp", title: "HPLC: manutenzione ordinaria", state: "Chiuso", tech: "LC", origin: "Mail cliente", upd: "ven", msgIds: [] },
+  { id: "Tck #714821", contatto: "lab-1", opened: dago(1), plan: { day: 1, time: "09:00" }, sys: "ITSM", client: "lab", title: "Spettrofotometro: errore lampada", state: "Pianificato", tech: "MB", origin: "WhatsApp tecnico", upd: "07:40", msgIds: ["<p8Hh2kQmL0aZ1x@itsm.efuture.it>"] },
+  { id: "Tck #714799", contatto: "far-1", fornitore: "sta", opened: dago(9), plan: null, sys: "ITSM", client: "far", title: "Bilancia analitica: guasto", state: "In attesa ricambio", tech: "MB", origin: "Telefono", upd: "ven", msgIds: ["<r2Df9sLw0Pq4@itsm.efuture.it>"] },
+  { id: "Tck #714812", contatto: "vin-1", opened: dago(1), sys: "ITSM", client: "vin", title: "Ordine reagenti e agenti", state: "Aperto", tech: "", origin: "Mail cliente", upd: "ieri", msgIds: [] },
+  { id: "Tck #714136", contatto: "alp-1", opened: dago(3), plan: null, sys: "ITSM", client: "alp", title: "Centrifuga: vibrazioni anomale", state: "In lavorazione", tech: "LC", origin: "Telefono", upd: "09:05", msgIds: [] },
+  { id: "Tck #714806", contatto: "acq-1", opened: dago(5), plan: null, sys: "ITSM", client: "acq", title: "pH-metro: calibrazione", state: "In attesa cliente", tech: "GN", origin: "Mail cliente", upd: "lun", msgIds: [] },
+  { id: "Tck #714121", contatto: "che-1", opened: dago(24), plan: null, sys: "ITSM", client: "che", title: "Bilancia di precisione: verifica metrica", state: "Chiuso", tech: "MB", origin: "Mail cliente", upd: "21/10", msgIds: [] },
 ];
 const THREADS_MB = [
-  { ticket: "Tck #714821", client: "lab", clientMail: "g.bernasconi@laboratorioesempio.ch", unread: true, msgs: [
+  { ticket: "Tck #714821", contatto: "lab-1", client: "lab", clientMail: "g.bernasconi@laboratorioesempio.ch", unread: true, msgs: [
     { k: "fwd", from: "Giulia Bernasconi", t: "ieri 18:05", text: "Buonasera, lo spettrofotometro dà di nuovo errore lampada all'accensione." },
     { k: "tf", t: "07:40", text: "La cliente chiede un passaggio domani mattina: fissato alle 9:00.",
       forClient: "Buongiorno, confermo il passaggio domani alle 9:00 per lo spettrofotometro (pratica Tck #714821). Buona giornata." } ] },
-  { ticket: "Tck #714139", client: "cas", unread: true, msgs: [
+  { ticket: "Tck #714139", contatto: "cas-1", client: "cas", unread: true, msgs: [
     { k: "tf", t: "07:55", text: "Nuovo ticket assegnato a te: analizzatore latte con letture instabili. Urgente." } ] },
-  { ticket: "Tck #714799", client: "far", unread: false, msgs: [
+  { ticket: "Tck #714799", contatto: "far-1", client: "far", unread: false, msgs: [
     { k: "me", t: "ven 16:20", text: "Serve la cella di carico, l'ho segnata nel rapporto." } ] },
 ];
 const INBOUND = [
@@ -52,10 +61,11 @@ module.exports = {
   },
   /* solo in prova: simula il ticket che ITSM o Halo aprirebbero alla prima mail */
   createTicket(client, title, techIni, opts) {
+    /* opts.contatto: la persona che ha chiesto; opts.fornitore: azienda fornitrice coinvolta */
     opts = opts || {};
     seq++;
     const id = "Tck #7148" + seq;
-    TICKETS.unshift({ id, opened: dago(0), sys: client.sys, client: client.id, title, state: "Aperto", tech: techIni || "", urg: !!opts.urg, origin: opts.origin || "App tecnico", upd: "adesso", msgIds: [] });
+    TICKETS.unshift({ id, opened: dago(0), contatto: opts.contatto || "", fornitore: opts.fornitore || "", sys: client.sys, client: client.id, title, state: "Aperto", tech: techIni || "", urg: !!opts.urg, origin: opts.origin || "App tecnico", upd: "adesso", msgIds: [] });
     return id;
   },
   createClient(c) { const id = "c" + Date.now().toString(36); CLIENTS.push({ id, ...c }); return id; },
@@ -69,6 +79,8 @@ module.exports = {
     if (b.state !== undefined && ["Aperto", "In lavorazione", "Pianificato", "In attesa cliente", "In attesa ricambio", "Chiuso"].includes(b.state)) t.state = b.state;
     if (b.tech !== undefined) t.tech = String(b.tech).slice(0, 3);
     if (b.urg !== undefined) t.urg = !!b.urg;
+    if (b.contatto !== undefined) t.contatto = String(b.contatto || "");
+    if (b.fornitore !== undefined) t.fornitore = String(b.fornitore || "");
     if (b.plan !== undefined) t.plan = b.plan && /^\d{2}:\d{2}$/.test(b.plan.time || "") ? { day: Math.max(0, Math.min(60, Number(b.plan.day) || 0)), time: b.plan.time } : null;
     t.upd = "adesso"; return t;
   },

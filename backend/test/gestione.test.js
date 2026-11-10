@@ -94,3 +94,27 @@ test("ticket: modifica di stato, tecnico e data; un tecnico disattivato non si a
   await call("PUT", "/api/admin/techs/gn%40efuture.it", ad, { attivo: false });
   assert.equal((await call("PUT", "/api/admin/tickets/" + encodeURIComponent("Tck #714812"), ad, { tech: "GN" })).status, 400);
 });
+
+test("anagrafiche: clienti e fornitori, ticket legati a un contatto preciso", async () => {
+  const ad = await login("admin", "admin123");
+  const st = (await call("GET", "/api/admin/state", ad)).json;
+  assert.ok(st.clients.some(c => c.tipo === "fornitore") && st.clients.some(c => c.tipo === "cliente"));
+  assert.equal((await call("POST", "/api/admin/tickets", ad, { client: "sta", title: "x" })).status, 400, "niente ticket a un fornitore");
+  const t = await call("POST", "/api/admin/tickets", ad, { client: "lab", title: "Lampada", contatto: "lab-2", fornitore: "lmp" });
+  const id = t.json.ticket.id, tk = (await call("GET", "/api/admin/state", ad)).json.tickets.find(x => x.id === id);
+  assert.equal(tk.contatto, "lab-2"); assert.equal(tk.fornitore, "lmp");
+  assert.equal((await call("PUT", "/api/admin/tickets/" + encodeURIComponent(id), ad, { contatto: "cas-1" })).status, 400, "il contatto deve essere del cliente");
+  assert.equal((await call("PUT", "/api/admin/tickets/" + encodeURIComponent(id), ad, { fornitore: "cas" })).status, 400, "il fornitore deve essere un fornitore");
+});
+
+test("app: il messaggio al contatto parte in copia proprio a quella persona", async () => {
+  const lg = await call("POST", "/api/app/login", null, { mail: "mb@efuture.it", code: "123456" });
+  const tok = lg.json.token;
+  const r = await call("POST", "/api/app/send", tok, { kind: "wa", body: "Ci mandate il rapporto?", client: "cas", dest: "Tck #714139", contatto: "cas-2", time: "10/11/2026 09:00" });
+  assert.equal(r.status, 200);
+  const th = r.json.data.threads.find(x => x.ticket === "Tck #714139");
+  assert.equal(th.contatto, "cas-2");
+  assert.equal(th.msgs.find(m => m.k === "fwd" && m.contatto === "cas-2").from, "Lucia Rossi");
+  const n = await call("POST", "/api/app/note", tok, { ticket: "Tck #714139", text: "Vi mando il rapporto in giornata.", cc: true });
+  assert.equal(n.json.data.threads.find(x => x.ticket === "Tck #714139").msgs.filter(m => m.k === "me").pop().cc, "l.rossi@caseificiovalle.ch");
+});

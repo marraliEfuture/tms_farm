@@ -6,6 +6,8 @@ function domainOf(addr) { const m = /@([\w.-]+)/.exec(addr || ""); return m ? m[
 
 function recognize(mail, ctx) {
   const { techs = [], clients = [], tickets = [], rules = [] } = ctx;
+  /* un fornitore che scrive non apre ticket a suo nome: si riconoscono solo le aziende clienti */
+  const clienti = clients.filter(c => c.tipo !== "fornitore");
   const on = k => (rules.find(r => r.k === k) || { on: true }).on;
   const h = name => { const x = (mail.headers || []).find(([k]) => k.toLowerCase() === name.toLowerCase()); return x ? x[1] : ""; };
   const how = [];
@@ -25,25 +27,28 @@ function recognize(mail, ctx) {
   }
   const hc = h("X-TicketFarm-Cliente-Id") || h("X-TicketFarm-Cliente");
   if (on("hdr") && hc && hc !== "da identificare") {
-    const c = clients.find(c => c.id === hc || c.name === hc);
+    const c = clienti.find(c => c.id === hc || c.name === hc);
     if (c) { client = client || c.id; how.push("hdr"); }
   }
   if (!client && on("from")) {
-    const c = clients.find(c => (c.contacts || []).some(k => (k.mail || "").toLowerCase() === String(mail.from).toLowerCase()));
+    const c = clienti.find(c => (c.contacts || []).some(k => (k.mail || "").toLowerCase() === String(mail.from).toLowerCase()));
     if (c) { client = c.id; how.push("from"); }
   }
   if (!client && on("dom")) {
     const d = domainOf(mail.from);
-    const c = d && clients.find(c => c.dom === d);
+    const c = d && clienti.find(c => c.dom === d);
     if (c) { client = c.id; how.push("dom"); }
   }
   /* regole aggiunte dall'ufficio: dominio → cliente, parola nell'oggetto → cliente */
   if (!client) for (const r of (ctx.custom || []).filter(x => x.on !== false && !x.eliminato)) {
     const hit = r.tipo === "dominio" ? domainOf(mail.from) === String(r.valore).toLowerCase().replace(/^@/, "")
       : String(mail.subject || "").toLowerCase().includes(String(r.valore).toLowerCase());
-    if (hit && clients.some(c => c.id === r.cliente)) { client = r.cliente; how.push("custom"); break; }
+    if (hit && clienti.some(c => c.id === r.cliente)) { client = r.cliente; how.push("custom"); break; }
   }
   const state = ticket ? "ok" : client ? "new" : "warn";
-  return { state, ticket, client, how };
+  /* la persona che scrive, se è un contatto noto */
+  let contatto = "";
+  for (const c of clients) { const k = (c.contacts || []).find(x => x.id && (x.mail || "").toLowerCase() === String(mail.from || "").toLowerCase()); if (k) { contatto = k.id; break; } }
+  return { state, ticket, client, how, contatto };
 }
 module.exports = { recognize, domainOf, TICKET_RE };
