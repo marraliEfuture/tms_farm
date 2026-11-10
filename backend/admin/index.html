@@ -475,15 +475,13 @@ function fresh(){
     threads:[
       {ticket:"HALO-4821", client:"lab", tech:"MB", techMail:"mb@efuture.it", clientMail:"g.bernasconi@laboratorioesempio.ch", msgs:[
         {k:"fwd", from:"Giulia Bernasconi", t:"ieri 18:05", text:"Buonasera, lo spettrofotometro dà di nuovo errore lampada all'accensione."},
-        {k:"tf", t:"ieri 18:06", text:"Ticket HALO-4821 aperto in Halo per Laboratorio Esempio SA."},
-        {k:"tf", t:"07:40", by:"Laura Bianchi", text:"La cliente ha scritto anche per mail e chiede un passaggio domani mattina. L'ufficio ha fissato le 9:00 in Halo.", forClient:"Buongiorno, confermo il passaggio domani alle 9:00 per lo spettrofotometro (pratica HALO-4821). Buona giornata."}]},
+        {k:"tf", t:"07:40", by:"Laura Bianchi", text:"La cliente chiede un passaggio domani mattina: fissato alle 9:00.", forClient:"Buongiorno, confermo il passaggio domani alle 9:00 per lo spettrofotometro (pratica HALO-4821). Buona giornata."}]},
       {ticket:"Tck #714139", client:"cas", tech:"MB", techMail:"mb@efuture.it", msgs:[
-        {k:"tf", t:"07:55", text:"Nuovo ticket assegnato a te in ITSM: analizzatore latte con letture instabili. Priorità urgente."},
+        {k:"tf", t:"07:55", text:"Nuovo ticket assegnato a te: analizzatore latte con letture instabili. Urgente."},
         {k:"fwd", from:"Marco Rossi", t:"07:51", text:"Buongiorno, l'analizzatore continua a dare letture diverse sullo stesso campione. Potete passare oggi?"},
         {k:"me", t:"08:20", text:"Chiamo il cliente in mattinata e fisso l'intervento."}]},
       {ticket:"HALO-4799", client:"far", tech:"MB", techMail:"mb@efuture.it", msgs:[
-        {k:"me", t:"ven 16:20", text:"Serve la cella di carico, l'ho segnata nel rapporto."},
-        {k:"tf", t:"ven 16:21", text:"Nota aggiunta a HALO-4799. Il ticket è ora in attesa del ricambio."}]},
+        {k:"me", t:"ven 16:20", text:"Serve la cella di carico, l'ho segnata nel rapporto."}]},
       {ticket:"Tck #714136", client:"alp", tech:"LC", techMail:"lc@efuture.it", msgs:[
         {k:"fwd", from:"Luca Pedrazzini", t:"09:01", text:"La centrifuga vibra molto sopra i 3000 giri, l'abbiamo fermata."},
         {k:"me", t:"09:05", text:"Probabile cuscinetto. Passo nel pomeriggio a verificare."}]}
@@ -959,7 +957,7 @@ function askTicket(b){ b.onclick=()=>{
 
 /* ---------- Messaggi: le conversazioni dei tecnici con Ticket Farm, ticket per ticket ---------- */
 const bubbles = th => (th.msgs||[]).map(m=>{
-  const who = m.k==="fwd" ? (m.from||"Cliente")+" · inoltrato da "+(th.tech||"tecnico") : m.k==="me" ? "Tecnico "+(th.tech||"")+(m.cc?" · risposta al cliente, copia a "+m.cc:"") : (m.by ? m.by+" · ufficio" : "Ticket Farm");
+  const who = m.k==="fwd" ? (m.from||"Cliente")+" · inoltrato da "+(th.tech||"tecnico") : m.k==="me" ? (m.cc?"Messaggio al cliente":"Nota interna")+" · tecnico "+(th.tech||"") : (m.by ? m.by+" · ufficio" : "Ufficio");
   return `<div class="bub ${m.k}"><span class="bub-w">${esc(who)}</span><p>${esc(m.text)}</p>${m.forClient?`<div class="bub-fc"><b>Testo per il cliente</b>${esc(m.forClient)}</div>`:""}<span class="bub-t">${esc(m.t||"")}</span></div>`;
 }).join("") || `<p class="dim">Nessun messaggio.</p>`;
 function myThreads(){ const mine = ROLE==="op" ? myTech().ini : ""; return (S.threads||[]).filter(th=>!mine || th.tech===mine); }

@@ -23,14 +23,12 @@ const TICKETS = [
 const THREADS_MB = [
   { ticket: "HALO-4821", client: "lab", clientMail: "g.bernasconi@laboratorioesempio.ch", unread: true, msgs: [
     { k: "fwd", from: "Giulia Bernasconi", t: "ieri 18:05", text: "Buonasera, lo spettrofotometro dà di nuovo errore lampada all'accensione." },
-    { k: "tf", t: "ieri 18:06", text: "Ticket HALO-4821 aperto in Halo per Laboratorio Esempio SA." },
-    { k: "tf", t: "07:40", text: "La cliente ha scritto anche per mail e chiede un passaggio domani mattina. L'ufficio ha fissato le 9:00 in Halo.",
+    { k: "tf", t: "07:40", text: "La cliente chiede un passaggio domani mattina: fissato alle 9:00.",
       forClient: "Buongiorno, confermo il passaggio domani alle 9:00 per lo spettrofotometro (pratica HALO-4821). Buona giornata." } ] },
   { ticket: "Tck #714139", client: "cas", unread: true, msgs: [
-    { k: "tf", t: "07:55", text: "Nuovo ticket assegnato a te in ITSM: analizzatore latte con letture instabili. Priorità urgente." } ] },
+    { k: "tf", t: "07:55", text: "Nuovo ticket assegnato a te: analizzatore latte con letture instabili. Urgente." } ] },
   { ticket: "HALO-4799", client: "far", unread: false, msgs: [
-    { k: "me", t: "ven 16:20", text: "Serve la cella di carico, l'ho segnata nel rapporto." },
-    { k: "tf", t: "ven 16:21", text: "Nota aggiunta a HALO-4799. Il ticket è ora in attesa del ricambio." } ] },
+    { k: "me", t: "ven 16:20", text: "Serve la cella di carico, l'ho segnata nel rapporto." } ] },
 ];
 const INBOUND = [
   { id: "d3", at: "07:40", from: "g.bernasconi@laboratorioesempio.ch", fromName: "Giulia Bernasconi", subj: "Re: HALO-4821 - Spettrofotometro: errore lampada",

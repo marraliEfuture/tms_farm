@@ -166,6 +166,10 @@ textarea.input{min-height:96px;resize:vertical}
 .copybox{margin-top:8px;border:1px dashed var(--wa-edge);background:var(--wa);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;white-space:normal}
 .copybox p{margin:0;white-space:pre-wrap;user-select:text}
 .composer{background:var(--surface);border-top:1px solid var(--line);padding:10px 12px 16px;display:flex;flex-direction:column;gap:8px}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:3px;gap:3px}
+.seg button{border:0;background:none;border-radius:999px;padding:8px 6px;font:inherit;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer}
+.seg button[aria-checked="true"]{background:var(--accent);color:#fff}.seg button:disabled{opacity:.45;cursor:not-allowed}
+.msg.out.toc{border:1px solid var(--accent)}
 .composer .cc{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted)}.composer .cc b{color:var(--ink);overflow-wrap:anywhere}.composer .cc span{min-width:0}.composer .cc input{flex:0 0 18px;width:18px;height:18px;accent-color:var(--accent)}
 .composer .line{display:flex;gap:8px;align-items:flex-end}
 .composer textarea{min-height:44px;height:44px;flex:1}
@@ -373,16 +377,14 @@ function freshState(){
     threads:[
       {ticket:"HALO-4821", client:"lab", clientMail:"g.bernasconi@laboratorioesempio.ch", unread:true, msgs:[
         {k:"fwd", from:"Giulia Bernasconi", t:"ieri 18:05", text:"Buonasera, lo spettrofotometro dà di nuovo errore lampada all'accensione."},
-        {k:"tf", t:"ieri 18:06", text:"Ticket HALO-4821 aperto in Halo per Laboratorio Esempio SA."},
-        {k:"tf", t:"07:40", text:"La cliente ha scritto anche per mail (Office 365) e chiede un passaggio domani mattina. L'ufficio ha fissato le 9:00 in Halo.",
+        {k:"tf", t:"07:40", text:"La cliente chiede un passaggio domani mattina: fissato alle 9:00.",
          forClient:"Buongiorno, confermo il passaggio domani alle 9:00 per lo spettrofotometro (pratica HALO-4821). Buona giornata."}
       ]},
       {ticket:"Tck #714139", client:"cas", unread:true, msgs:[
-        {k:"tf", t:"07:55", text:"Nuovo ticket assegnato a te in ITSM: analizzatore latte con letture instabili. Priorità urgente."}
+        {k:"tf", t:"07:55", text:"Nuovo ticket assegnato a te: analizzatore latte con letture instabili. Urgente."}
       ]},
       {ticket:"HALO-4799", client:"far", unread:false, msgs:[
-        {k:"me", t:"ven 16:20", text:"Serve la cella di carico, l'ho segnata nel rapporto."},
-        {k:"tf", t:"ven 16:21", text:"Nota aggiunta a HALO-4799. Il ticket è ora in attesa del ricambio."}
+        {k:"me", t:"ven 16:20", text:"Serve la cella di carico, l'ho segnata nel rapporto."}
       ]}
     ],
     f:blankForm()
@@ -446,7 +448,7 @@ function lastOf(th){ return th.msgs[th.msgs.length-1]; }
 function updateCount(){ const n = S.threads.filter(t=>t.unread).length; const c=$("#count"); c.hidden = !n; c.textContent = n; }
 function renderMessaggi(){
   const el = $("#s-messaggi");
-  el.innerHTML = (API ? "" : `<div class="banner">Modalità prova: nessuna mail parte davvero. Per collegare l'app al backend imposta backendUrl in config.js.</div>`) + `<div><h2 class="sec">Messaggi</h2><p class="sub">Tu scrivi per mail a ${SUPPORT}, gli aggiornamenti arrivano da ITSM, Halo e Office 365</p></div>
+  el.innerHTML = (API ? "" : `<div class="banner">Modalità prova: nessuna mail parte davvero. Per collegare l'app al backend imposta backendUrl in config.js.</div>`) + `<div><h2 class="sec">Messaggi</h2><p class="sub">Le conversazioni con i tuoi clienti, ticket per ticket</p></div>
     <div class="list">${S.threads.map((th,i)=>{ const c=cl(th.client)||{name:"Cliente da identificare",sys:"Halo"}; const l=lastOf(th);
       return `<button class="item${th.unread?" unread":""}" data-i="${i}">
         <div class="row"><span class="nm who-row">${th.client?logo(c):""}${esc(c.name)}</span><span class="tm">${esc(l.t)}</span></div>
@@ -458,8 +460,8 @@ function renderMessaggi(){
 
 function msgHTML(m, i){
   if(m.k==="fwd") return `<div class="msg fwd"><small>${m.kind==="mail"?"Mail del cliente":"Dal WhatsApp del cliente"}${m.from?" · "+esc(m.from):""} · ${esc(m.t)}</small>${m.lines?m.lines.map(l=>`<q><span class="mono">${esc(l.time)}</span> ${esc(l.text)}</q>`).join(""):`<q>${esc(m.text)}</q>`}${m.photos?`<small style="margin-top:6px">${m.photos} foto allegate</small>`:""}</div>`;
-  if(m.k==="me") return `<div class="msg out"><small>Tua mail a ${SUPPORT}${m.cc?" · copia a "+esc(m.cc):""} · ${esc(m.t)}</small>${esc(m.text)}</div>`;
-  return `<div class="msg in"><small>${API ? "Ticket Farm" : "Letto da "+(SRC[curSys]||"Ticket Farm")} · ${esc(m.t)}</small>${esc(m.text)}${m.forClient?`<div class="copybox"><span class="lbl">Da mandare al cliente</span><p id="cb-${i}">${esc(m.forClient)}</p><div class="cb-act"><button class="btn small primary" data-copy="${i}" type="button">Copia negli appunti</button>${waBtn(curTel, m.forClient, "Apri chat cliente")}</div></div>`:""}</div>`;
+  if(m.k==="me") return `<div class="msg out${m.cc?" toc":""}"><small>${m.cc?"Messaggio al cliente":"Nota interna"} · ${esc(m.t)}</small>${esc(m.text)}</div>`;
+  return `<div class="msg in"><small>Ufficio · ${esc(m.t)}</small>${esc(m.text)}${m.forClient?`<div class="copybox"><span class="lbl">Da mandare al cliente</span><p id="cb-${i}">${esc(m.forClient)}</p><div class="cb-act"><button class="btn small primary" data-copy="${i}" type="button">Copia negli appunti</button>${waBtn(curTel, m.forClient, "Apri chat cliente")}</div></div>`:""}</div>`;
 }
 function openChat(i){
   S.openThread = i; const th = S.threads[i]; if(th.unread && API) api("/api/app/read", {ticket:th.ticket}).catch(()=>{}); th.unread = false;
@@ -469,21 +471,24 @@ function openChat(i){
       ${c?logo(c,36):""}<div style="min-width:0;flex:1"><div class="client">${esc(c?c.name:"Cliente da identificare")}</div><div class="row" style="justify-content:flex-start"><span class="mono">${esc(th.ticket)}</span>${c?badge(c.sys):""}</div></div>${waBtn(firstTel(c))}</div>
     <div class="msgs" id="msgs"></div>
     <div class="composer">
-      ${cm?`<label class="cc"><input type="checkbox" id="c-cc" checked><span>Copia al cliente: <b>${esc(cm)}</b></span></label>`:""}
-      <div class="line"><textarea class="input" id="c-text" placeholder="${cm?"Rispondi al cliente (e all'ufficio)…":"Scrivi una mail su questo ticket…"}"></textarea><button class="btn primary" id="c-send" type="button">Invia</button></div>
+      <div class="seg" role="radiogroup" aria-label="Tipo di messaggio"><button type="button" role="radio" data-mode="nota" aria-checked="${!cm}">Nota interna</button><button type="button" role="radio" data-mode="cliente" aria-checked="${!!cm}" ${cm?"":"disabled title=\"Il cliente non ha scritto per mail\""}>Messaggio al cliente</button></div>
+      <div class="line"><textarea class="input" id="c-text" placeholder="${cm?"Scrivi al cliente…":"Scrivi una nota interna…"}"></textarea><button class="btn primary" id="c-send" type="button">Invia</button></div>
       <button class="linkbtn" id="c-fwd" type="button">+ Inoltra un altro messaggio del cliente su questo ticket</button>
     </div>`;
   drawMsgs();
   $("#c-back").onclick = ()=>{ ch.hidden = true; S.openThread = null; renderMessaggi(); };
   $("#c-send").onclick = ()=>{
     const v = $("#c-text").value.trim(); if(!v){ toast("Scrivi prima il messaggio"); return; }
-    const cc = cm && $("#c-cc") && $("#c-cc").checked ? cm : "";
+    const cc = cm && ch.querySelector('.seg [data-mode="cliente"]').getAttribute("aria-checked")==="true" ? cm : "";
     if(API){ const b=$("#c-send"); b.disabled=true;
-      api("/api/app/note", {ticket:th.ticket, text:v, cc:!!cc}).then(r=>{ applyData(r.data); reopen(th.ticket); toast("Mail inviata a "+SUPPORT+(cc?" e in copia a "+cc:"")); })
+      api("/api/app/note", {ticket:th.ticket, text:v, cc:!!cc}).then(r=>{ applyData(r.data); reopen(th.ticket); toast(cc?"Messaggio inviato al cliente":"Nota salvata"); })
         .catch(e=>{ b.disabled=false; toast("Invio non riuscito: "+e.message+". Riprova."); }); return; }
-    th.msgs.push({k:"me", t:nowStr(), text:v, cc}); $("#c-text").value=""; drawMsgs();
-    reply(th, {k:"tf", t:nowStr(), text:cc ? "Risposta aggiunta a "+th.ticket+(c?" in "+SRC[c.sys]:"")+" e spedita in copia a "+cc+"." : "Aggiunto a "+th.ticket+" come nota del tecnico"+(c?" in "+SRC[c.sys]:"")+"."});
+    th.msgs.push({k:"me", t:nowStr(), text:v, cc}); $("#c-text").value=""; drawMsgs(); renderMessaggi();
+    toast(cc?"Messaggio inviato al cliente (prova)":"Nota salvata (prova)");
   };
+  ch.querySelectorAll(".seg [data-mode]").forEach(b=>b.onclick=()=>{ if(b.disabled) return;
+    ch.querySelectorAll(".seg [data-mode]").forEach(x=>x.setAttribute("aria-checked", String(x===b)));
+    $("#c-text").placeholder = b.dataset.mode==="cliente" ? "Scrivi al cliente…" : "Scrivi una nota interna…"; $("#c-text").focus(); });
   $("#c-fwd").onclick = ()=>{ ch.hidden = true; S.openThread = null; S.f = blankForm(); if(c){ S.f.client=c.id; S.f.dest=th.ticket; } show("inoltra"); };
   updateCount();
 }
@@ -650,42 +655,15 @@ function drawList(){
   box.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>choose(b.dataset.c));
   box.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{ const th=S.threads.find(t=>t.ticket===b.dataset.t); choose(th.client); S.f.dest=th.ticket; drawDest(); });
 }
-/* Come le mail di oggi verso support@: la 1ª apre il ticket, dalle successive ITSM lo riconosce da oggetto "Re: Tck #…" e da In-Reply-To/References */
-function msgId(ticket, sys){
-  let h = 0, out = ""; const A = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  for(let i=0;i<43;i++){ h = (h*31 + ticket.charCodeAt(i % ticket.length) + i*7) % 2147483647; out += A[h % 62]; }
-  return "<"+out+"@"+(sys==="Halo"?"halo":"itsm")+".efuture.it>";
-}
-function mailPreview(){
-  const f = S.f, c = f.client ? cl(f.client) : null, rows = [], hidden = [];
-  const old = c && f.dest !== "new";
-  if(old){
-    const o = c.open.find(x=>x.id===f.dest);
-    rows.push(["Oggetto", "Re: "+f.dest+" - "+(o?o.t:"")]);
-    hidden.push(["In-Reply-To", msgId(f.dest, c.sys)], ["References", msgId(f.dest, c.sys)]);
-  } else {
-    rows.push(["Oggetto", (f.kind==="mail"&&f.subj?f.subj:(f.kind==="mail"?"Mail del cliente":"Messaggio WhatsApp"))+(c?" - "+c.name:" - cliente da identificare")]);
-    hidden.push(["X-TicketFarm-Cliente", c ? c.name : "da identificare"]);
-  }
-  hidden.push(["X-TicketFarm-Ora-Messaggio", f.time]);
-  hidden.push(["X-TicketFarm-Origine", f.kind==="mail" ? "mail del cliente ("+f.mailFrom+")" : "WhatsApp del tecnico"]);
-  return `<details class="mailprev" open><summary>La mail che parte</summary>
-    <div class="mp"><div><b>Da</b> ${ME}</div><div><b>A</b> ${SUPPORT}</div>${rows.map(([k,v])=>`<div><b>${k}</b> ${esc(v)}</div>`).join("")}
-    <div class="hd">${hidden.map(([k,v])=>`<span class="mono">${k}: ${esc(v)}</span>`).join("")}</div>
-    <span class="hint">${old
-      ? "Come una risposta del cliente: il ticket viene riconosciuto dall'oggetto e da In-Reply-To, che punta all'ultima mail del ticket letta dal backend."
-      : "Prima mail, senza riferimenti: viene aperto un ticket nuovo. Il mittente è il tecnico, quindi il cliente va indicato in X-TicketFarm-Cliente."}</span></div></details>`;
-}
 function drawDest(){
   const f = S.f, box = $("#dest"); if(!box) return;
-  if(!f.client){ box.innerHTML = f.unknown ? mailPreview() : ""; return; }
+  if(!f.client){ box.innerHTML = ""; return; }
   const c = cl(f.client);
   const known = c.contacts.some(k => digits(k.tel) && digits(k.tel) === digits(f.number));
   const opts = c.open.map(o=>`<button class="opt" type="button" data-d="${o.id}" aria-pressed="${f.dest===o.id}"><span>Aggiungi a ${o.id}<small>${esc(o.t)}</small></span>${o.urg?'<span class="pill p-urg">Urgente</span>':""}</button>`).join("")
     + `<button class="opt" type="button" data-d="new" aria-pressed="${f.dest==="new"}"><span>Nuova richiesta<small>Ticket Farm apre il ticket in ${SRC[c.sys]}</small></span></button>`;
   box.innerHTML = `<div class="field"><span>Dove va</span><div class="seg">${opts}</div></div>
     ${digits(f.number).length>=7 && !known ? `<label class="chk" style="margin-top:10px"><input type="checkbox" id="f-rem" ${f.remember?"checked":""}> Salva ${esc(f.number)} sul cliente in ${SRC[c.sys]}</label>`:""}`;
-  box.insertAdjacentHTML("beforeend", mailPreview());
   box.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{ f.dest=b.dataset.d; drawDest(); });
   const r = $("#f-rem"); if(r) r.onchange = e => f.remember = e.target.checked;
 }
@@ -706,12 +684,12 @@ function send(){
     th = S.threads.find(t=>t.ticket===f.dest);
     if(!th){ th = {ticket:f.dest, client:c.id, unread:false, msgs:[]}; S.threads.unshift(th); }
     th.msgs.push(fwd); if(fwd.mailFrom) th.clientMail = fwd.mailFrom;
-    answer = {k:"tf", t:"", text:"Messaggio aggiunto a "+f.dest+" in "+SRC[c.sys]+" e segnalato all'ufficio."+(saveNum?" Numero salvato sul contatto.":"")};
+    answer = null;
   } else if(c){
     ++S.seq; const id = c.sys==="Halo" ? "HALO-"+S.seq : "Tck #7142"+String(S.seq).slice(-2);
     th = {ticket:id, client:c.id, clientMail:fwd.mailFrom||"", unread:false, msgs:[fwd]}; S.threads.unshift(th);
     c.open.unshift({id, t:body.slice(0,46)+(body.length>46?"…":"")});
-    answer = {k:"tf", t:"", text:"Ticket "+id+" aperto in "+SRC[c.sys]+" per "+c.name+"."+(saveNum?" Numero salvato sul contatto.":""),
+    answer = {k:"tf", t:"", text:"Nuovo ticket "+id+".",
       forClient:"Buongiorno, abbiamo registrato la sua richiesta con il numero "+id+". La ricontattiamo al più presto. Grazie."};
   } else {
     const id = "TF-"+(++S.seq);
@@ -719,13 +697,11 @@ function send(){
     answer = {k:"tf", t:"", text:"Ricevuto come "+id+". Non ho trovato il cliente: l'ufficio lo identifica e ti scrive qui."};
   }
   if(note) th.msgs.push({k:"me", t:nowStr(), text:note});
-  answer.text += " Ora della richiesta: "+f.time+".";
   S.f = blankForm();
   show("messaggi");
   openChat(S.threads.indexOf(th));
-  answer.t = nowStr();
-  reply(th, answer);
-  toast("Prova: la mail a "+SUPPORT+" non è partita davvero");
+  if(answer){ answer.t = nowStr(); reply(th, answer); }
+  toast("Inviato (prova)");
 }
 
 /* ---------- CLIENTI ---------- */
@@ -954,7 +930,7 @@ function sendLive(f, c, from, body, fwd, note, saveNum){
   const b = $("#f-send"); b.disabled = true; b.textContent = "Invio…";
   api("/api/app/send", {kind:f.kind||"wa", from:(f.msgs.find(m=>m.from)||{}).from||"", body, lines:fwd.lines, time:f.time, client:c?c.id:null, dest:f.dest, number:f.number, remember:!!saveNum,
       note, mailFrom:f.mailFrom||"", subj:f.subj||"", files:f.files})
-    .then(r=>{ S.f = blankForm(); applyData(r.data); show("messaggi"); reopen(r.ticket); toast("Mail inviata a "+SUPPORT); })
+    .then(r=>{ S.f = blankForm(); applyData(r.data); show("messaggi"); reopen(r.ticket); toast("Inviato"); })
     .catch(e=>{ b.disabled = false; b.textContent = "Invia a Ticket Farm"; toast("Invio non riuscito: "+e.message+". Il messaggio resta qui, riprova."); });
 }
 /* foto ridotte a 1600 px in JPEG, così la mail resta leggera */
@@ -1012,7 +988,7 @@ function logout(){ TOKEN = ""; try{ localStorage.removeItem("tf-token"); }catch(
 function profile(){
   const root = $("#sheet-root");
   root.innerHTML = `<div class="sheet-bg" id="sb"><div class="sheet" role="dialog" aria-label="Profilo"><div class="grab"></div>
-    <div class="client">${esc(ME)}</div><span class="sub">Le mail partono da questo indirizzo verso ${esc(SUPPORT)}.</span>
+    <div class="client">${esc(ME)}</div><span class="sub">I tuoi messaggi partono da questo indirizzo.</span>
     <label class="field"><span>Schermata iniziale</span><select class="input" id="p-home">${HOME_TABS.map(([k,l])=>`<option value="${k}" ${k===homeTab()?"selected":""}>${l}</option>`).join("")}</select></label>
     ${API ? `<button class="btn block" id="p-out" type="button">Esci</button>` : `<span class="sub">Modalità prova: non serve accedere.</span>`}
     <button class="btn block" id="p-x" type="button">Chiudi</button></div></div>`;

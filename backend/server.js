@@ -147,9 +147,10 @@ app.post("/api/app/send", auth.requireTech, async (req, res, next) => {
     if (cm) th.clientMail = cm;
     th.msgs.push({ k: "fwd", kind: b.kind, mailFrom: cm || undefined, from: b.from || "", t: b.time || now(), text: b.body, lines: b.lines || null, photos: (b.files || []).length });
     if (b.note) th.msgs.push({ k: "me", t: now(), text: b.note });
-    const where = sent.real ? "Mail spedita a " + settings.support() : "Modalità prova: mail preparata ma non spedita";
-    th.msgs.push({ k: "tf", t: now(), text: where + (existing ? ", collegata a " + ticket + "." : isNew && c ? ". " + (cfg.mode === "demo" ? "Ticket " + ticket + " aperto (simulato)." : "Il numero del ticket comparirà quando " + c.sys + " lo apre.") : ". L'ufficio identificherà il cliente."),
-      forClient: isNew && c && cfg.mode === "demo" ? "Buongiorno, abbiamo registrato la sua richiesta con il numero " + ticket + ". La ricontattiamo al più presto. Grazie." : undefined });
+    /* nessun messaggio di conferma: solo, per un ticket nuovo, il numero e il testo da girare al cliente */
+    if (isNew && c && cfg.mode === "demo") th.msgs.push({ k: "tf", t: now(), text: "Nuovo ticket " + ticket + ".",
+      forClient: "Buongiorno, abbiamo registrato la sua richiesta con il numero " + ticket + ". La ricontattiamo al più presto. Grazie." });
+    else if (!c) th.msgs.push({ k: "tf", t: now(), text: "Cliente da identificare: l'ufficio ti scrive qui appena lo trova." });
     store.save();
     res.json({ ticket, data: await appData(tech) });
   } catch (e) { next(e); }
@@ -171,7 +172,6 @@ app.post("/api/app/note", auth.requireTech, async (req, res, next) => {
     await logMail(msg, sent);
     if (cc) audit.add(tech.mail, "Risposta al cliente dall'app", th.ticket + " · copia a " + cc, "app");
     th.msgs.push({ k: "me", t: now(), text, cc: cc || undefined });
-    th.msgs.push({ k: "tf", t: now(), text: (sent.real ? "Mail spedita a " + settings.support() : "Modalità prova: mail preparata ma non spedita") + (cc ? (sent.real ? " e in copia a " : " (in copia a ") + cc + (sent.real ? "." : ").") : ".") });
     store.save();
     res.json({ data: await appData(tech) });
   } catch (e) { next(e); }
