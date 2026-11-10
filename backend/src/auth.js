@@ -77,20 +77,77 @@ function checkPassword(acc, password) {
   const a = Buffer.from(hashCode(acc.user, password || ""), "hex"), b = Buffer.from(acc.hash, "hex");
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
-function adminLogin(user, password) {
-  const acc = findUser(user);
-  if (!acc || acc.attivo === false || !checkPassword(acc, password)) return null;
+function sessionFor(acc) {
   const list = users(), me = list.find(x => x.user === acc.user); me.ultimo = new Date().toISOString(); saveUsers(list);
   return sign({ role: "admin", user: acc.user, exp: Date.now() + 1000 * 60 * 60 * 12 });
 }
-function verifyAdmin(token) {
+/* password giusta: se l'utente ha la verifica in due passaggi riceve un «biglietto» di 5 minuti per il codice */
+function adminLogin(user, password) {
+  const acc = findUser(user);
+  if (!acc || acc.attivo === false || !checkPassword(acc, password)) return null;
+  if (acc.totp) return { need2fa: true, ticket: sign({ role: "2fa", user: acc.user, exp: Date.now() + 5 * 60000 }) };
+  return { token: sessionFor(acc) };
+}
+function readSigned(token) {
   const [body, sig] = String(token || "").split(".");
   if (!body || !sig) return null;
   const good = crypto.createHmac("sha256", cfg.secret).update(body).digest("base64url");
   if (sig.length !== good.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(good))) return null;
-  const obj = JSON.parse(Buffer.from(body, "base64url").toString());
+  const o = JSON.parse(Buffer.from(body, "base64url").toString());
+  return o.exp < Date.now() ? null : o;
+}
+const totp = require("./totp");
+const hashRec = c => crypto.createHash("sha256").update(cfg.secret + "|" + String(c).replace(/[^a-z0-9]/gi, "").toLowerCase()).digest("hex");
+/* secondo passaggio: codice dell'app di autenticazione oppure un codice di recupero (usa e getta) */
+function adminLogin2fa(ticket, input) {
+  const o = readSigned(ticket); if (!o || o.role !== "2fa") return { error: "tempo scaduto: accedi di nuovo" };
+  const list = users(), acc = list.find(x => x.user === o.user);
+  if (!acc || acc.attivo === false || !acc.totp) return { error: "accedi di nuovo" };
+  if (totp.verify(acc.totp, input)) return { token: sessionFor(acc), acc };
+  const h = hashRec(input), i = (acc.recovery || []).indexOf(h);
+  if (i >= 0) { acc.recovery.splice(i, 1); saveUsers(list); return { token: sessionFor(acc), acc, usedRecovery: true, left: acc.recovery.length }; }
+  return { error: "codice non corretto" };
+}
+function setup2fa(who) {
+  const list = users(), acc = list.find(x => x.user === who.user);
+  acc.totpPending = totp.newSecret(); saveUsers(list);
+  return { secret: acc.totpPending, uri: totp.uri(acc.totpPending, acc.user) };
+}
+function enable2fa(who, input) {
+  const list = users(), acc = list.find(x => x.user === who.user);
+  if (!acc.totpPending || !totp.verify(acc.totpPending, input)) return { error: "codice non corretto: controlla l'ora del telefono e riprova" };
+  acc.totp = acc.totpPending; delete acc.totpPending;
+  const codes = Array.from({ length: 8 }, () => crypto.randomBytes(5).toString("hex").replace(/(.{5})/, "$1-"));
+  acc.recovery = codes.map(hashRec); saveUsers(list);
+  return { ok: true, recovery: codes };
+}
+function disable2fa(who, password, input) {
+  const list = users(), acc = list.find(x => x.user === who.user);
+  if (!checkPassword(acc, password)) return { error: "password non corretta" };
+  if (!acc.totp || !totp.verify(acc.totp, input)) return { error: "codice non corretto" };
+  delete acc.totp; delete acc.recovery; saveUsers(list); return { ok: true };
+}
+/* recupero password: link valido 30 minuti, usa e getta; la risposta non dice mai se l'utente esiste */
+function forgot(userOrMail) {
+  const k = String(userOrMail || "").trim().toLowerCase(); if (!k) return null;
+  const list = users(), acc = list.find(x => x.attivo !== false && (x.user === k || (x.mail || "").toLowerCase() === k));
+  if (!acc || !acc.mail) return null;
+  const token = crypto.randomBytes(24).toString("base64url");
+  acc.resetHash = crypto.createHash("sha256").update(token).digest("hex"); acc.resetExp = Date.now() + 30 * 60000; saveUsers(list);
+  return { acc, token };
+}
+function resetPassword(token, password) {
+  if (String(password || "").length < 8) return { error: "la password deve avere almeno 8 caratteri" };
+  const h = crypto.createHash("sha256").update(String(token || "")).digest("hex");
+  const list = users(), acc = list.find(x => x.resetHash && x.resetHash === h);
+  if (!acc || acc.resetExp < Date.now()) return { error: "link scaduto o già usato: chiedine uno nuovo" };
+  acc.hash = hashCode(acc.user, password); delete acc.resetHash; delete acc.resetExp; saveUsers(list);
+  return { ok: true, user: acc.user };
+}
+function verifyAdmin(token) {
+  const obj = readSigned(token); if (!obj) return null;
   const acc = findUser(obj.user);
-  if (obj.role !== "admin" || obj.exp < Date.now() || !acc || acc.attivo === false) return null;
+  if (obj.role !== "admin" || !acc || acc.attivo === false) return null;
   return acc;
 }
 /* il proprio profilo: nome, mail e (se data) la password; la password attuale è sempre richiesta */
@@ -109,7 +166,14 @@ function updateAdmin({ nome, mail, attuale, nuova, home, vista }, who) {
   saveUsers(list);
   return { ok: true, me: publicAdmin(acc) };
 }
-const publicAdmin = a => a ? { user: a.user, nome: a.nome || "", mail: a.mail || "", profilo: a.profilo || "admin", attivo: a.attivo !== false, ultimo: a.ultimo || "", home: a.home || "cruscotto", vista: a.vista || "op" } : null;
+const publicAdmin = a => a ? { user: a.user, nome: a.nome || "", mail: a.mail || "", profilo: a.profilo || "admin", attivo: a.attivo !== false, ultimo: a.ultimo || "", home: a.home || "cruscotto", vista: a.vista || "op",
+  twofa: !!a.totp, recoveryLeft: (a.recovery || []).length, passkeys: (a.passkeys || []).map(p => ({ id: p.id, nome: p.nome, creato: p.creato, usato: p.usato || "" })) } : null;
+/* passkey: credenziali salvate sull'utente */
+function addPasskey(who, cred) { const list = users(), acc = list.find(x => x.user === who.user); acc.passkeys = acc.passkeys || []; acc.passkeys.push(cred); delete acc.pkChallenge; saveUsers(list); }
+function setPkChallenge(who, ch) { const list = users(), acc = list.find(x => x.user === who.user); acc.pkChallenge = ch; saveUsers(list); }
+function findByPasskey(id) { return users().find(u => (u.passkeys || []).some(p => p.id === id)); }
+function touchPasskey(user, id, counter) { const list = users(), acc = list.find(x => x.user === user), p = acc.passkeys.find(x => x.id === id); p.counter = counter; p.usato = new Date().toISOString(); saveUsers(list); }
+function removePasskey(who, id) { const list = users(), acc = list.find(x => x.user === who.user); const n = (acc.passkeys || []).length; acc.passkeys = (acc.passkeys || []).filter(p => p.id !== id); saveUsers(list); return n !== acc.passkeys.length; }
 /* gestione utenti dalla console */
 function addUser({ user, nome, mail, profilo, password }) {
   user = String(user || "").trim().toLowerCase();
@@ -181,4 +245,4 @@ function demoHint() {
   const t = findTech(DEMO_TECHS[0].mail);
   return t && t.hash === hashCode(DEMO_TECHS[0].mail, DEMO_TECHS[0].codice) ? { mail: DEMO_TECHS[0].mail, code: DEMO_TECHS[0].codice } : null;
 }
-module.exports = { users, saveUsers, findUser, addUser, editUser, removeUser, PROFILI, USERS_FILE, addTech, editTech, removeTech, adminLogin, adminDemoHint, adminAccount, updateAdmin, publicAdmin, demoHint, hashCode, techs, findTech, login, verify, requireTech, requireAdmin, TECH_FILE };
+module.exports = { sessionFor, readSigned, adminLogin2fa, setup2fa, enable2fa, disable2fa, forgot, resetPassword, addPasskey, setPkChallenge, findByPasskey, touchPasskey, removePasskey, users, saveUsers, findUser, addUser, editUser, removeUser, PROFILI, USERS_FILE, addTech, editTech, removeTech, adminLogin, adminDemoHint, adminAccount, updateAdmin, publicAdmin, demoHint, hashCode, techs, findTech, login, verify, requireTech, requireAdmin, TECH_FILE };

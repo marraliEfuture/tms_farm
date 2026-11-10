@@ -17,6 +17,8 @@ const ai = require("./src/ai");
 const graph = require("./src/connectors/graph");
 
 const app = express();
+app.set("trust proxy", true);   /* dietro nginx/Apache: indirizzo e https corretti per le passkey e i link */
+const webauthn = require("@simplewebauthn/server");
 app.use(express.json({ limit: "20mb" }));
 
 /* l'app può essere pubblicata su un altro indirizzo (es. GitHub Pages): CORS solo da lì */
@@ -64,6 +66,21 @@ async function logMail(msg, sent) {
 }
 
 /* ---------------- API app ---------------- */
+/* codice dimenticato: nuovo codice mandato alla mail aziendale del tecnico (in prova torna anche nella risposta) */
+app.post("/api/app/forgot", async (req, res, next) => {
+  try {
+    const mailAddr = String(req.body.mail || "").trim().toLowerCase(), t = auth.findTech(mailAddr);
+    const out = { ok: true, message: "Se la mail è di un tecnico registrato, gli abbiamo mandato un nuovo codice." };
+    if (t) {
+      const r = auth.editTech(t.mail, { newCode: true });
+      await mail.send({ from: { name: "Ticket Farm", address: settings.support() }, to: t.mail, subject: "Ticket Farm: il tuo nuovo codice",
+        text: "Ciao " + (t.nome || "") + ",\n\nil tuo nuovo codice per l'app Ticket Farm è: " + r.code + "\n\nIl codice precedente non funziona più. Se non l'hai chiesto tu, avvisa l'ufficio." });
+      audit.add(t.mail, "Nuovo codice richiesto dall'app", "mandato a " + t.mail, "app");
+      if (cfg.mode === "demo") out.demoCode = r.code;
+    }
+    res.json(out);
+  } catch (e) { next(e); }
+});
 app.get("/api/app/logo", async (req, res) => {
   const got = await logos.get(req.query.d);
   if (!got) return res.set("Cache-Control", "public, max-age=86400").sendStatus(404);
@@ -146,17 +163,95 @@ app.post("/api/app/note", auth.requireTech, async (req, res, next) => {
 /* accesso alla console: la pagina /admin è pubblica e mostra il login, i dati (/api/admin/*) richiedono l'accesso */
 app.get("/api/admin/info", (req, res) => res.json({ mode: cfg.mode, demo: auth.adminDemoHint(), configured: !!auth.adminAccount() }));
 app.post("/api/admin/login", (req, res) => {
-  const token = auth.adminLogin(req.body.user, req.body.password);
-  if (!token) { audit.add(String(req.body.user || "").slice(0, 60), "Accesso non riuscito", "", "accesso"); return res.status(401).json({ error: auth.adminAccount() ? "utente o password non corretti" : "imposta ADMIN_PASSWORD in .env" }); }
+  const r = auth.adminLogin(req.body.user, req.body.password);
+  if (!r) { audit.add(String(req.body.user || "").slice(0, 60), "Accesso non riuscito", "", "accesso"); return res.status(401).json({ error: auth.adminAccount() ? "utente o password non corretti" : "imposta ADMIN_PASSWORD in .env" }); }
+  if (r.need2fa) return res.json({ need2fa: true, ticket: r.ticket });
   const me = auth.publicAdmin(auth.findUser(req.body.user));
-  audit.add(me.user, "Accesso alla console", "", "accesso");
-  res.json({ token, me });
+  audit.add(me.user, "Accesso alla console", "password", "accesso");
+  res.json({ token: r.token, me });
+});
+app.post("/api/admin/login/2fa", (req, res) => {
+  const r = auth.adminLogin2fa(req.body.ticket, req.body.code);
+  if (r.error) { const o = auth.readSigned(req.body.ticket); audit.add(o ? o.user : "—", "Codice di verifica errato", "", "accesso"); return res.status(401).json({ error: r.error }); }
+  audit.add(r.acc.user, "Accesso alla console", r.usedRecovery ? "con un codice di recupero (ne restano " + r.left + ")" : "password + codice", "accesso");
+  res.json({ token: r.token, me: auth.publicAdmin(r.acc), usedRecovery: !!r.usedRecovery, left: r.left });
+});
+/* password dimenticata: mail con un link valido 30 minuti (in prova la mail resta in outbox e il link torna nella risposta) */
+const baseUrl = req => req.protocol + "://" + req.get("host");
+app.post("/api/admin/forgot", async (req, res, next) => {
+  try {
+    const f = auth.forgot(req.body.user);
+    const out = { ok: true, message: "Se l'utente esiste ed ha una mail, gli abbiamo mandato il link per scegliere una nuova password." };
+    if (f) {
+      const link = baseUrl(req) + "/admin/#reset=" + f.token;
+      await mail.send({ from: { name: "Ticket Farm", address: settings.support() }, to: f.acc.mail, subject: "Ticket Farm: nuova password",
+        text: "Ciao " + (f.acc.nome || f.acc.user) + ",\n\nper scegliere una nuova password della console apri questo link entro 30 minuti:\n" + link + "\n\nSe non l'hai chiesto tu, ignora questa mail: la password attuale resta valida." });
+      audit.add(f.acc.user, "Richiesta nuova password", "link mandato a " + f.acc.mail, "accesso");
+      if (cfg.mode === "demo") out.demoLink = link;
+    }
+    res.json(out);
+  } catch (e) { next(e); }
+});
+app.post("/api/admin/reset", (req, res) => {
+  const r = auth.resetPassword(req.body.token, req.body.password);
+  if (r.error) return res.status(400).json(r);
+  audit.add(r.user, "Password reimpostata", "dal link via mail", "accesso"); res.json({ ok: true });
+});
+/* passkey: accesso senza password (impronta, volto, PIN del dispositivo) */
+const rp = req => ({ rpID: req.hostname, origin: baseUrl(req) });
+const pkLogins = new Map();     /* sfide di accesso in corso, 5 minuti */
+app.post("/api/admin/passkey/login/options", async (req, res, next) => {
+  try {
+    const opts = await webauthn.generateAuthenticationOptions({ rpID: rp(req).rpID, userVerification: "preferred" });
+    pkLogins.set(opts.challenge, Date.now() + 5 * 60000); res.json(opts);
+  } catch (e) { next(e); }
+});
+app.post("/api/admin/passkey/login/verify", async (req, res) => {
+  try {
+    const resp = req.body.response || {}, acc = auth.findByPasskey(resp.id);
+    const ch = JSON.parse(Buffer.from((resp.response && resp.response.clientDataJSON) || "", "base64url").toString() || "{}").challenge;
+    if (!acc || acc.attivo === false || !pkLogins.has(ch) || pkLogins.get(ch) < Date.now()) return res.status(401).json({ error: "passkey non riconosciuta" });
+    pkLogins.delete(ch);
+    const pk = acc.passkeys.find(p => p.id === resp.id);
+    const v = await webauthn.verifyAuthenticationResponse({ response: resp, expectedChallenge: ch, expectedOrigin: rp(req).origin, expectedRPID: rp(req).rpID,
+      credential: { id: pk.id, publicKey: Buffer.from(pk.publicKey, "base64url"), counter: pk.counter, transports: pk.transports } });
+    if (!v.verified) return res.status(401).json({ error: "passkey non valida" });
+    auth.touchPasskey(acc.user, pk.id, v.authenticationInfo.newCounter);
+    audit.add(acc.user, "Accesso alla console", "passkey «" + pk.nome + "»", "accesso");
+    res.json({ token: auth.sessionFor(acc), me: auth.publicAdmin(auth.findUser(acc.user)) });
+  } catch (e) { res.status(401).json({ error: "passkey non valida: " + e.message }); }
 });
 app.use("/api/admin", auth.requireAdmin);
 /* permessi del profilo: v vedere, m creare/modificare, e eliminare */
 const need = (area, right) => (req, res, next) => settings.can(req.admin.profilo || "admin", area, right) ? next() : res.status(403).json({ error: "il tuo profilo non ha questo permesso" });
 const log = (req, azione, dettaglio, area) => audit.add(req.admin && req.admin.user, azione, dettaglio, area);
 app.get("/api/admin/me", (req, res) => res.json({ me: auth.publicAdmin(req.admin) }));
+/* verifica in due passaggi del proprio account */
+app.post("/api/admin/2fa/setup", (req, res) => res.json(auth.setup2fa(req.admin)));
+app.post("/api/admin/2fa/enable", (req, res) => { const r = auth.enable2fa(req.admin, req.body.code); if (r.error) return res.status(400).json(r); log(req, "Verifica in due passaggi attivata", "", "accesso"); res.json({ ...r, me: auth.publicAdmin(auth.findUser(req.admin.user)) }); });
+app.post("/api/admin/2fa/disable", (req, res) => { const r = auth.disable2fa(req.admin, req.body.password, req.body.code); if (r.error) return res.status(400).json(r); log(req, "Verifica in due passaggi disattivata", "", "accesso"); res.json({ ok: true, me: auth.publicAdmin(auth.findUser(req.admin.user)) }); });
+/* passkey del proprio account */
+app.post("/api/admin/passkey/register/options", async (req, res, next) => {
+  try {
+    const acc = req.admin;
+    const opts = await webauthn.generateRegistrationOptions({ rpName: "Ticket Farm", rpID: rp(req).rpID, userName: acc.user, userDisplayName: acc.nome || acc.user,
+      attestationType: "none", excludeCredentials: (acc.passkeys || []).map(p => ({ id: p.id, transports: p.transports })),
+      authenticatorSelection: { residentKey: "required", userVerification: "preferred" } });
+    auth.setPkChallenge(acc, opts.challenge); res.json(opts);
+  } catch (e) { next(e); }
+});
+app.post("/api/admin/passkey/register/verify", async (req, res) => {
+  try {
+    const acc = auth.findUser(req.admin.user);
+    const v = await webauthn.verifyRegistrationResponse({ response: req.body.response, expectedChallenge: acc.pkChallenge, expectedOrigin: rp(req).origin, expectedRPID: rp(req).rpID });
+    if (!v.verified) return res.status(400).json({ error: "passkey non verificata" });
+    const c = v.registrationInfo.credential;
+    const nome = String(req.body.nome || "").slice(0, 40) || "Passkey " + new Date().toLocaleDateString("it-CH");
+    auth.addPasskey(acc, { id: c.id, publicKey: Buffer.from(c.publicKey).toString("base64url"), counter: c.counter, transports: c.transports || [], nome, creato: new Date().toISOString() });
+    log(req, "Passkey aggiunta", nome, "accesso"); res.json({ ok: true, me: auth.publicAdmin(auth.findUser(acc.user)) });
+  } catch (e) { res.status(400).json({ error: "passkey non salvata: " + e.message }); }
+});
+app.delete("/api/admin/passkey/:id", (req, res) => { if (!auth.removePasskey(req.admin, req.params.id)) return res.status(404).json({ error: "passkey non trovata" }); log(req, "Passkey rimossa", "", "accesso"); res.json({ ok: true, me: auth.publicAdmin(auth.findUser(req.admin.user)) }); });
 app.post("/api/admin/profile", (req, res) => {
   const r = auth.updateAdmin(req.body || {}, req.admin);
   if (r.error) return res.status(400).json({ error: r.error });

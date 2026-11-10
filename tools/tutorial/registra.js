@@ -201,7 +201,7 @@ const VIDEOS = {
     await h.click("#s-messaggi .item", 1200);
     await h.point(".copybox"); await h.cap("Ticket Farm propone il testo da mandare al cliente", 2600); await h.snap(2);
     await h.point(".copybox .wa"); await h.cap("«Apri chat cliente» apre WhatsApp con il testo già scritto", 3000); await h.snap(3);
-    await h.click(".copybox [data-copy]", 900); await h.cap("Oppure «Copia su WhatsApp» e incollalo nella chat", 2200);
+    await h.click(".copybox [data-copy]", 900); await h.cap("Oppure «Copia negli appunti» e incollalo nella chat", 2200);
     await h.hide(); await h.type("#c-text", "Confermato con la cliente: passo domani alle 9");
     await h.click("#c-send", 1500); await h.cap("Per l'ufficio: scrivi qui e tocca Invia, parte una mail collegata al ticket", 3200); await h.snap(5);
     await h.hide(); await h.click("#c-back", 800); await h.click('[data-tab="clienti"]', 900);

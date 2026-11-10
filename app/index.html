@@ -212,7 +212,8 @@ body{padding:0!important}
 .wa{display:inline-flex;align-items:center;gap:6px;color:#fff;background:#1fa855;border-radius:999px;padding:6px;text-decoration:none;font-size:12.5px;font-weight:600;flex:0 0 auto;line-height:1}
 .wa span{padding-right:4px}
 .wa:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.copybox .wa{align-self:flex-start;padding:8px 12px}
+.cb-act{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cb-act > *{width:100%;justify-content:center;padding:9px 10px;font-size:13px;border-radius:999px}
 .item{cursor:pointer}
 .login-brand{align-self:flex-start;margin-bottom:8px}
 .mapbox{height:320px;flex:0 0 320px;border-radius:16px;overflow:hidden;border:1px solid var(--line);background:var(--surface-2);position:relative;z-index:0}
@@ -235,6 +236,16 @@ a.btn{text-decoration:none}
 .mk.urg{background:#d64a35}.mk.me{width:34px;height:34px;background:#0b1622;font-size:11px}.mk.off{width:16px;height:16px;background:#8a99aa;border-width:2px}
 .rcard{background:linear-gradient(180deg,rgba(124,92,255,.08),transparent 70%),var(--surface);border:1px solid var(--line);border-left:4px solid #7c5cff;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:6px}
 .rcard b{color:var(--ink)}.r-ic{color:#7c5cff;font-size:16px}
+.r-head{display:flex;align-items:center;gap:8px;background:none;border:0;padding:0;cursor:pointer;color:inherit;font:inherit;text-align:left;width:100%}
+.r-chev{margin-left:auto;font-size:12.5px;font-weight:600;color:var(--accent)}
+.rcard.closed .r-body{display:none}
+.r-body{display:flex;flex-direction:column;gap:6px}
+.acts2{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.act2{background:var(--surface);border:1px solid var(--line);border-left:4px solid #1aa0e8;border-radius:14px;padding:12px}
+.act2.urg{border-left-color:var(--red)}.act2.wait{border-left-color:var(--amber)}
+.act2 .when{display:inline-block;align-self:flex-start;font-size:12px;font-weight:700;color:#1570d6;background:var(--accent-soft);border-radius:999px;padding:3px 10px;margin-bottom:2px}
+.act2.urg .when{color:var(--red);background:var(--red-soft)}.act2.wait .when{color:var(--amber);background:var(--amber-soft)}
+.act2-x{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 .r-text{margin:0;color:var(--ink);font-size:15px;line-height:1.55}
 .r-nums{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .r-nums div{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px;display:flex;flex-direction:column;align-items:center;gap:2px}
@@ -444,7 +455,7 @@ function renderMessaggi(){
 function msgHTML(m, i){
   if(m.k==="fwd") return `<div class="msg fwd"><small>${m.kind==="mail"?"Mail del cliente":"Dal WhatsApp del cliente"}${m.from?" · "+esc(m.from):""} · ${esc(m.t)}</small>${m.lines?m.lines.map(l=>`<q><span class="mono">${esc(l.time)}</span> ${esc(l.text)}</q>`).join(""):`<q>${esc(m.text)}</q>`}${m.photos?`<small style="margin-top:6px">${m.photos} foto allegate</small>`:""}</div>`;
   if(m.k==="me") return `<div class="msg out"><small>Tua mail a ${SUPPORT} · ${esc(m.t)}</small>${esc(m.text)}</div>`;
-  return `<div class="msg in"><small>${API ? "Ticket Farm" : "Letto da "+(SRC[curSys]||"Ticket Farm")} · ${esc(m.t)}</small>${esc(m.text)}${m.forClient?`<div class="copybox"><span class="lbl">Da mandare al cliente</span><p id="cb-${i}">${esc(m.forClient)}</p><button class="btn small primary" data-copy="${i}" type="button">Copia su WhatsApp</button>${waBtn(curTel, m.forClient, "Apri chat cliente")}</div>`:""}</div>`;
+  return `<div class="msg in"><small>${API ? "Ticket Farm" : "Letto da "+(SRC[curSys]||"Ticket Farm")} · ${esc(m.t)}</small>${esc(m.text)}${m.forClient?`<div class="copybox"><span class="lbl">Da mandare al cliente</span><p id="cb-${i}">${esc(m.forClient)}</p><div class="cb-act"><button class="btn small primary" data-copy="${i}" type="button">Copia negli appunti</button>${waBtn(curTel, m.forClient, "Apri chat cliente")}</div></div>`:""}</div>`;
 }
 function openChat(i){
   S.openThread = i; const th = S.threads[i]; if(th.unread && API) api("/api/app/read", {ticket:th.ticket}).catch(()=>{}); th.unread = false;
@@ -477,7 +488,7 @@ function drawMsgs(){
   box.querySelectorAll("[data-copy]").forEach(b=>b.onclick=()=>{
     const i = +b.dataset.copy, text = th.msgs[i].forClient;
     const fallback = ()=>{ const p=document.getElementById("cb-"+i); const r=document.createRange(); r.selectNodeContents(p); const s=getSelection(); s.removeAllRanges(); s.addRange(r); toast("Testo selezionato: tieni premuto e scegli Copia"); };
-    try{ navigator.clipboard.writeText(text).then(()=>toast("Copiato. Incollalo nella chat WhatsApp del cliente."), fallback); }catch(e){ fallback(); }
+    try{ navigator.clipboard.writeText(text).then(()=>toast("Copiato negli appunti: incollalo nella chat del cliente."), fallback); }catch(e){ fallback(); }
   });
 }
 function reply(th, m, delay){
@@ -854,24 +865,32 @@ function simulateAgenda(w){
   const why = t => w.urgent.includes(t) ? "Urgente e senza data: va pianificato per primo." : w.today.includes(t) ? "È in agenda oggi alle "+t.plan.time+"." : w.later.includes(t) ? "Già pianificato: basta prepararsi." : w.waiting.includes(t) ? "Dipende dal ricambio: solo un controllo veloce." : "Da pianificare quando hai tempo.";
   return {source:"simulazione", model:"claude-opus-5-5", text:f.join(" ") || "Oggi non hai attività aperte.", order:[...w.urgent, ...w.today, ...w.waiting, ...w.later, ...w.todo].map(t=>({ticket:t.id, perche:why(t)}))};
 }
+const remClosed = () => { try{ return localStorage.getItem("tf-rem-closed")==="1"; }catch(e){ return false; } };
 function renderRiepilogo(){
   const el = $("#s-riepilogo"), w = myWork();
   const when = t => w.urgent.includes(t) ? "Da pianificare" : t.plan ? (t.plan.day===0 ? "Oggi " : t.plan.day===1 ? "Domani " : dayName(t.plan.day)+" ")+t.plan.time : w.waiting.includes(t) ? "In attesa" : "Da fare";
   const list = [...w.urgent, ...w.today, ...w.later, ...w.waiting, ...w.todo];
   el.innerHTML = `<div><h2 class="sec">Riepilogo</h2><p class="sub">${esc(dayName(0).replace(/^./,x=>x.toUpperCase()))}</p></div>
-    <section class="rcard" id="r-rem"><div class="row" style="justify-content:flex-start;gap:8px"><span class="r-ic" aria-hidden="true">✦</span><b>Promemoria di oggi</b></div>
-      <p id="r-text" class="r-text">Sto preparando il promemoria…</p><span class="hint" id="r-foot"></span></section>
+    <section class="rcard${remClosed()?" closed":""}" id="r-rem"><button class="r-head" type="button" id="r-tog" aria-expanded="${!remClosed()}"><span class="r-ic" aria-hidden="true">✦</span><b>Promemoria di oggi</b><span class="r-chev">${remClosed()?"Mostra":"Riduci"}</span></button>
+      <div class="r-body"><p id="r-text" class="r-text">Sto preparando il promemoria…</p><span class="hint" id="r-foot"></span></div></section>
     <div class="r-nums">
       <div class="${w.urgent.length?"hot":""}"><b>${w.urgent.length}</b><span>urgenze</span></div>
       <div><b>${w.today.length}</b><span>oggi</span></div>
       <div><b>${w.later.length}</b><span>prossimi giorni</span></div>
     </div>
     <h3 class="r-h">Prossime attività</h3>
-    <ol class="stops" id="r-acts">${list.map(t=>`<li class="stop${t.urg?" urg":""}" data-tid="${esc(t.id)}"><span class="sn" style="font-size:10px;width:auto;height:auto;padding:6px 8px;border-radius:10px;text-align:center">${esc(when(t))}</span>
-      <div class="sbody"><div class="row" style="justify-content:flex-start;gap:8px">${logo(t.c)}<b>${esc(t.c.name)}</b>${t.urg?'<span class="pill p-urg">Urgente</span>':""}</div>
+    <ol class="acts2" id="r-acts">${list.map(t=>`<li class="act2 ${w.urgent.includes(t)?"urg":w.waiting.includes(t)?"wait":""}" data-tid="${esc(t.id)}">
+      <div class="sbody"><span class="when">${esc(when(t))}</span><div class="row" style="justify-content:flex-start;gap:8px">${logo(t.c)}<b>${esc(t.c.name)}</b>${t.urg?'<span class="pill p-urg">Urgente</span>':""}</div>
         <span class="sub">${esc(t.id)} · ${esc(t.t)}</span><span class="why" hidden></span>
-        <div class="row" style="justify-content:flex-start;gap:8px;margin-top:6px">${t.c.lat?`<a class="btn small primary" href="https://www.google.com/maps/dir/?api=1&destination=${t.c.lat},${t.c.lng}" target="_blank" rel="noopener">Naviga</a>`:""}${waBtn(firstTel(t.c), "", "WhatsApp")}<button class="btn small" type="button" data-sheet="${t.c.id}">Scheda</button></div></div></li>`).join("") || `<div class="empty">Nessuna attività aperta: ottimo lavoro.</div>`}</ol>`;
+        <div class="act2-x"><button class="btn small primary" type="button" data-open="${esc(t.id)}" data-c="${t.c.id}">Apri</button>${t.c.lat?`<a class="btn small" href="https://www.google.com/maps/dir/?api=1&destination=${t.c.lat},${t.c.lng}" target="_blank" rel="noopener">Naviga</a>`:""}${waBtn(firstTel(t.c), "", "WhatsApp")}<button class="btn small" type="button" data-sheet="${t.c.id}">Scheda</button></div></div></li>`).join("") || `<div class="empty">Nessuna attività aperta: ottimo lavoro.</div>`}</ol>`;
   el.querySelectorAll("[data-sheet]").forEach(b=>b.onclick=()=>clientSheet(b.dataset.sheet));
+  /* «Apri»: la conversazione del ticket (se non c'è ancora, ne apre una nuova) */
+  el.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{
+    let i = S.threads.findIndex(th=>th.ticket===b.dataset.open);
+    if(i<0){ S.threads.unshift({ticket:b.dataset.open, client:b.dataset.c, unread:false, msgs:[]}); i = 0; }
+    openChat(i);
+  });
+  $("#r-tog").onclick = ()=>{ const c = !remClosed(); try{ localStorage.setItem("tf-rem-closed", c?"1":""); }catch(e){} $("#r-rem").classList.toggle("closed", c); $("#r-tog").setAttribute("aria-expanded", String(!c)); $("#r-tog .r-chev").textContent = c?"Mostra":"Riduci"; };
   const show = (r, model) => {
     if(!$("#r-text")) return;
     $("#r-text").textContent = r.text || "Oggi non hai attività aperte.";

@@ -258,8 +258,8 @@ td.act{white-space:nowrap;text-align:right}
 .acts{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:10px}
 .act-i{display:grid;grid-template-columns:110px minmax(0,1fr);gap:14px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:12px;padding:12px 14px}
 .act-i.urg{border-left-color:var(--red)}.act-i.wait{border-left-color:var(--gold)}
-.act-t{font-weight:700;color:var(--ink);font-size:13.5px;padding-top:4px}
-.act-i.urg .act-t{color:var(--red)}.act-i.wait .act-t{color:var(--gold)}
+.act-t{font-weight:700;color:#1570d6;background:var(--accent-soft);font-size:13px;padding:4px 10px;border-radius:999px;align-self:start;justify-self:start;white-space:nowrap}
+.act-i.urg .act-t{color:var(--red);background:var(--red-soft)}.act-i.wait .act-t{color:var(--gold);background:var(--gold-soft)}
 .act-b{display:flex;flex-direction:column;gap:4px;min-width:0}
 .act-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.act-h .lav{width:28px;height:28px;font-size:11px}.act-h b{color:var(--ink)}
 .act-x{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
@@ -274,7 +274,10 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
 @media (max-width:640px){.glance{grid-template-columns:repeat(2,minmax(0,1fr))}.act-i{grid-template-columns:minmax(0,1fr)}.acts{grid-template-columns:minmax(0,1fr)}}
 .remind.ai{border-left-color:#7c5cff;background:linear-gradient(180deg,rgba(124,92,255,.07),transparent 60%),var(--surface)}
 .remind.ai .rem-h{color:#7c5cff}.remind.ai .rem-i{background:rgba(124,92,255,.14);color:#7c5cff}
-.rem-h .linkback{margin-left:auto}
+.rem-h .linkback{margin-left:auto}.rem-h .linkback + .linkback{margin-left:12px}
+.remind.closed .rem-b{display:none}
+.rem-b{display:flex;flex-direction:column;gap:8px}
+.row-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .why{font-size:13px;color:#6d4fe6;font-weight:600}
 .models{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .model{display:flex;flex-direction:column;gap:3px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;background:var(--surface-2)}
@@ -284,6 +287,14 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .check.big{font-size:15px;font-weight:600;color:var(--ink);gap:12px}
 .o365state.warn{border-left-color:var(--gold)}
 @media (max-width:760px){.models{grid-template-columns:minmax(0,1fr)}}
+#editor{z-index:55}
+.secrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:6px 0}
+.secrow div{display:flex;flex-direction:column;gap:2px}.secrow b{color:var(--ink);font-weight:600}.secrow .dim{font-size:12.5px}
+.secrow.sub2{padding-left:12px;border-left:2px solid var(--line)}
+.qrbox{background:#fff;border-radius:12px;padding:10px;width:220px;max-width:100%;align-self:center}
+.qrbox svg{width:100%;height:auto;display:block}
+.reccodes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.reccodes span{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:8px;text-align:center;font-size:15px;color:var(--ink)}
 .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,10px);background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:12px;font-size:13.5px;font-weight:500;opacity:0;transition:.25s;pointer-events:none;z-index:50;max-width:calc(100% - 32px)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 .note{font-size:12.5px;color:var(--muted)}
@@ -340,11 +351,19 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
     <label class="field"><span>Utente</span><input class="input" id="lg-user" autocomplete="username" required></label>
     <label class="field"><span>Password</span><input class="input" id="lg-pass" type="password" autocomplete="current-password" required></label>
     <button class="btn primary" type="submit" id="lg-go">Accedi</button>
+    <button class="btn" type="button" id="lg-pk" hidden>🔑 Accedi con passkey</button>
+    <button class="linkback" type="button" id="lg-forgot" style="align-self:center">Password dimenticata?</button>
   </form>
 </section>
 
 <section class="modal shotview" id="shotview" hidden><figure><img alt=""><figcaption></figcaption><button class="btn" type="button" id="shot-x">Chiudi</button></figure></section>
 <section class="modal" id="editor" hidden><form class="panel modal-box wide-box" id="ed-form"></form></section>
+
+<section class="login" id="login2" hidden>
+  <form class="login-box" id="l2-form">
+    <div id="l2-body"></div>
+  </form>
+</section>
 
 <section class="modal" id="profile" hidden>
   <form class="panel modal-box" id="pf-form">
@@ -360,12 +379,15 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
       <label class="field"><span>Schermata iniziale</span><select class="input" id="pf-home"></select></label>
     </fieldset>
     <label class="field"><span>Password attuale (solo per cambiare nome, mail o password)</span><input class="input" id="pf-cur" type="password" autocomplete="current-password"></label>
+    <fieldset class="pw"><legend>Sicurezza</legend><div id="pf-sec"></div></fieldset>
     <p class="note" id="pf-note"></p>
     <div class="actions"><button class="btn primary" type="submit">Salva</button><button class="btn" type="button" id="pf-x">Annulla</button></div>
   </form>
 </section>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<script src="vendor/simplewebauthn-browser-14.0.0.umd.min.js"></script>
+<script src="vendor/qrcode-generator-2.0.4.js"></script>
 <script>
 (function(){
 const SUPPORT = "support@efuture.it";
@@ -610,7 +632,7 @@ const TUTORIALS = [
     steps:[
       {who:"App", t:"Apri Messaggi", d:"Il tag <b>da leggere</b> indica le conversazioni con novità."},
       {who:"App", t:"Leggi l'aggiornamento", d:"Tocca la conversazione del ticket."},
-      {who:"App", t:"Testo per il cliente", d:"Nel riquadro <b>Da mandare al cliente</b> tocca <b>Apri chat cliente</b>, oppure <b>Copia su WhatsApp</b>."},
+      {who:"App", t:"Testo per il cliente", d:"Nel riquadro <b>Da mandare al cliente</b> tocca <b>Apri chat cliente</b>, oppure <b>Copia negli appunti</b>."},
       {who:"WhatsApp", t:"Invia al cliente", d:"La chat del cliente si apre con il testo già scritto: controllalo e invia."},
       {who:"App", t:"Scrivi all'ufficio", d:"Nel campo in basso, poi <b>Invia</b>: parte una mail collegata al ticket."},
       {who:"Console", t:"L'ufficio la riceve", d:"In <b>Posta in arrivo</b>, sul ticket giusto."}
@@ -930,7 +952,21 @@ function actRow(t, when, tone){
   return `<li class="act-i ${tone||""}" data-tid="${esc(t.id)}"><span class="act-t">${when}</span>
     <div class="act-b"><div class="act-h">${logo(c)}<b>${esc(c.name)}</b>${t.urg?'<span class="pill p-urg">Urgente</span>':""}</div>
       <span class="dim">${esc(t.id)} · ${esc(t.title)}</span><span class="why" hidden></span>
-      <div class="act-x"><a class="btn small" href="${mapsUrl(c)}" target="_blank" rel="noopener">Naviga</a>${waBtn(tel)}<button class="btn small" type="button" data-open="${esc(t.id)}">Ticket</button></div></div></li>`;
+      <div class="act-x"><a class="btn small" href="${mapsUrl(c)}" target="_blank" rel="noopener">Naviga</a>${waBtn(tel)}<button class="btn small primary" type="button" data-open="${esc(t.id)}">Apri</button></div></div></li>`;
+}
+const remClosed = () => { try{ return localStorage.getItem("tf-rem-closed")==="1"; }catch(e){ return false; } };
+/* scheda di un ticket: dati, cliente, contatti e azioni */
+function ticketSheet(id){
+  const t = S.tickets.find(x=>x.id===id); if(!t) return;
+  const c = cl(t.client) || {name:t.client, contacts:[]}, tech = TECHS.find(x=>x.ini===t.tech);
+  const plan = t.plan ? (t.plan.day===0?"oggi":t.plan.day===1?"domani":giorno(t.plan.day))+" alle "+t.plan.time : "non pianificato";
+  openEditor(`<div class="row-h"><h2>${esc(t.id)}</h2>${badge(t.sys)}${t.urg?'<span class="pill p-urg">Urgente</span>':""}</div>
+    <p style="margin:0;color:var(--ink);font-size:16px;font-weight:600">${esc(t.title)}</p>
+    <dl class="kv"><dt>Cliente</dt><dd>${esc(c.name)}${c.city?" · "+esc(c.city):""}</dd><dt>Stato</dt><dd>${esc(t.state)}</dd><dt>Intervento</dt><dd>${esc(plan)}</dd>
+      <dt>Tecnico</dt><dd>${tech?esc(tech.ini)+" · "+esc(techName(tech)):"da assegnare"}</dd><dt>Origine</dt><dd>${esc(t.origin||"")}</dd><dt>Aggiornato</dt><dd>${esc(t.upd||"")}</dd></dl>
+    ${(c.contacts||[]).length?`<div class="field"><span>Contatti</span>${c.contacts.map(k=>`<div class="contact"><div>${esc(k.n)}<div class="dim">${esc(k.mail||"")}${k.tel?" · "+esc(k.tel):""}</div></div>${waBtn(k.tel)}</div>`).join("")}</div>`:""}
+    <div class="actions"><a class="btn" href="${mapsUrl(c)}" target="_blank" rel="noopener">Naviga</a><button class="btn" type="button" id="ts-list">Vedi tra i ticket</button><button class="btn primary" type="button" data-close>Chiudi</button></div>`, closeEditor);
+  $("#ts-list").onclick = ()=>{ closeEditor(); S.view="ticket"; S.tfilt="tutti"; render(); };
 }
 function tecnicoHome(){
   const a = agenda();
@@ -946,8 +982,8 @@ function tecnicoHome(){
   $("#main").innerHTML = `<div class="top"><div><h1>Riepilogo</h1><p class="sub">${giorno(0).replace(/^./,x=>x.toUpperCase())} · ${esc(a.me.ini||"")} · Zona ${esc(a.me.zona||"")}</p></div></div>
     <div class="riep">
       <div class="riep-main">
-        <section class="remind" id="rem"><div class="rem-h"><span class="rem-i" aria-hidden="true">☀</span><b id="rem-title">Promemoria di oggi</b><button class="linkback" type="button" id="rem-again" hidden>Riscrivi</button></div><p id="rem-text">${esc(reminderText(a))}</p>
-          <span class="dim" id="rem-foot">Scritto in automatico dai tuoi ticket.</span></section>
+        <section class="remind${remClosed()?" closed":""}" id="rem"><div class="rem-h"><span class="rem-i" aria-hidden="true">☀</span><b id="rem-title">Promemoria di oggi</b><button class="linkback" type="button" id="rem-again" hidden>Riscrivi</button><button class="linkback" type="button" id="rem-tog" aria-expanded="${!remClosed()}">${remClosed()?"Mostra":"Riduci"}</button></div>
+          <div class="rem-b"><p id="rem-text">${esc(reminderText(a))}</p><span class="dim" id="rem-foot">Scritto in automatico dai tuoi ticket.</span></div></section>
         <section><h2 class="h2s">Prossime attività <span class="dim">· ${rows.length}</span></h2>
           <ol class="acts">${rows.join("") || `<li class="dim">Nessuna attività aperta: ottimo lavoro.</li>`}</ol></section>
       </div>
@@ -964,7 +1000,8 @@ function tecnicoHome(){
       </aside>
     </div>`;
   document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{ S.view=b.dataset.go; render(); });
-  document.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{ S.view="ticket"; S.tfilt="aperti"; render(); });
+  document.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>ticketSheet(b.dataset.open));
+  $("#rem-tog").onclick = ()=>{ const c = !remClosed(); try{ localStorage.setItem("tf-rem-closed", c?"1":""); }catch(e){} $("#rem").classList.toggle("closed", c); $("#rem-tog").textContent = c?"Mostra":"Riduci"; $("#rem-tog").setAttribute("aria-expanded", String(!c)); };
   fillAI(a, false);
 }
 /* ---------- assistente AI nel cruscotto del Tecnico ---------- */
@@ -1321,6 +1358,117 @@ function startOffline(){
   ME = offProfile(); if(!BOOTED){ BOOTED = true; landing(); } paintMe(); render();
 }
 
+
+/* ---------- accesso: due passaggi, passkey, password dimenticata, nuova password ---------- */
+function finishLogin(j){
+  TOKEN = j.token; ME = j.me; REAL_ROLE = (ME && ME.profilo) || "admin";
+  try{ localStorage.setItem("tf-admin-token", TOKEN); }catch(e){}
+  $("#login").hidden = true; $("#login2").hidden = true; $("#lg-pass").value = "";
+  if(j.usedRecovery) toast("Hai usato un codice di recupero: ne restano "+j.left+". Rigenerali dal profilo se servono.");
+  landing(); paintMe(); load();
+}
+function panel2(html, onSubmit){
+  $("#login").hidden = true; $("#login2").hidden = false; $("#l2-body").innerHTML = `<div class="logo">${$("#login .logo").innerHTML}</div>`+html;
+  $("#l2-form").onsubmit = e => { e.preventDefault(); onSubmit(); };
+  const back = $("#l2-back"); if(back) back.onclick = ()=>{ $("#login2").hidden = true; showLogin(BACKEND ? HINT : OFF_USER); };
+  setTimeout(()=>{ const f = $("#l2-body input"); if(f) f.focus(); }, 50);
+}
+function ask2fa(ticket){
+  panel2(`<div><h1>Codice di verifica</h1><p class="sub">Apri l'app di autenticazione sul telefono e scrivi il codice di 6 cifre di Ticket Farm.</p></div>
+    <label class="field"><span>Codice</span><input class="input mono" id="l2-code" inputmode="numeric" autocomplete="one-time-code" maxlength="11" placeholder="123 456" style="font-size:22px;letter-spacing:.2em;text-align:center"></label>
+    <button class="btn primary" type="submit">Verifica</button>
+    <p class="note">Telefono perso? Scrivi uno dei <b>codici di recupero</b> che hai salvato quando hai attivato la verifica.</p>
+    <button class="linkback" type="button" id="l2-back">‹ Torna all'accesso</button>`, ()=>{
+      fetch("/api/admin/login/2fa", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ticket, code:$("#l2-code").value.trim()})})
+        .then(r=>r.json().then(j=>r.ok ? j : Promise.reject(new Error(j.error||r.status)))).then(finishLogin).catch(err=>{ toast(err.message); $("#l2-code").select(); });
+    });
+}
+$("#lg-forgot").onclick = ()=>{
+  panel2(`<div><h1>Password dimenticata</h1><p class="sub">Scrivi il tuo nome utente o la tua mail: ti mandiamo un link per sceglierne una nuova, valido 30 minuti.</p></div>
+    <label class="field"><span>Utente o mail</span><input class="input" id="l2-user" autocomplete="username" required></label>
+    <button class="btn primary" type="submit">Manda il link</button><div id="l2-out"></div>
+    <button class="linkback" type="button" id="l2-back">‹ Torna all'accesso</button>`, ()=>{
+      if(!BACKEND){ $("#l2-out").innerHTML = `<p class="note">Versione di prova online: qui non parte nessuna mail. Con il backend acceso arriva un link per scegliere la nuova password.</p>`; return; }
+      fetch("/api/admin/forgot", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({user:$("#l2-user").value.trim()})}).then(r=>r.json())
+        .then(j=>{ $("#l2-out").innerHTML = `<p class="note">${esc(j.message)}</p>`+(j.demoLink ? `<p class="hint">Modalità prova: la mail è in <span class="mono">backend/outbox</span>. Link: <a href="${esc(j.demoLink)}">apri il link</a></p>` : ""); });
+    });
+};
+function askReset(token){
+  panel2(`<div><h1>Nuova password</h1><p class="sub">Scegli una password di almeno 8 caratteri.</p></div>
+    <label class="field"><span>Nuova password</span><input class="input" id="l2-p1" type="password" autocomplete="new-password" minlength="8" required></label>
+    <label class="field"><span>Ripetila</span><input class="input" id="l2-p2" type="password" autocomplete="new-password" required></label>
+    <button class="btn primary" type="submit">Salva la password</button>
+    <button class="linkback" type="button" id="l2-back">‹ Torna all'accesso</button>`, ()=>{
+      if($("#l2-p1").value !== $("#l2-p2").value){ toast("Le due password non sono uguali"); return; }
+      fetch("/api/admin/reset", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({token, password:$("#l2-p1").value})})
+        .then(r=>r.json().then(j=>r.ok ? j : Promise.reject(new Error(j.error||r.status))))
+        .then(()=>{ history.replaceState(null, "", location.pathname); $("#login2").hidden = true; showLogin(HINT); toast("Password salvata: ora accedi"); })
+        .catch(err=>toast(err.message));
+    });
+}
+$("#lg-pk").onclick = ()=>{
+  const W = window.SimpleWebAuthnBrowser;
+  fetch("/api/admin/passkey/login/options", {method:"POST"}).then(r=>r.json())
+    .then(optionsJSON=>W.startAuthentication({optionsJSON}))
+    .then(response=>fetch("/api/admin/passkey/login/verify", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({response})}))
+    .then(r=>r.json().then(j=>r.ok ? j : Promise.reject(new Error(j.error||r.status)))).then(finishLogin)
+    .catch(err=>toast(/NotAllowed|abort/i.test(String(err && (err.name||err.message))) ? "Accesso con passkey annullato" : "Passkey: "+err.message));
+};
+
+/* ---------- profilo: sicurezza (verifica in due passaggi, passkey) ---------- */
+function paintSecurity(){
+  const box = $("#pf-sec"); if(!box) return;
+  if(!BACKEND){ box.innerHTML = `<p class="note">Verifica in due passaggi e passkey funzionano con il backend acceso (sul PC o sul server), non nella versione di prova online.</p>`; return; }
+  const pks = (ME && ME.passkeys) || [];
+  box.innerHTML = `<div class="secrow"><div><b>Verifica in due passaggi</b><span class="dim">${ME && ME.twofa ? "Attiva · restano "+ME.recoveryLeft+" codici di recupero" : "Non attiva: oltre alla password serve il codice dell'app sul telefono"}</span></div>
+      <button class="btn small ${ME && ME.twofa ? "danger" : "primary"}" type="button" id="sec-2fa">${ME && ME.twofa ? "Disattiva" : "Attiva"}</button></div>
+    <div class="secrow"><div><b>Passkey</b><span class="dim">${pks.length ? pks.length+" salvat"+(pks.length===1?"a":"e") : "Entra con impronta, volto o PIN del dispositivo, senza password"}</span></div>
+      <button class="btn small primary" type="button" id="sec-pk-add" ${window.PublicKeyCredential?"":"disabled"}>Aggiungi</button></div>
+    ${pks.map(p=>`<div class="secrow sub2"><div><b>🔑 ${esc(p.nome)}</b><span class="dim">creata ${fmtDate(p.creato)}${p.usato?" · ultimo uso "+fmtDate(p.usato):""}</span></div><button class="btn small danger" type="button" data-pk="${esc(p.id)}">Rimuovi</button></div>`).join("")}`;
+  $("#sec-2fa").onclick = ()=> ME.twofa ? off2fa() : on2fa();
+  $("#sec-pk-add").onclick = addPasskey;
+  box.querySelectorAll("[data-pk]").forEach(b=>b.onclick=()=>del("/api/admin/passkey/"+encodeURIComponent(b.dataset.pk)).then(r=>{ ME = r.me; paintSecurity(); toast("Passkey rimossa"); }).catch(err=>toast(err.message)));
+}
+function on2fa(){
+  post("/api/admin/2fa/setup", {}).then(st=>{
+    const qr = qrcode(0, "M"); qr.addData(st.uri); qr.make();
+    openEditor(`<h2>Attiva la verifica in due passaggi</h2>
+      <ol class="proc"><li>Installa un'app di autenticazione: Microsoft Authenticator, Google Authenticator o simili.</li><li>Nell'app tocca <b>+</b> e inquadra il codice QR.</li><li>Scrivi qui il codice di 6 cifre che compare.</li></ol>
+      <div class="qrbox">${qr.createSvgTag({cellSize:5, margin:3, scalable:true})}</div>
+      <p class="note">Non puoi inquadrare? Inserisci a mano la chiave: <span class="mono">${esc(st.secret.replace(/(.{4})/g,"$1 ").trim())}</span></p>
+      <label class="field"><span>Codice dall'app</span><input class="input mono" id="tf-otp" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" style="font-size:20px;letter-spacing:.2em"></label>
+      <div class="actions"><button class="btn primary" type="submit">Attiva</button><button class="btn" type="button" data-close>Annulla</button></div>`, ()=>{
+        post("/api/admin/2fa/enable", {code:$("#tf-otp").value.trim()}).then(r=>{
+          ME = r.me; paintMe(); paintSecurity();
+          openEditor(`<h2>Verifica attiva: salva i codici di recupero</h2><p>Se perdi il telefono, ognuno di questi codici ti fa entrare <b>una volta</b>. Salvali in un posto sicuro (gestore di password o carta in cassaforte): non li vedrai più.</p>
+            <div class="reccodes">${r.recovery.map(c=>`<span class="mono">${esc(c)}</span>`).join("")}</div>
+            <div class="actions"><button class="btn" type="button" id="rc-copy">Copia i codici</button><button class="btn primary" type="button" data-close>Li ho salvati</button></div>`, closeEditor);
+          $("#rc-copy").onclick = ()=>{ try{ navigator.clipboard.writeText(r.recovery.join("\n")).then(()=>toast("Codici copiati"), ()=>toast("Seleziona e copia i codici a mano")); }catch(e){ toast("Seleziona e copia i codici a mano"); } };
+        }).catch(err=>toast(err.message));
+      });
+  }).catch(err=>toast("Non disponibile: "+err.message));
+}
+function off2fa(){
+  openEditor(`<h2>Disattiva la verifica in due passaggi</h2><p class="note">Per sicurezza servono la password e un codice dall'app.</p>
+    <label class="field"><span>Password</span><input class="input" id="d2-pass" type="password" autocomplete="current-password"></label>
+    <label class="field"><span>Codice dall'app</span><input class="input mono" id="d2-code" inputmode="numeric" maxlength="7"></label>
+    <div class="actions"><button class="btn danger" type="submit">Disattiva</button><button class="btn" type="button" data-close>Annulla</button></div>`, ()=>{
+      post("/api/admin/2fa/disable", {password:$("#d2-pass").value, code:$("#d2-code").value.trim()}).then(r=>{ ME = r.me; closeEditor(); paintSecurity(); toast("Verifica in due passaggi disattivata"); }).catch(err=>toast(err.message));
+    });
+}
+function addPasskey(){
+  const W = window.SimpleWebAuthnBrowser;
+  openEditor(`<h2>Aggiungi una passkey</h2><p>Il dispositivo ti chiederà impronta, volto o PIN. Da quel momento puoi entrare con <b>Accedi con passkey</b>, senza password.</p>
+    <label class="field"><span>Nome (per riconoscerla)</span><input class="input" id="pk-name" maxlength="40" placeholder="es. PC ufficio, iPhone"></label>
+    <div class="actions"><button class="btn primary" type="submit">Crea la passkey</button><button class="btn" type="button" data-close>Annulla</button></div>`, ()=>{
+      const nome = $("#pk-name").value.trim();
+      post("/api/admin/passkey/register/options", {}).then(optionsJSON=>W.startRegistration({optionsJSON}))
+        .then(response=>post("/api/admin/passkey/register/verify", {response, nome}))
+        .then(r=>{ ME = r.me; closeEditor(); paintSecurity(); toast("Passkey salvata"); })
+        .catch(err=>toast(/NotAllowed|abort/i.test(String(err && (err.name||err.message))) ? "Creazione annullata" : "Passkey: "+err.message));
+    });
+}
+
 /* ---------- accesso, menu utente, profilo ---------- */
 const homeLabel = k => (GROUPS.flatMap(([,i])=>i).find(([x])=>x===k)||[k,k])[1];
 function landing(){
@@ -1349,7 +1497,7 @@ $("#login-form").onsubmit = e => {
   $("#lg-go").disabled = true;
   fetch("/api/admin/login", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({user, password})})
     .then(r=>r.json().then(j=>r.ok ? j : Promise.reject(new Error(j.error||r.status))))
-    .then(j=>{ TOKEN = j.token; ME = j.me; REAL_ROLE = (ME && ME.profilo) || "admin"; try{ localStorage.setItem("tf-admin-token", TOKEN); }catch(e){} $("#login").hidden = true; $("#lg-pass").value=""; landing(); paintMe(); load(); })
+    .then(j=>{ if(j.need2fa){ ask2fa(j.ticket); return; } finishLogin(j); })
     .catch(err=>toast("Accesso non riuscito: "+err.message)).finally(()=>{ $("#lg-go").disabled = false; });
 };
 function logout(){
@@ -1375,6 +1523,7 @@ $("#me-edit").onclick = ()=>{
   const fillHome = () => { const v = real==="admin" ? $("#pf-vista").value : real; const cur = (ME && ME.home) || "cruscotto";
     $("#pf-home").innerHTML = homes(v).map(([k,l])=>`<option value="${k}" ${k===cur?"selected":""}>${esc(l)}</option>`).join(""); };
   $("#pf-vista").onchange = fillHome; fillHome();
+  paintSecurity();
   $("#pf-nome").focus();
 };
 $("#pf-x").onclick = ()=>{ $("#profile").hidden = true; };
@@ -1393,9 +1542,14 @@ $("#pf-form").onsubmit = e => {
   post("/api/admin/profile", body).then(r=>{ ME = r.me; paintMe(); $("#profile").hidden = true; toast(nuova ? "Profilo e password salvati" : "Profilo salvato: al prossimo accesso apri "+homeLabel(home)); })
     .catch(err=>toast("Non salvato: "+err.message));
 };
+/* il link di reset può arrivare anche con la pagina già aperta */
+window.addEventListener("hashchange", ()=>{ const m = /^#reset=([\w-]+)/.exec(location.hash); if(m && BACKEND) askReset(m[1]); });
 function boot(){
+  const rm = /^#reset=([\w-]+)/.exec(location.hash);
   fetch("/api/admin/info").then(r=>r.ok ? r.json() : Promise.reject()).then(info=>{
     BACKEND = true; HINT = info.demo;
+    $("#lg-pk").hidden = !(window.PublicKeyCredential && window.SimpleWebAuthnBrowser);
+    if(rm){ askReset(rm[1]); return; }
     if(TOKEN) load(); else showLogin(HINT);
   }).catch(()=>{
     BACKEND = false;
