@@ -236,7 +236,12 @@ a.btn{text-decoration:none}
 .banner{background:var(--amber-soft);color:var(--amber);border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:600}
 .login{padding:28px 22px;gap:16px;justify-content:center}
 .login h2{font-size:24px;margin:0;color:var(--ink)}
-@media (min-width:561px){ body{background:var(--surface-2)} .phone{border-left:1px solid var(--line)!important;border-right:1px solid var(--line)!important} }
+/* su schermo largo lo sfondo intorno all'app è sempre lo stesso (scuro, colori Ticket Farm):
+   l'interruttore chiaro/scuro cambia solo la colonna dell'app */
+@media (min-width:561px){
+  html,body{background:#05070b radial-gradient(70% 60% at 50% 30%, rgba(30,111,240,.22), rgba(25,201,184,.06) 55%, transparent 75%) fixed!important}
+  .phone{box-shadow:0 30px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(42,167,255,.18)!important}
+}
 </style>
 </head>
 <body>

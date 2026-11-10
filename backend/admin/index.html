@@ -232,10 +232,12 @@ td.act{white-space:nowrap;text-align:right}
 .howto summary{cursor:pointer;list-style:none}.howto summary::-webkit-details-marker{display:none}
 .howto summary::after{content:" ›";color:var(--accent)}
 .howto[open] summary{margin-bottom:6px}
-.rolesw{display:inline-flex;align-items:center;gap:2px;padding:3px;border-radius:999px;background:var(--raise);border:1px solid var(--line);margin-right:auto}
-.rolesw .rl{font-size:11.5px;font-weight:600;color:var(--muted);padding:0 8px 0 10px;text-transform:uppercase;letter-spacing:.08em}
-.rolesw button{border:0;background:none;border-radius:999px;padding:6px 12px;font-weight:600;font-size:12.5px;color:var(--muted);cursor:pointer}
-.rolesw button[aria-pressed="true"]{background:var(--grad);color:#fff}
+.rolesw{display:flex;flex-direction:column;gap:2px;padding:6px 4px 8px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.rolesw .rl{font-size:11px;font-weight:600;color:var(--muted);padding:2px 6px 4px;text-transform:uppercase;letter-spacing:.1em}
+.rolesw button{border:0;background:none;border-radius:8px;padding:8px 10px;font-weight:500;font-size:14px;color:var(--text);cursor:pointer;text-align:left}
+.rolesw button::before{content:"○ ";color:var(--muted)}
+.rolesw button[aria-pressed="true"]::before{content:"● ";color:var(--accent)}
+.rolesw button[aria-pressed="true"]{color:var(--ink);font-weight:600;background:var(--accent-soft)}
 .rolebar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--gold-soft);color:var(--gold);border-radius:12px;padding:10px 14px;font-size:13.5px;font-weight:600}
 .matrix td,.matrix th{text-align:center}.matrix td:first-child,.matrix th:first-child{text-align:left}
 .matrix input{width:17px;height:17px;accent-color:#2aa7ff}
@@ -243,8 +245,26 @@ td.act{white-space:nowrap;text-align:right}
 .perm-cell label{display:inline-flex;flex-direction:column;align-items:center;font-size:10.5px;color:var(--muted);gap:2px}
 .drop{border:2px dashed var(--line);border-radius:14px;padding:22px;text-align:center;color:var(--muted)}
 .audit-f{display:flex;gap:8px;flex-wrap:wrap}.audit-f .input{max-width:260px}
-@media (max-width:900px){.rolesw .rl{display:none}.rolesw button{padding:6px 9px}}
-@media (max-width:600px){.rolesw{order:3;margin:6px 0 0;width:100%;justify-content:center}.topbar{flex-wrap:wrap}}
+.remind{background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--gold);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:8px;max-width:900px}
+.remind p{margin:0;color:var(--ink);font-size:16px;line-height:1.6}
+.rem-h{display:flex;align-items:center;gap:10px;color:var(--gold)}.rem-h b{color:var(--ink);font-size:15px}
+.rem-i{width:30px;height:30px;border-radius:50%;background:var(--gold-soft);display:grid;place-items:center;font-size:16px}
+.glance{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;max-width:900px}
+.gl{display:flex;align-items:baseline;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;cursor:pointer;text-align:left;color:var(--text)}
+.gl b{font-size:28px;color:var(--ink);font-variant-numeric:tabular-nums}.gl span{font-size:13.5px}
+.gl.hot{border-color:var(--red);background:var(--red-soft)}.gl.hot b{color:var(--red)}
+.gl.warm{border-color:var(--gold);background:var(--gold-soft)}
+.h2s{font-size:16px;color:var(--ink);margin:4px 0 10px}
+.acts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;max-width:900px}
+.act-i{display:grid;grid-template-columns:130px minmax(0,1fr);gap:14px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:12px;padding:12px 14px}
+.act-i.urg{border-left-color:var(--red)}.act-i.wait{border-left-color:var(--gold)}
+.act-t{font-weight:700;color:var(--ink);font-size:13.5px;padding-top:4px}
+.act-i.urg .act-t{color:var(--red)}.act-i.wait .act-t{color:var(--gold)}
+.act-b{display:flex;flex-direction:column;gap:4px;min-width:0}
+.act-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.act-h .lav{width:28px;height:28px;font-size:11px}.act-h b{color:var(--ink)}
+.act-x{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+a.btn{text-decoration:none;display:inline-flex;align-items:center}
+@media (max-width:640px){.glance{grid-template-columns:minmax(0,1fr)}.act-i{grid-template-columns:minmax(0,1fr)}}
 .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,10px);background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:12px;font-size:13.5px;font-weight:500;opacity:0;transition:.25s;pointer-events:none;z-index:50;max-width:calc(100% - 32px)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 .note{font-size:12.5px;color:var(--muted)}
@@ -277,14 +297,14 @@ td.act{white-space:nowrap;text-align:right}
   </aside>
   <div class="content">
     <header class="topbar">
-      <div class="rolesw" id="rolesw" role="group" aria-label="Vedi la console come">
-        <span class="rl">Vedi come</span>
-        <button type="button" data-role="admin">Amministratore</button><button type="button" data-role="resp">Responsabile</button><button type="button" data-role="op">Operatore</button>
-      </div>
       <button class="sw-a" id="theme" type="button" role="switch" aria-checked="false" aria-label="Tema scuro"><svg class="ic s" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g></svg><svg class="ic m" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z" fill="currentColor"/></svg><span class="knob"></span></button>
       <div class="mewrap"><button class="me" id="me" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Il tuo profilo">AD</button>
         <div class="menu" id="me-menu" role="menu" hidden>
           <div class="menu-head"><b id="me-name">Amministratore</b><span id="me-mail"></span></div>
+          <div class="rolesw" id="rolesw" role="group" aria-label="Vedi la console come">
+            <span class="rl">Vedi come</span>
+            <button type="button" data-role="op">Tecnico</button><button type="button" data-role="resp">Responsabile</button><button type="button" data-role="admin">Amministratore</button>
+          </div>
           <button type="button" role="menuitem" id="me-edit">Modifica profilo</button>
           <button type="button" role="menuitem" id="me-out">Esci</button>
         </div></div>
@@ -373,11 +393,11 @@ function fresh(){
       {k:"dom", t:"Dominio del mittente", d:"Es. @caseificiovalle.ch porta a Caseificio Valle SA", on:true}
     ],
     tickets:[
-      {id:"Tck #714139", sys:"ITSM", client:"cas", title:"Analizzatore latte: letture instabili", state:"In lavorazione", tech:"MB", urg:true, origin:"ITSM", upd:"08:20"},
-      {id:"Tck #714133", sys:"ITSM", client:"che", title:"Titolatore: taratura annuale", state:"Pianificato", tech:"MB", origin:"ITSM", upd:"ieri"},
+      {id:"Tck #714139", plan:null, sys:"ITSM", client:"cas", title:"Analizzatore latte: letture instabili", state:"In lavorazione", tech:"MB", urg:true, origin:"ITSM", upd:"08:20"},
+      {id:"Tck #714133", plan:{day:0,time:"14:00"}, sys:"ITSM", client:"che", title:"Titolatore: taratura annuale", state:"Pianificato", tech:"MB", origin:"ITSM", upd:"ieri"},
       {id:"Tck #714128", sys:"ITSM", client:"alp", title:"HPLC: manutenzione ordinaria", state:"Chiuso", tech:"LC", origin:"Mail cliente", upd:"ven"},
-      {id:"HALO-4821", sys:"Halo", client:"lab", title:"Spettrofotometro: errore lampada", state:"Pianificato", tech:"MB", origin:"WhatsApp tecnico", upd:"07:40"},
-      {id:"HALO-4799", sys:"Halo", client:"far", title:"Bilancia analitica: guasto", state:"In attesa ricambio", tech:"MB", origin:"Telefono", upd:"ven"},
+      {id:"HALO-4821", plan:{day:1,time:"09:00"}, sys:"Halo", client:"lab", title:"Spettrofotometro: errore lampada", state:"Pianificato", tech:"MB", origin:"WhatsApp tecnico", upd:"07:40"},
+      {id:"HALO-4799", plan:null, sys:"Halo", client:"far", title:"Bilancia analitica: guasto", state:"In attesa ricambio", tech:"MB", origin:"Telefono", upd:"ven"},
       {id:"HALO-4812", sys:"Halo", client:"vin", title:"Ordine reagenti e agenti", state:"Aperto", tech:"", origin:"Mail cliente", upd:"ieri"}
     ],
     mails:[
@@ -438,9 +458,9 @@ const AREE = [["cruscotto","Cruscotto"],["posta","Posta in arrivo"],["ticket","T
 let PROFILES = {
   admin:{nome:"Amministratore", desc:"Tutto, compresa la configurazione", perm:Object.fromEntries(AREE.map(([a])=>[a,"vme"]))},
   resp:{nome:"Responsabile service", desc:"Lavoro quotidiano, tecnici e regole; vede utenti e registro", perm:{cruscotto:"v",posta:"vm",ticket:"vme",clienti:"vme",utenti:"v",profili:"v",tecnici:"vme",office365:"",collegamenti:"v",regole:"vm",backup:"",audit:"v",tutorial:"v"}},
-  op:{nome:"Operatore", desc:"Posta, ticket e clienti; nessuna configurazione", perm:{cruscotto:"v",posta:"vm",ticket:"vm",clienti:"v",utenti:"",profili:"",tecnici:"",office365:"",collegamenti:"",regole:"",backup:"",audit:"",tutorial:"v"}}
+  op:{nome:"Tecnico", desc:"I suoi interventi, posta, ticket e clienti; nessuna configurazione", perm:{cruscotto:"v",posta:"vm",ticket:"vm",clienti:"v",utenti:"",profili:"",tecnici:"",office365:"",collegamenti:"",regole:"",backup:"",audit:"",tutorial:"v"}}
 };
-let ROLE = "admin", REAL_ROLE = "admin";
+let ROLE = "op", REAL_ROLE = "admin";   /* all'ingresso si vede la console come Tecnico, sul cruscotto */
 const can = (area, right) => ((PROFILES[ROLE]||{perm:{}}).perm[area]||"").includes(right||"v");
 /* nasconde i pulsanti che il profilo non può usare (attributo data-perm="area:diritto") */
 function applyPerms(root){ (root||document).querySelectorAll("[data-perm]").forEach(el=>{ const [a,r] = el.dataset.perm.split(":"); el.hidden = !can(a,r); }); }
@@ -619,6 +639,7 @@ function tutorial(){
 
 /* ---------- Cruscotto ---------- */
 function cruscotto(){
+  if(ROLE==="op") return tecnicoHome();
   const open = S.tickets.filter(t=>t.state!=="Chiuso");
   const auto = S.mails.filter(m=>m.res.state!=="warn").length;
   const byTech = TECHS.map(t=>[t.ini+" · "+t.zona, open.filter(x=>x.tech===t.ini).length]);
@@ -851,6 +872,66 @@ function techForm(t){
 
 
 
+
+/* ---------- cruscotto del Tecnico: promemoria del giorno e prossime attività ---------- */
+const OGGI = new Date();
+const giorno = d => { const x = new Date(OGGI); x.setDate(x.getDate()+d); return x.toLocaleDateString("it-CH",{weekday:"long", day:"numeric", month:"long"}); };
+function myTech(){ return TECHS.find(t=>ME && t.mail===ME.mail) || TECHS.find(t=>t.ini==="MB") || TECHS[0] || {ini:"", zona:""}; }
+const mapsUrl = c => "https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(c.name+" "+(c.city||""));
+function agenda(){
+  const me = myTech();
+  const mine = S.tickets.filter(t=>t.tech===me.ini && t.state!=="Chiuso");
+  const today = mine.filter(t=>t.plan && t.plan.day===0).sort((a,b)=>a.plan.time.localeCompare(b.plan.time));
+  const later = mine.filter(t=>t.plan && t.plan.day>0).sort((a,b)=>a.plan.day-b.plan.day || a.plan.time.localeCompare(b.plan.time));
+  const urgent = mine.filter(t=>t.urg && !t.plan);
+  const waiting = mine.filter(t=>!t.plan && !t.urg && /attesa/i.test(t.state));
+  const todo = mine.filter(t=>!t.plan && !t.urg && !/attesa/i.test(t.state));
+  return {me, today, later, urgent, waiting, todo, toCheck: toCheck()};
+}
+/* promemoria scritto con regole fisse (gratis, sempre uguale); in futuro si potrà far scrivere all'assistente AI */
+function reminderText(a){
+  const nome = (ME && ME.nome && ME.nome!=="Amministratore") ? ME.nome.split(" ")[0] : "";
+  const ora = OGGI.getHours(), saluto = ora < 13 ? "Buongiorno" : ora < 18 ? "Buon pomeriggio" : "Buonasera";
+  const c = t => (cl(t.client)||{name:t.client}).name;
+  const parts = [saluto+(nome?" "+nome:"")+"."];
+  if(a.urgent.length) parts.push("Prima di tutto "+(a.urgent.length===1 ? "c'è un'urgenza da pianificare: "+c(a.urgent[0])+", «"+a.urgent[0].title+"»." : "ci sono "+a.urgent.length+" urgenze da pianificare: "+a.urgent.map(c).join(", ")+"."));
+  if(a.today.length) parts.push("Oggi "+(a.today.length===1 ? "hai un intervento: " : "hai "+a.today.length+" interventi, il primo: ")+a.today[0].plan.time+" da "+c(a.today[0])+" ("+a.today[0].title.split(":")[0].toLowerCase()+").");
+  else parts.push("Oggi non hai interventi pianificati.");
+  if(a.later.length) parts.push((a.later[0].plan.day===1?"Domani":"Il "+giorno(a.later[0].plan.day))+" alle "+a.later[0].plan.time+": "+c(a.later[0])+".");
+  if(a.waiting.length) parts.push(a.waiting.map(t=>t.id+" ("+c(t)+") è in attesa del ricambio: se è arrivato, avvisa il cliente.").join(" "));
+  if(a.toCheck) parts.push(a.toCheck===1 ? "In Posta c'è una mail da verificare." : "In Posta ci sono "+a.toCheck+" mail da verificare.");
+  return parts.join(" ");
+}
+function actRow(t, when, tone){
+  const c = cl(t.client) || {name:t.client, contacts:[]}; const tel = ((c.contacts||[]).find(k=>k.tel)||{}).tel;
+  return `<li class="act-i ${tone||""}"><span class="act-t">${when}</span>
+    <div class="act-b"><div class="act-h">${logo(c)}<b>${esc(c.name)}</b>${t.urg?'<span class="pill p-urg">Urgente</span>':""}</div>
+      <span class="dim">${esc(t.id)} · ${esc(t.title)}</span>
+      <div class="act-x"><a class="btn small" href="${mapsUrl(c)}" target="_blank" rel="noopener">Naviga</a>${waBtn(tel)}<button class="btn small" type="button" data-open="${esc(t.id)}">Ticket</button></div></div></li>`;
+}
+function tecnicoHome(){
+  const a = agenda();
+  const rows = [
+    ...a.urgent.map(t=>actRow(t, "Da pianificare", "urg")),
+    ...a.today.map(t=>actRow(t, "Oggi "+t.plan.time)),
+    ...a.later.map(t=>actRow(t, (t.plan.day===1?"Domani ":giorno(t.plan.day)+" ")+t.plan.time)),
+    ...a.waiting.map(t=>actRow(t, "In attesa", "wait")),
+    ...a.todo.map(t=>actRow(t, "Da fare"))
+  ];
+  $("#main").innerHTML = `<div class="top"><div><h1>La tua giornata</h1><p class="sub">${giorno(0).replace(/^./,x=>x.toUpperCase())} · Zona ${esc(a.me.zona||"")}</p></div></div>
+    <section class="remind"><div class="rem-h"><span class="rem-i" aria-hidden="true">☀</span><b>Promemoria di oggi</b></div><p>${esc(reminderText(a))}</p>
+      <span class="dim">Scritto in automatico dai tuoi ticket. L'assistente AI si attiverà in Configurazione.</span></section>
+    <div class="glance">
+      <button class="gl ${a.urgent.length?"hot":""}" type="button" data-go="ticket"><b>${a.urgent.length}</b><span>urgenze da pianificare</span></button>
+      <button class="gl" type="button" data-go="ticket"><b>${a.today.length}</b><span>interventi oggi</span></button>
+      <button class="gl ${a.toCheck?"warm":""}" type="button" data-go="posta"><b>${a.toCheck}</b><span>mail da verificare</span></button>
+    </div>
+    <section><h2 class="h2s">Prossime attività</h2>
+      <ol class="acts">${rows.join("") || `<li class="dim">Nessuna attività aperta: ottimo lavoro.</li>`}</ol></section>`;
+  document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{ S.view=b.dataset.go; if(b.dataset.go==="posta") S.filt="warn"; render(); });
+  document.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{ S.view="ticket"; S.tfilt="aperti"; render(); });
+}
+
 /* ---------- profili: cambio vista e default per profilo ---------- */
 function paintRole(){
   document.querySelectorAll("#rolesw [data-role]").forEach(b=>b.setAttribute("aria-pressed", String(b.dataset.role===ROLE)));
@@ -860,11 +941,10 @@ function paintRole(){
 function setRole(r){
   ROLE = r; S.sel = null; S.tut = null;
   /* filtri e vista d'ingresso sensati per profilo */
-  if(r==="op"){ S.filt = "warn"; S.tfilt = "aperti"; S.view = "posta"; }
+  if(r==="op"){ S.filt = "warn"; S.tfilt = "aperti"; S.view = "cruscotto"; }
   else if(r==="resp"){ S.filt = "tutti"; S.tfilt = "aperti"; S.view = "cruscotto"; }
   else { S.filt = "tutti"; S.tfilt = "tutti"; S.view = "cruscotto"; }
-  try{ localStorage.setItem("tf-admin-role", r); }catch(e){}
-  render(); toast("Vista: "+PROFILES[r].nome);
+  $("#me-menu").hidden = true; render(); toast("Vista: "+PROFILES[r].nome);
 }
 document.querySelectorAll("#rolesw [data-role]").forEach(b=>b.onclick=()=>setRole(b.dataset.role));
 
@@ -1132,14 +1212,14 @@ $("#login-form").onsubmit = e => {
   e.preventDefault();
   const user = $("#lg-user").value.trim(), password = $("#lg-pass").value;
   if(!BACKEND){
-    if(user === OFF_USER.user && password === OFF_USER.password){ try{ localStorage.setItem("tf-admin-in","1"); }catch(e){} $("#login").hidden = true; $("#lg-pass").value=""; startOffline(); }
+    if(user === OFF_USER.user && password === OFF_USER.password){ try{ localStorage.setItem("tf-admin-in","1"); }catch(e){} $("#login").hidden = true; $("#lg-pass").value=""; ROLE = "op"; S.view = "cruscotto"; startOffline(); }
     else toast("Utente o password non corretti");
     return;
   }
   $("#lg-go").disabled = true;
   fetch("/api/admin/login", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({user, password})})
     .then(r=>r.json().then(j=>r.ok ? j : Promise.reject(new Error(j.error||r.status))))
-    .then(j=>{ TOKEN = j.token; ME = j.me; try{ localStorage.setItem("tf-admin-token", TOKEN); }catch(e){} $("#login").hidden = true; $("#lg-pass").value=""; paintMe(); load(); })
+    .then(j=>{ TOKEN = j.token; ME = j.me; try{ localStorage.setItem("tf-admin-token", TOKEN); }catch(e){} $("#login").hidden = true; $("#lg-pass").value=""; ROLE = "op"; S.view = "cruscotto"; paintMe(); load(); })
     .catch(err=>toast("Accesso non riuscito: "+err.message)).finally(()=>{ $("#lg-go").disabled = false; });
 };
 function logout(){
@@ -1173,7 +1253,6 @@ $("#pf-form").onsubmit = e => {
     .catch(err=>toast("Non salvato: "+err.message));
 };
 function boot(){
-  try{ const r = localStorage.getItem("tf-admin-role"); if(r && PROFILES[r]) ROLE = r; }catch(e){}
   fetch("/api/admin/info").then(r=>r.ok ? r.json() : Promise.reject()).then(info=>{
     BACKEND = true; HINT = info.demo;
     if(TOKEN) load(); else showLogin(HINT);
