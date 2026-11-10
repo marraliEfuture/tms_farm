@@ -27,7 +27,7 @@ jobs:
         run: |
           mkdir -p _site/admin
           cp -r app/. _site/
-          cp backend/admin/index.html _site/admin/index.html
+          cp -r backend/admin/. _site/admin/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

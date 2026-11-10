@@ -45,13 +45,55 @@ function requireTech(req, res, next) {
   if (!t) return res.status(401).json({ error: "accesso richiesto" });
   req.tech = t; next();
 }
-/* middleware per la console: accesso con utente e password (Basic) */
+/* ---- console dell'ufficio: accesso con utente e password, profilo modificabile ----
+   Il profilo è in data/admin.json; finché non esiste si usano ADMIN_USER e ADMIN_PASSWORD di .env.
+   In prova senza password in .env: utente "admin", password "admin123" (suggerita nella schermata di accesso). */
+const ADMIN_FILE = path.join(cfg.dataDir, "admin.json");
+const DEMO_ADMIN = { user: "admin", password: "admin123" };
+function adminAccount() {
+  if (fs.existsSync(ADMIN_FILE)) return JSON.parse(fs.readFileSync(ADMIN_FILE, "utf8"));
+  if (cfg.adminPassword) return { user: cfg.adminUser, nome: "Amministratore", mail: cfg.support, hash: hashCode(cfg.adminUser, cfg.adminPassword) };
+  if (cfg.mode === "demo") return { user: DEMO_ADMIN.user, nome: "Amministratore", mail: cfg.support, hash: hashCode(DEMO_ADMIN.user, DEMO_ADMIN.password) };
+  return null;
+}
+function adminDemoHint() { return cfg.mode === "demo" && !cfg.adminPassword && !fs.existsSync(ADMIN_FILE) ? DEMO_ADMIN : null; }
+function checkPassword(acc, user, password) {
+  if (!acc || String(user || "").toLowerCase() !== acc.user.toLowerCase()) return false;
+  const a = Buffer.from(hashCode(acc.user, password || ""), "hex"), b = Buffer.from(acc.hash, "hex");
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+function adminLogin(user, password) {
+  const acc = adminAccount();
+  if (!checkPassword(acc, user, password)) return null;
+  return sign({ role: "admin", user: acc.user, exp: Date.now() + 1000 * 60 * 60 * 12 });
+}
+function verifyAdmin(token) {
+  const [body, sig] = String(token || "").split(".");
+  if (!body || !sig) return null;
+  const good = crypto.createHmac("sha256", cfg.secret).update(body).digest("base64url");
+  if (sig.length !== good.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(good))) return null;
+  const obj = JSON.parse(Buffer.from(body, "base64url").toString());
+  const acc = adminAccount();
+  if (obj.role !== "admin" || obj.exp < Date.now() || !acc || obj.user !== acc.user) return null;
+  return acc;
+}
+/* aggiorna nome, mail e (se data) la password; la password attuale è sempre richiesta */
+function updateAdmin({ nome, mail, attuale, nuova }) {
+  const acc = adminAccount();
+  if (!checkPassword(acc, acc && acc.user, attuale)) return { error: "password attuale non corretta" };
+  if (nuova && String(nuova).length < 8) return { error: "la nuova password deve avere almeno 8 caratteri" };
+  const next = { user: acc.user, nome: String(nome || acc.nome || "").slice(0, 80), mail: String(mail || acc.mail || "").slice(0, 120),
+    hash: nuova ? hashCode(acc.user, nuova) : acc.hash };
+  fs.mkdirSync(cfg.dataDir, { recursive: true });
+  fs.writeFileSync(ADMIN_FILE, JSON.stringify(next, null, 2));
+  return { ok: true, me: publicAdmin(next) };
+}
+const publicAdmin = a => a ? { user: a.user, nome: a.nome || "", mail: a.mail || "" } : null;
 function requireAdmin(req, res, next) {
-  if (!cfg.adminPassword && cfg.mode === "demo") return next();
-  const [u, p] = Buffer.from((req.headers.authorization || "").replace(/^Basic\s+/i, ""), "base64").toString().split(":");
-  if (cfg.adminPassword && u === cfg.adminUser && p === cfg.adminPassword) return next();
-  res.set("WWW-Authenticate", 'Basic realm="Ticket Farm"').status(401).send("Accesso richiesto");
+  const acc = verifyAdmin((req.headers.authorization || "").replace(/^Bearer\s+/i, ""));
+  if (!acc) return res.status(401).json({ error: "accesso richiesto" });
+  req.admin = acc; next();
 }
 /* solo in prova, senza tecnici veri: credenziali da suggerire nella schermata di accesso */
 function demoHint() { return cfg.mode === "demo" && !fs.existsSync(TECH_FILE) ? { mail: DEMO_TECHS[0].mail, code: DEMO_TECHS[0].codice } : null; }
-module.exports = { demoHint, hashCode, techs, findTech, login, verify, requireTech, requireAdmin, TECH_FILE };
+module.exports = { adminLogin, adminDemoHint, adminAccount, updateAdmin, publicAdmin, demoHint, hashCode, techs, findTech, login, verify, requireTech, requireAdmin, TECH_FILE };

@@ -73,10 +73,18 @@ button{cursor:pointer}
   background:var(--surface-2);border-radius:42px;border:10px solid var(--frame,#1f2833);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
 .status{display:flex;justify-content:space-between;align-items:center;padding:10px 22px 4px;font-size:12px;font-weight:600;font-family:var(--f-mono)}
 .appbar{display:flex;justify-content:space-between;align-items:center;padding:6px 18px 10px}
-.brand{font-family:var(--f-display);font-weight:700;font-size:20px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+.brand{background:none;border:0;padding:0;cursor:pointer;color:inherit;font-family:inherit;font-family:var(--f-display);font-weight:700;font-size:20px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
 .brand svg{width:26px;height:26px;flex:0 0 auto}
 .brand b{font-weight:600}.brand em{font-style:normal;font-weight:600;background:linear-gradient(90deg,#2a8ff0,#2aa7ff);-webkit-background-clip:text;background-clip:text;color:transparent}
 .who{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+/* interruttore tema (soluzione A): sole e luna ai lati, pallino che scorre */
+.sw-a{position:relative;width:60px;height:30px;border-radius:15px;border:1px solid var(--line);background:var(--surface-2);padding:0;cursor:pointer;flex:0 0 auto}
+.sw-a .ic{position:absolute;top:50%;transform:translateY(-50%);width:15px;height:15px}
+.sw-a .ic.s{left:7px;color:#e9a90f}.sw-a .ic.m{right:7px;color:#8fb4ee}
+.sw-a .knob{position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#1e6ff0,#1aa0e8 50%,#19c9b8);box-shadow:0 2px 8px rgba(0,0,0,.3);transition:left .25s}
+.sw-a[aria-checked="true"] .knob{left:32px}
+.sw-a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@media (prefers-reduced-motion:reduce){.sw-a .knob{transition:none}}
 .themebtn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 10px;font-size:12px;font-weight:600;color:var(--ink)}
 .avatar{width:30px;height:30px;border-radius:50%;background:var(--ink);color:var(--surface);display:grid;place-items:center;font-weight:700;font-size:12px}
 .screen{flex:1;overflow-y:auto;padding:0 16px 96px;display:flex;flex-direction:column;gap:14px;min-height:0}
@@ -178,6 +186,13 @@ textarea.input{min-height:96px;resize:vertical}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
+/* ---------- introduzione con il logo animato ---------- */
+.splash{position:fixed;inset:0;z-index:1000;background:#000;display:grid;place-items:center;overflow:hidden;transition:opacity .5s ease}
+@media (max-aspect-ratio:1/1){.splash video{width:175%!important;max-width:none}}
+.splash.out{opacity:0;pointer-events:none}
+.splash video{width:min(100%,960px);max-height:100%;object-fit:contain;background:#000}
+.splash-skip{position:absolute;right:max(16px, env(safe-area-inset-right,0px));bottom:max(24px, env(safe-area-inset-bottom,0px));border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;border-radius:999px;padding:8px 16px;font:600 13px var(--f-body);cursor:pointer}
+.splash-skip:focus-visible{outline:2px solid #2aa7ff;outline-offset:2px}
 /* ---------- app installata: tutto schermo ---------- */
 [hidden]{display:none!important}
 html,body{height:100%;margin:0}
@@ -199,6 +214,7 @@ body{padding:0!important}
 .wa:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .copybox .wa{align-self:flex-start;padding:8px 12px}
 .item{cursor:pointer}
+.login-brand{align-self:flex-start;margin-bottom:8px}
 .banner{background:var(--amber-soft);color:var(--amber);border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:600}
 .login{padding:28px 22px;gap:16px;justify-content:center}
 .login h2{font-size:24px;margin:0;color:var(--ink)}
@@ -206,14 +222,43 @@ body{padding:0!important}
 </style>
 </head>
 <body>
+<!-- introduzione: logo animato di Ticket Farm a ogni apertura e ricarica dell'app -->
+<div class="splash" id="splash" role="img" aria-label="Ticket Farm">
+  <video id="splash-v" src="media/logo-ticketfarm.mp4" poster="media/poster.jpg" autoplay muted playsinline preload="auto"></video>
+  <button class="splash-skip" id="splash-skip" type="button">Salta</button>
+</div>
+<script>
+/* introduzione: parte all'apertura e quando si tocca "Ticket Farm"; dopo, "after" decide dove andare */
+(function(){
+  var el = document.getElementById("splash"), v = document.getElementById("splash-v"), done = true, after = null, timer = 0;
+  var still = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function end(){
+    if(done) return; done = true; clearTimeout(timer); el.classList.add("out");
+    setTimeout(function(){ el.hidden = true; var f = after; after = null; if(f) f(); }, 500);
+  }
+  function play(cb){
+    after = cb || null; done = false; el.hidden = false; el.classList.remove("out");
+    try{ v.currentTime = 0; }catch(e){}
+    if(still){ v.pause(); timer = setTimeout(end, 1500); return; }
+    var p = v.play(); if(p && p.catch) p.catch(function(){ setTimeout(end, 1500); });
+    timer = setTimeout(end, 9000);
+  }
+  document.getElementById("splash-skip").onclick = end;
+  el.addEventListener("click", function(e){ if(e.target === el) end(); });
+  v.addEventListener("ended", end);
+  v.addEventListener("error", function(){ setTimeout(end, 1200); });
+  window.tfSplash = play;
+  play();
+})();
+</script>
 
 <div class="wrap">
 
   <div class="phone" id="phone">
     <div class="status"><span>8:20</span><span>●●● 5G</span></div>
     <header class="appbar">
-      <div class="brand"><svg viewBox="0 0 80 80" aria-hidden="true"><defs><linearGradient id="lgo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1e6ff0"/><stop offset=".55" stop-color="#1aa0e8"/><stop offset="1" stop-color="#19c9c9"/></linearGradient><linearGradient id="lgg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6dc8a"/><stop offset=".5" stop-color="#d9ab45"/><stop offset="1" stop-color="#b88424"/></linearGradient></defs><path d="M40 6C25.6 6 15 16.8 15 30.4 15 48 40 70 40 70S65 48 65 30.4C65 16.8 54.4 6 40 6Z" fill="none" stroke="url(#lgo)" stroke-width="5.5" stroke-linejoin="round"/><rect x="27" y="21" width="26" height="19" rx="3.5" fill="none" stroke="url(#lgg)" stroke-width="4"/><path d="M28.5 23.5 L40 32 L51.5 23.5" fill="none" stroke="url(#lgg)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Ticket</b><em>Farm</em></span></div>
-      <div class="who"><button class="themebtn" id="theme" type="button" aria-label="Cambia tema"></button><span id="who-zona">Zona Sud</span><button class="avatar" id="who-ini" type="button" aria-label="Il tuo profilo">MB</button></div>
+      <button class="brand" id="brand" type="button" aria-label="Ticket Farm: rivedi l'introduzione e torna all'inizio"><svg viewBox="0 0 80 80" aria-hidden="true"><defs><linearGradient id="lgo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1e6ff0"/><stop offset=".55" stop-color="#1aa0e8"/><stop offset="1" stop-color="#19c9c9"/></linearGradient><linearGradient id="lgg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6dc8a"/><stop offset=".5" stop-color="#d9ab45"/><stop offset="1" stop-color="#b88424"/></linearGradient></defs><path d="M40 6C25.6 6 15 16.8 15 30.4 15 48 40 70 40 70S65 48 65 30.4C65 16.8 54.4 6 40 6Z" fill="none" stroke="url(#lgo)" stroke-width="5.5" stroke-linejoin="round"/><rect x="27" y="21" width="26" height="19" rx="3.5" fill="none" stroke="url(#lgg)" stroke-width="4"/><path d="M28.5 23.5 L40 32 L51.5 23.5" fill="none" stroke="url(#lgg)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Ticket</b><em>Farm</em></span></button>
+      <div class="who"><button class="sw-a" id="theme" type="button" role="switch" aria-checked="false" aria-label="Tema scuro"><svg class="ic s" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g></svg><svg class="ic m" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z" fill="currentColor"/></svg><span class="knob"></span></button><span id="who-zona">Zona Sud</span><button class="avatar" id="who-ini" type="button" aria-label="Il tuo profilo">MB</button></div>
     </header>
 
     <div class="install" id="install" hidden><span id="install-txt">Installa Ticket Farm su questo dispositivo</span><button class="btn small primary" id="install-go" type="button">Installa</button><button class="linkbtn" id="install-x" type="button" aria-label="Non ora">✕</button></div>
@@ -714,7 +759,7 @@ function addPhotos(list, done){
 }
 function renderLogin(){
   const el = $("#login"); el.hidden = false;
-  el.innerHTML = `<h2>Accedi a Ticket Farm</h2><p class="sub">Usa la tua mail aziendale e il codice che ti ha dato l'ufficio.</p>
+  el.innerHTML = `<button class="brand login-brand" id="l-brand" type="button" aria-label="Ticket Farm: rivedi l'introduzione">${$("#brand").innerHTML}</button><h2>Accedi a Ticket Farm</h2><p class="sub">Usa la tua mail aziendale e il codice che ti ha dato l'ufficio.</p>
     <div id="l-hint"></div>
     <label class="field"><span>Mail</span><input class="input" id="l-mail" type="email" autocomplete="username" placeholder="nome@efuture.it"></label>
     <label class="field"><span>Codice</span><input class="input" id="l-code" type="password" inputmode="numeric" autocomplete="current-password"></label>
@@ -728,6 +773,7 @@ function renderLogin(){
       <button class="linkbtn" id="l-fill" type="button" style="display:block;margin-top:6px">Compila e accedi</button></div>`;
     $("#l-fill").onclick = ()=>{ $("#l-mail").value = i.demo.mail; $("#l-code").value = i.demo.code; $("#l-go").click(); };
   }).catch(()=>{});
+  $("#l-brand").onclick = replayIntro;
   $("#l-go").onclick = ()=>{
     const mail = $("#l-mail").value.trim(), code = $("#l-code").value.trim();
     if(!mail || !code){ toast("Scrivi mail e codice"); return; }
@@ -761,11 +807,21 @@ function start(){
 }
 function curTheme(){ return document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"); }
 function setTheme(t){ document.documentElement.dataset.theme = t; try{ localStorage.setItem("tf-theme", t); }catch(e){} paintTheme(); }
-function paintTheme(){ $("#theme").textContent = curTheme()==="dark" ? "☀ Chiaro" : "☾ Scuro"; }
+function paintTheme(){ const d = curTheme()==="dark", b = $("#theme"); b.setAttribute("aria-checked", String(d)); b.title = d ? "Tema scuro (tocca per il chiaro)" : "Tema chiaro (tocca per lo scuro)"; }
 try{ const t = localStorage.getItem("tf-theme"); if(t) document.documentElement.dataset.theme = t; }catch(e){}
 $("#theme").onclick = ()=>setTheme(curTheme()==="dark" ? "light" : "dark");
 paintTheme();
 $("#who-ini").onclick = profile;
+/* "Ticket Farm" in alto: rivede l'introduzione, poi login se non si è entrati, altrimenti la home (Messaggi) */
+function replayIntro(){
+  if(!window.tfSplash) return;
+  window.tfSplash(()=>{
+    $("#sheet-root").innerHTML = "";
+    if(API && !TOKEN){ renderLogin(); return; }
+    $("#login").hidden = true; S.f = blankForm(); show("messaggi");
+  });
+}
+$("#brand").onclick = replayIntro;
 /* proposta di installazione: Chrome/Edge su PC e Android usano il loro dialogo, su iPhone si spiega come fare */
 (function(){
   const box = $("#install"), standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;

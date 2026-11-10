@@ -135,7 +135,20 @@ app.post("/api/app/note", auth.requireTech, async (req, res, next) => {
 });
 
 /* ---------------- console dell'ufficio ---------------- */
-app.use(["/admin", "/api/admin"], auth.requireAdmin);
+/* accesso alla console: la pagina /admin è pubblica e mostra il login, i dati (/api/admin/*) richiedono l'accesso */
+app.get("/api/admin/info", (req, res) => res.json({ mode: cfg.mode, demo: auth.adminDemoHint(), configured: !!auth.adminAccount() }));
+app.post("/api/admin/login", (req, res) => {
+  const token = auth.adminLogin(req.body.user, req.body.password);
+  if (!token) return res.status(401).json({ error: auth.adminAccount() ? "utente o password non corretti" : "imposta ADMIN_PASSWORD in .env" });
+  res.json({ token, me: auth.publicAdmin(auth.adminAccount()) });
+});
+app.use("/api/admin", auth.requireAdmin);
+app.get("/api/admin/me", (req, res) => res.json({ me: auth.publicAdmin(req.admin) }));
+app.post("/api/admin/profile", (req, res) => {
+  const r = auth.updateAdmin(req.body || {});
+  if (r.error) return res.status(400).json({ error: r.error });
+  res.json(r);
+});
 /* l'app del tecnico è servita dallo stesso server: niente GitHub Pages, il repository può restare privato */
 const APP_DIR = path.join(__dirname, "..", "app");
 app.get("/app/config.js", (req, res) => res.type("application/javascript").send("window.TF_CONFIG = { backendUrl: location.origin };"));
@@ -153,7 +166,7 @@ app.get("/api/admin/state", async (req, res, next) => {
         res: { ...recognize({ from: m.from, subject: m.subj, headers: m.hdr }, { techs: auth.techs(), clients, tickets, rules: st.rules }), act: "Esempio di mail arrivata direttamente da un cliente." } }));
       mails = [...st.mails, ...extra];
     }
-    res.json({ mode: cfg.mode, support: cfg.support, appUrl: cfg.appUrl, clients, tickets, techs: techsPublic(), mails, rules: st.rules, connections: await sources.status() });
+    res.json({ me: auth.publicAdmin(req.admin), mode: cfg.mode, support: cfg.support, appUrl: cfg.appUrl, clients, tickets, techs: techsPublic(), mails, rules: st.rules, connections: await sources.status() });
   } catch (e) { next(e); }
 });
 app.post("/api/admin/mails/:id/resolve", async (req, res, next) => {

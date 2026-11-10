@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Ticket Farm · Console</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#000000">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
 <style>
@@ -137,9 +140,38 @@ td.act{white-space:nowrap;text-align:right}
 .confirm{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;font-size:12.5px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 @media (max-width:600px){.formgrid{grid-template-columns:minmax(0,1fr)}}
+/* interruttore tema (soluzione A): sole e luna ai lati, pallino che scorre */
+.sw-a{position:relative;width:60px;height:30px;border-radius:15px;border:1px solid var(--line);background:var(--raise);padding:0;cursor:pointer;flex:0 0 auto}
+.sw-a .ic{position:absolute;top:50%;transform:translateY(-50%);width:15px;height:15px}
+.sw-a .ic.s{left:7px;color:#e9a90f}.sw-a .ic.m{right:7px;color:#8fb4ee}
+.sw-a .knob{position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#1e6ff0,#1aa0e8 50%,#19c9b8);box-shadow:0 2px 8px rgba(0,0,0,.3);transition:left .25s}
+.sw-a[aria-checked="true"] .knob{left:32px}
+.sw-a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@media (prefers-reduced-motion:reduce){.sw-a .knob{transition:none}}
 .themebtn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 12px;font-size:12.5px;font-weight:600;align-self:flex-start;white-space:nowrap}
 .contact{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:3px 0}
 .wa{display:inline-flex;align-items:center;gap:6px;color:#fff;background:#1fa855;border-radius:999px;padding:5px 11px;text-decoration:none;font-size:12.5px;font-weight:600;white-space:nowrap}
+.content{min-width:0;display:flex;flex-direction:column}
+.topbar{display:flex;justify-content:flex-end;align-items:center;gap:12px;padding-top:16px;padding-left:max(16px, min(4vw,36px));padding-right:max(16px, env(safe-area-inset-right, 0px), min(4vw,36px))}
+.topbar + main{padding-top:8px}
+.mewrap{position:relative}
+.me{width:36px;height:36px;border-radius:50%;border:0;background:var(--grad);color:#fff;font-weight:700;font-size:13px;cursor:pointer}
+.me:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.menu{position:absolute;right:0;top:44px;z-index:30;min-width:230px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 40px rgba(0,0,0,.25);padding:6px;display:flex;flex-direction:column}
+.menu-head{padding:8px 10px 10px;border-bottom:1px solid var(--line);margin-bottom:4px;display:flex;flex-direction:column}
+.menu-head b{color:var(--ink);font-weight:600}.menu-head span{font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+.menu button{background:none;border:0;text-align:left;padding:9px 10px;border-radius:8px;color:var(--text);font-size:14px;cursor:pointer}
+.menu button:hover,.menu button:focus-visible{background:var(--raise);color:var(--ink);outline:none}
+.login{position:fixed;inset:0;z-index:60;background:var(--bg);display:grid;place-items:center;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:24px}
+.login-box{width:min(380px,100%);display:flex;flex-direction:column;gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:26px}
+.login-box h1{font-size:22px}
+.hint{background:var(--gold-soft);color:var(--gold);border-radius:10px;padding:10px 12px;font-size:13px;font-weight:600}
+.hint button{display:block;margin-top:6px;background:none;border:0;padding:0;color:var(--accent);font:inherit;font-weight:700;cursor:pointer}
+.modal{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.45);display:grid;place-items:center;padding:16px}
+.modal-box{width:min(440px,100%);max-height:100%;overflow:auto}
+.pw{border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px;margin:0}
+.pw legend{font-size:12.5px;color:var(--muted);padding:0 6px}
+.pw:disabled{opacity:.55}
 .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,10px);background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:12px;font-size:13.5px;font-weight:500;opacity:0;transition:.25s;pointer-events:none;z-index:50;max-width:calc(100% - 32px)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 .note{font-size:12.5px;color:var(--muted)}
@@ -166,12 +198,48 @@ td.act{white-space:nowrap;text-align:right}
 <div class="app">
   <aside class="side">
     <div class="logo"><svg viewBox="0 0 80 80" aria-hidden="true"><defs><linearGradient id="lgo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1e6ff0"/><stop offset=".55" stop-color="#1aa0e8"/><stop offset="1" stop-color="#19c9c9"/></linearGradient><linearGradient id="lgg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6dc8a"/><stop offset=".5" stop-color="#d9ab45"/><stop offset="1" stop-color="#b88424"/></linearGradient></defs><path d="M40 6C25.6 6 15 16.8 15 30.4 15 48 40 70 40 70S65 48 65 30.4C65 16.8 54.4 6 40 6Z" fill="none" stroke="url(#lgo)" stroke-width="5.5" stroke-linejoin="round"/><rect x="27" y="21" width="26" height="19" rx="3.5" fill="none" stroke="url(#lgg)" stroke-width="4"/><path d="M28.5 23.5 L40 32 L51.5 23.5" fill="none" stroke="url(#lgg)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Ticket<em>Farm</em></span></div>
-    <button class="themebtn" id="theme" type="button" aria-label="Cambia tema"></button>
     <nav class="nav" id="nav"></nav>
     <div class="foot"><span id="foot-mode">Console · dati di esempio (file aperto senza backend)</span><a id="app-link" href="#" target="_blank" rel="noopener" hidden>Apri l'app del tecnico ↗</a></div>
   </aside>
-  <main id="main"></main>
+  <div class="content">
+    <header class="topbar">
+      <button class="sw-a" id="theme" type="button" role="switch" aria-checked="false" aria-label="Tema scuro"><svg class="ic s" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g></svg><svg class="ic m" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z" fill="currentColor"/></svg><span class="knob"></span></button>
+      <div class="mewrap"><button class="me" id="me" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Il tuo profilo">AD</button>
+        <div class="menu" id="me-menu" role="menu" hidden>
+          <div class="menu-head"><b id="me-name">Amministratore</b><span id="me-mail"></span></div>
+          <button type="button" role="menuitem" id="me-edit">Modifica profilo</button>
+          <button type="button" role="menuitem" id="me-out">Esci</button>
+        </div></div>
+    </header>
+    <main id="main"></main>
+  </div>
 </div>
+
+<section class="login" id="login" hidden>
+  <form class="login-box" id="login-form" autocomplete="on">
+    <div class="logo"><svg viewBox="0 0 80 80" aria-hidden="true"><defs><linearGradient id="lgo2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1e6ff0"/><stop offset=".55" stop-color="#1aa0e8"/><stop offset="1" stop-color="#19c9c9"/></linearGradient><linearGradient id="lgg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6dc8a"/><stop offset=".5" stop-color="#d9ab45"/><stop offset="1" stop-color="#b88424"/></linearGradient></defs><path d="M40 6C25.6 6 15 16.8 15 30.4 15 48 40 70 40 70S65 48 65 30.4C65 16.8 54.4 6 40 6Z" fill="none" stroke="url(#lgo2)" stroke-width="5.5" stroke-linejoin="round"/><rect x="27" y="21" width="26" height="19" rx="3.5" fill="none" stroke="url(#lgg2)" stroke-width="4"/><path d="M28.5 23.5 L40 32 L51.5 23.5" fill="none" stroke="url(#lgg2)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Ticket<em>Farm</em></span></div>
+    <div><h1>Accedi alla console</h1><p class="sub">Riservata all'ufficio.</p></div>
+    <div id="login-hint"></div>
+    <label class="field"><span>Utente</span><input class="input" id="lg-user" autocomplete="username" required></label>
+    <label class="field"><span>Password</span><input class="input" id="lg-pass" type="password" autocomplete="current-password" required></label>
+    <button class="btn primary" type="submit" id="lg-go">Accedi</button>
+  </form>
+</section>
+
+<section class="modal" id="profile" hidden>
+  <form class="panel modal-box" id="pf-form">
+    <h2>Il tuo profilo</h2>
+    <label class="field"><span>Nome</span><input class="input" id="pf-nome" maxlength="80"></label>
+    <label class="field"><span>Mail</span><input class="input" id="pf-mail" type="email" maxlength="120"></label>
+    <fieldset class="pw" id="pf-pw"><legend>Cambia password (facoltativo)</legend>
+      <label class="field"><span>Nuova password</span><input class="input" id="pf-new" type="password" autocomplete="new-password" minlength="8"></label>
+      <label class="field"><span>Ripeti la nuova password</span><input class="input" id="pf-new2" type="password" autocomplete="new-password"></label>
+    </fieldset>
+    <label class="field"><span>Password attuale (per salvare)</span><input class="input" id="pf-cur" type="password" autocomplete="current-password"></label>
+    <p class="note" id="pf-note"></p>
+    <div class="actions"><button class="btn primary" type="submit">Salva</button><button class="btn" type="button" id="pf-x">Annulla</button></div>
+  </form>
+</section>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -260,8 +328,10 @@ function fresh(){
   };
 }
 let S = fresh();
-let LIVE = false, CONN = null;
-const post = (u, b) => fetch(u, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(b)}).then(r => r.ok ? r.json() : r.json().then(j => Promise.reject(new Error(j.error || r.status))));
+let LIVE = false, CONN = null, BACKEND = false, ME = null;
+let TOKEN = ""; try{ TOKEN = localStorage.getItem("tf-admin-token") || ""; }catch(e){}
+const H = () => TOKEN ? {Authorization: "Bearer "+TOKEN} : {};
+const post = (u, b) => fetch(u, {method:"POST", headers:{"Content-Type":"application/json", ...H()}, body:JSON.stringify(b)}).then(r => r.ok ? r.json() : r.json().then(j => Promise.reject(new Error(j.error || r.status))));
 
 const HOW = {
   tech:"Il mittente è un tecnico registrato: è un messaggio del cliente inoltrato dall'app",
@@ -396,7 +466,7 @@ function ticket(){
     cell.innerHTML = `<span class="confirm">Eliminare ${esc(id)}? <button class="btn small danger" type="button" data-yes>Sì, elimina</button> <button class="btn small" type="button" data-no>No</button></span>`;
     cell.querySelector("[data-no]").onclick = ()=>ticket();
     cell.querySelector("[data-yes]").onclick = ()=>{
-      if(LIVE){ fetch("/api/admin/tickets/"+encodeURIComponent(id), {method:"DELETE"}).then(r=>r.ok?r.json():r.json().then(j=>Promise.reject(new Error(j.error||r.status))))
+      if(LIVE){ fetch("/api/admin/tickets/"+encodeURIComponent(id), {method:"DELETE", headers:H()}).then(r=>r.ok?r.json():r.json().then(j=>Promise.reject(new Error(j.error||r.status))))
         .then(()=>{ toast("Ticket "+id+" eliminato"); load(); }).catch(err=>{ toast("Non riuscito: "+err.message); ticket(); }); return; }
       S.tickets = S.tickets.filter(t=>t.id!==id); ticket(); toast("Ticket "+id+" eliminato (prova)");
     };
@@ -447,26 +517,92 @@ function regole(){
 }
 
 function load(){
-  return fetch("/api/admin/state").then(r=>r.ok?r.json():Promise.reject()).then(d=>{
-    LIVE = true; CONN = d.connections;
+  return fetch("/api/admin/state", {headers:H()}).then(r=>{ if(r.status===401) throw {auth:true}; return r.ok ? r.json() : Promise.reject(new Error("errore "+r.status)); }).then(d=>{
+    LIVE = true; CONN = d.connections; ME = d.me || ME; paintMe();
     CLIENTS.splice(0, CLIENTS.length, ...d.clients); TECHS.splice(0, TECHS.length, ...d.techs);
     S.mails = d.mails; S.tickets = d.tickets; S.rules = d.rules;
     $("#foot-mode").textContent = d.mode==="live" ? "Collegato a ITSM, Halo e Office 365" : "Backend in modalità prova: mail salvate in outbox, non spedite";
     if(d.appUrl){ const a=$("#app-link"); a.href=d.appUrl; a.hidden=false; }
     render();
+  }).catch(err=>{ if(err && err.auth){ logout(); return; } toast("Backend non raggiungibile: "+(err && err.message || "")); render(); });
+}
+/* senza backend (file aperto o GitHub Pages): dati di prova, accesso e profilo solo in questo browser */
+const OFF_USER = {user:"admin", password:"admin123"};
+function offProfile(){ let p = null; try{ p = JSON.parse(localStorage.getItem("tf-admin-profile")||"null"); }catch(e){} return Object.assign({user:"admin", nome:"Amministratore", mail:"support@efuture.it"}, p||{}); }
+function startOffline(){
+  if(location.hostname.endsWith("github.io")){ $("#foot-mode").textContent = "Console di prova: dati di esempio, non collegata a un backend"; const a=$("#app-link"); a.href="../"; a.hidden=false; }
+  ME = offProfile(); paintMe(); render();
+}
+
+/* ---------- accesso, menu utente, profilo ---------- */
+function initials(n){ return String(n||"?").trim().split(/\s+/).slice(0,2).map(w=>w[0]).join("").toUpperCase() || "AD"; }
+function paintMe(){ if(!ME) return; $("#me").textContent = initials(ME.nome || ME.user); $("#me-name").textContent = ME.nome || ME.user; $("#me-mail").textContent = (ME.user ? ME.user+" · " : "")+(ME.mail||""); }
+function showLogin(hint){
+  $("#login").hidden = false; $("#me-menu").hidden = true;
+  $("#login-hint").innerHTML = hint ? `<div class="hint">Modalità prova: utente = ${esc(hint.user)}, password = ${esc(hint.password)}<button type="button" id="lg-fill">Compila e accedi</button></div>` : "";
+  $("#lg-user").placeholder = hint ? hint.user : ""; $("#lg-pass").placeholder = hint ? hint.password : "";
+  if(hint) $("#lg-fill").onclick = ()=>{ $("#lg-user").value = hint.user; $("#lg-pass").value = hint.password; $("#login-form").requestSubmit(); };
+  setTimeout(()=>$("#lg-user").focus(), 50);
+}
+$("#login-form").onsubmit = e => {
+  e.preventDefault();
+  const user = $("#lg-user").value.trim(), password = $("#lg-pass").value;
+  if(!BACKEND){
+    if(user === OFF_USER.user && password === OFF_USER.password){ try{ localStorage.setItem("tf-admin-in","1"); }catch(e){} $("#login").hidden = true; $("#lg-pass").value=""; startOffline(); }
+    else toast("Utente o password non corretti");
+    return;
+  }
+  $("#lg-go").disabled = true;
+  fetch("/api/admin/login", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({user, password})})
+    .then(r=>r.json().then(j=>r.ok ? j : Promise.reject(new Error(j.error||r.status))))
+    .then(j=>{ TOKEN = j.token; ME = j.me; try{ localStorage.setItem("tf-admin-token", TOKEN); }catch(e){} $("#login").hidden = true; $("#lg-pass").value=""; paintMe(); load(); })
+    .catch(err=>toast("Accesso non riuscito: "+err.message)).finally(()=>{ $("#lg-go").disabled = false; });
+};
+function logout(){
+  TOKEN = ""; try{ localStorage.removeItem("tf-admin-token"); localStorage.removeItem("tf-admin-in"); }catch(e){}
+  showLogin(BACKEND ? HINT : OFF_USER);
+}
+let HINT = null;
+$("#me").onclick = e => { e.stopPropagation(); const m = $("#me-menu"); m.hidden = !m.hidden; $("#me").setAttribute("aria-expanded", String(!m.hidden)); };
+document.addEventListener("click", e => { if(!e.target.closest(".mewrap")){ $("#me-menu").hidden = true; $("#me").setAttribute("aria-expanded","false"); } });
+document.addEventListener("keydown", e => { if(e.key==="Escape"){ $("#me-menu").hidden = true; $("#profile").hidden = true; } });
+$("#me-out").onclick = ()=>{ $("#me-menu").hidden = true; logout(); toast("Sei uscito"); };
+$("#me-edit").onclick = ()=>{
+  $("#me-menu").hidden = true; $("#profile").hidden = false;
+  $("#pf-nome").value = ME && ME.nome || ""; $("#pf-mail").value = ME && ME.mail || "";
+  ["#pf-new","#pf-new2","#pf-cur"].forEach(x=>$(x).value="");
+  $("#pf-pw").disabled = !BACKEND; $("#pf-cur").closest(".field").hidden = !BACKEND;
+  $("#pf-note").textContent = BACKEND ? "Utente: "+(ME && ME.user || "") : "Versione di prova online: nome e mail restano solo in questo browser, la password non si cambia.";
+  $("#pf-nome").focus();
+};
+$("#pf-x").onclick = ()=>{ $("#profile").hidden = true; };
+$("#profile").onclick = e => { if(e.target.id==="profile") $("#profile").hidden = true; };
+$("#pf-form").onsubmit = e => {
+  e.preventDefault();
+  const nome = $("#pf-nome").value.trim(), mail = $("#pf-mail").value.trim(), nuova = $("#pf-new").value, nuova2 = $("#pf-new2").value, attuale = $("#pf-cur").value;
+  if(!BACKEND){ ME = Object.assign(offProfile(), {nome, mail}); try{ localStorage.setItem("tf-admin-profile", JSON.stringify({nome, mail})); }catch(e){} paintMe(); $("#profile").hidden = true; toast("Profilo salvato"); return; }
+  if(nuova && nuova !== nuova2){ toast("Le due nuove password non sono uguali"); return; }
+  if(!attuale){ toast("Scrivi la password attuale per salvare"); $("#pf-cur").focus(); return; }
+  post("/api/admin/profile", {nome, mail, attuale, nuova}).then(r=>{ ME = r.me; paintMe(); $("#profile").hidden = true; toast(nuova ? "Profilo e password salvati" : "Profilo salvato"); })
+    .catch(err=>toast("Non salvato: "+err.message));
+};
+function boot(){
+  fetch("/api/admin/info").then(r=>r.ok ? r.json() : Promise.reject()).then(info=>{
+    BACKEND = true; HINT = info.demo;
+    if(TOKEN) load(); else showLogin(HINT);
   }).catch(()=>{
-    /* senza backend (file aperto o GitHub Pages): dati di prova, collegamento all'app pubblicata accanto */
-    if(location.hostname.endsWith("github.io")){ $("#foot-mode").textContent = "Console di prova: dati di esempio, non collegata a un backend"; const a=$("#app-link"); a.href="../"; a.hidden=false; }
-    render();
+    BACKEND = false;
+    let inside = false; try{ inside = localStorage.getItem("tf-admin-in")==="1"; }catch(e){}
+    if(inside) startOffline(); else showLogin(OFF_USER);
   });
 }
 /* tema chiaro / scuro, come l'app (stessa preferenza salvata) */
 function curTheme(){ return document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"); }
-function paintTheme(){ $("#theme").textContent = curTheme()==="dark" ? "☀ Chiaro" : "☾ Scuro"; }
+function paintTheme(){ const d = curTheme()==="dark", b = $("#theme"); b.setAttribute("aria-checked", String(d)); b.title = d ? "Tema scuro (tocca per il chiaro)" : "Tema chiaro (tocca per lo scuro)"; }
 try{ const t = localStorage.getItem("tf-theme"); if(t) document.documentElement.dataset.theme = t; }catch(e){}
 $("#theme").onclick = ()=>{ const t = curTheme()==="dark" ? "light" : "dark"; document.documentElement.dataset.theme = t; try{ localStorage.setItem("tf-theme", t); }catch(e){} paintTheme(); };
 paintTheme();
-load();
+boot();
 })();
 </script>
 </body>
