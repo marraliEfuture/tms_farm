@@ -12,6 +12,7 @@ const mail = require("./src/mail");
 const { recognize } = require("./src/recognize");
 const logos = require("./src/logos");
 const settings = require("./src/settings");
+const audit = require("./src/audit");
 const graph = require("./src/connectors/graph");
 
 const app = express();
@@ -103,6 +104,7 @@ app.post("/api/app/send", auth.requireTech, async (req, res, next) => {
       origin: b.kind === "mail" ? "mail del cliente" + (b.mailFrom ? " (" + b.mailFrom + ")" : "") : "WhatsApp del tecnico", files: b.files });
     const sent = await mail.send(msg);
     await logMail(msg, sent);
+    audit.add(tech.mail, "Messaggio inoltrato dall'app", (c ? c.name : "cliente da identificare") + " · " + ticket, "app");
 
     if (c && b.remember && b.number) st.phones[c.id] = b.number;
     const threads = st.threads[tech.mail] = st.threads[tech.mail] || [];
@@ -141,14 +143,20 @@ app.post("/api/app/note", auth.requireTech, async (req, res, next) => {
 app.get("/api/admin/info", (req, res) => res.json({ mode: cfg.mode, demo: auth.adminDemoHint(), configured: !!auth.adminAccount() }));
 app.post("/api/admin/login", (req, res) => {
   const token = auth.adminLogin(req.body.user, req.body.password);
-  if (!token) return res.status(401).json({ error: auth.adminAccount() ? "utente o password non corretti" : "imposta ADMIN_PASSWORD in .env" });
-  res.json({ token, me: auth.publicAdmin(auth.adminAccount()) });
+  if (!token) { audit.add(String(req.body.user || "").slice(0, 60), "Accesso non riuscito", "", "accesso"); return res.status(401).json({ error: auth.adminAccount() ? "utente o password non corretti" : "imposta ADMIN_PASSWORD in .env" }); }
+  const me = auth.publicAdmin(auth.findUser(req.body.user));
+  audit.add(me.user, "Accesso alla console", "", "accesso");
+  res.json({ token, me });
 });
 app.use("/api/admin", auth.requireAdmin);
+/* permessi del profilo: v vedere, m creare/modificare, e eliminare */
+const need = (area, right) => (req, res, next) => settings.can(req.admin.profilo || "admin", area, right) ? next() : res.status(403).json({ error: "il tuo profilo non ha questo permesso" });
+const log = (req, azione, dettaglio, area) => audit.add(req.admin && req.admin.user, azione, dettaglio, area);
 app.get("/api/admin/me", (req, res) => res.json({ me: auth.publicAdmin(req.admin) }));
 app.post("/api/admin/profile", (req, res) => {
-  const r = auth.updateAdmin(req.body || {});
+  const r = auth.updateAdmin(req.body || {}, req.admin);
   if (r.error) return res.status(400).json({ error: r.error });
+  log(req, req.body && req.body.nuova ? "Profilo e password aggiornati" : "Profilo aggiornato", "", "profilo");
   res.json(r);
 });
 /* l'app del tecnico è servita dallo stesso server: niente GitHub Pages, il repository può restare privato */
@@ -178,10 +186,10 @@ app.get("/api/admin/state", async (req, res, next) => {
         res: { ...recognize({ from: m.from, subject: m.subj, headers: m.hdr }, { techs: auth.techs(), clients, tickets, rules: st.rules }), act: "Esempio di mail arrivata direttamente da un cliente." } }));
       mails = [...st.mails, ...extra];
     }
-    res.json({ o365, settings: settings.publicView(), me: auth.publicAdmin(req.admin), mode: cfg.mode, support: settings.support(), appUrl: cfg.appUrl, clients, tickets, techs: techsPublic(), mails, rules: st.rules, connections: await sources.status() });
+    res.json({ profiles: settings.profiles(), o365, settings: settings.can(req.admin.profilo || "admin", "office365", "v") ? settings.publicView() : null, me: auth.publicAdmin(req.admin), mode: cfg.mode, support: settings.support(), appUrl: cfg.appUrl, clients, tickets, techs: techsPublic(), mails, rules: st.rules, connections: await sources.status() });
   } catch (e) { next(e); }
 });
-app.post("/api/admin/mails/:id/resolve", async (req, res, next) => {
+app.post("/api/admin/mails/:id/resolve", need("posta", "m"), async (req, res, next) => {
   try {
     const st = store.load();
     const { clients } = await sources.data();
@@ -190,25 +198,28 @@ app.post("/api/admin/mails/:id/resolve", async (req, res, next) => {
     if (!m && cfg.mode === "demo") { const d = sources.demo.inbound.find(x => x.id === req.params.id); if (d) { m = { ...d }; st.mails.push(m); } }
     if (!m || !c) return res.status(400).json({ error: "mail o cliente non trovati" });
     const ticket = cfg.mode === "demo" ? sources.demo.createTicket(c, m.subj, "") : "";
+    log(req, "Mail verificata", m.subj + " → " + c.name, "posta");
     m.res = { ...(m.res || {}), state: "new", client: c.id, ticket, act: ticket ? "Aperto " + ticket + " per " + c.name + " (simulato)." : "Cliente indicato: " + c.name + ". Il ticket va aperto in " + c.sys + "." };
     store.save();
     res.json({ ok: true, mail: m });
   } catch (e) { next(e); }
 });
 /* creare ed eliminare ticket: in prova sui dati di esempio; dal vivo vanno fatti in ITSM o Halo (da collegare) */
-app.post("/api/admin/tickets", async (req, res, next) => {
+app.post("/api/admin/tickets", need("ticket", "m"), async (req, res, next) => {
   try {
     const { clients } = await sources.data();
     const c = clients.find(x => x.id === req.body.client), title = String(req.body.title || "").trim().slice(0, 120);
     if (!c || !title) return res.status(400).json({ error: "cliente o richiesta mancanti" });
     if (cfg.mode !== "demo") return res.status(501).json({ error: "dal vivo il ticket va aperto in " + c.sys + ": collegamento non ancora disponibile" });
     const id = sources.demo.createTicket(c, title, String(req.body.tech || ""), { urg: !!req.body.urg, origin: "Console" });
+    log(req, "Ticket creato", id + " · " + c.name + " · " + title, "ticket");
     res.json({ ticket: { id, sys: c.sys, client: c.id, title } });
   } catch (e) { next(e); }
 });
-app.delete("/api/admin/tickets/:id", (req, res) => {
+app.delete("/api/admin/tickets/:id", need("ticket", "e"), (req, res) => {
   if (cfg.mode !== "demo") return res.status(501).json({ error: "dal vivo i ticket si chiudono in ITSM o Halo, non si eliminano da qui" });
   if (!sources.demo.deleteTicket(req.params.id)) return res.status(404).json({ error: "ticket non trovato" });
+  log(req, "Ticket eliminato", req.params.id, "ticket");
   res.json({ ok: true });
 });
 /* clienti: in prova sui dati di esempio; dal vivo le anagrafiche si gestiscono in ITSM o Halo */
@@ -216,39 +227,61 @@ const cleanClient = b => ({ name: String(b.name || "").trim().slice(0, 120), cit
   dom: String(b.dom || "").toLowerCase().replace(/^@/, "").slice(0, 120),
   contacts: (Array.isArray(b.contacts) ? b.contacts : []).slice(0, 20).map(k => ({ n: String(k.n || "").slice(0, 80), mail: String(k.mail || "").slice(0, 120), tel: String(k.tel || "").slice(0, 30), src: k.src === "Halo" ? "Halo" : k.src === "O365" ? "O365" : "ITSM" })) });
 const liveOnly = (res, what) => res.status(501).json({ error: "dal vivo " + what + " si gestiscono in ITSM o Halo: collegamento non ancora disponibile" });
-app.post("/api/admin/clients", (req, res) => {
+app.post("/api/admin/clients", need("clienti", "m"), (req, res) => {
   if (cfg.mode !== "demo") return liveOnly(res, "i clienti");
   const c = cleanClient(req.body || {}); if (!c.name) return res.status(400).json({ error: "ragione sociale mancante" });
-  res.json({ id: sources.demo.createClient(c) });
+  const id = sources.demo.createClient(c); log(req, "Cliente creato", c.name, "clienti");
+  res.json({ id });
 });
-app.put("/api/admin/clients/:id", (req, res) => {
+app.put("/api/admin/clients/:id", need("clienti", "m"), (req, res) => {
   if (cfg.mode !== "demo") return liveOnly(res, "i clienti");
   const c = cleanClient(req.body || {}); if (!c.name) return res.status(400).json({ error: "ragione sociale mancante" });
   if (!sources.demo.updateClient(req.params.id, c)) return res.status(404).json({ error: "cliente non trovato" });
+  log(req, "Cliente modificato", c.name, "clienti");
   res.json({ ok: true });
 });
-app.delete("/api/admin/clients/:id", (req, res) => {
+app.delete("/api/admin/clients/:id", need("clienti", "e"), (req, res) => {
   if (cfg.mode !== "demo") return liveOnly(res, "i clienti");
   if (!sources.demo.deleteClient(req.params.id)) return res.status(404).json({ error: "cliente non trovato" });
+  log(req, "Cliente eliminato", req.params.id, "clienti");
   res.json({ ok: true });
 });
 /* tecnici: account dell'app, gestiti qui (data/tecnici.json) anche dal vivo */
-app.post("/api/admin/techs", (req, res) => { const r = auth.addTech(req.body || {}); if (r.error) return res.status(400).json(r); res.json(r); });
-app.put("/api/admin/techs/:mail", (req, res) => { const r = auth.editTech(req.params.mail, req.body || {}); if (r.error) return res.status(404).json(r); res.json(r); });
-app.delete("/api/admin/techs/:mail", (req, res) => { if (!auth.removeTech(req.params.mail)) return res.status(404).json({ error: "tecnico non trovato" }); res.json({ ok: true }); });
+app.post("/api/admin/techs", need("tecnici", "m"), (req, res) => { const r = auth.addTech(req.body || {}); if (r.error) return res.status(400).json(r); log(req, "Tecnico creato", r.tech.mail, "tecnici"); res.json(r); });
+app.put("/api/admin/techs/:mail", need("tecnici", "m"), (req, res) => { const r = auth.editTech(req.params.mail, req.body || {}); if (r.error) return res.status(404).json(r); log(req, r.code ? "Nuovo codice al tecnico" : "Tecnico modificato", r.tech.mail, "tecnici"); res.json(r); });
+app.delete("/api/admin/techs/:mail", need("tecnici", "e"), (req, res) => { if (!auth.removeTech(req.params.mail)) return res.status(404).json({ error: "tecnico non trovato" }); log(req, "Tecnico eliminato", req.params.mail, "tecnici"); res.json({ ok: true }); });
 /* impostazioni: casella di raccolta e Office 365 */
 const inboxCache = { at: 0, list: [], err: "" };
-app.get("/api/admin/settings", (req, res) => res.json(settings.publicView()));
-app.post("/api/admin/settings", (req, res) => {
+app.get("/api/admin/settings", need("office365", "v"), (req, res) => res.json(settings.publicView()));
+app.post("/api/admin/settings", need("office365", "m"), (req, res) => {
   const r = settings.update(req.body || {});
   if (r.error) return res.status(400).json(r);
   inboxCache.at = 0; sources.invalidate();
+  log(req, "Impostazioni Office 365 salvate", "casella di raccolta " + r.settings.support, "office365");
   res.json(r);
 });
-app.post("/api/admin/settings/test-o365", async (req, res, next) => { try { res.json(await graph.test()); } catch (e) { next(e); } });
-app.post("/api/admin/rules", (req, res) => {
+app.post("/api/admin/settings/test-o365", need("office365", "m"), async (req, res, next) => { try { res.json(await graph.test()); } catch (e) { next(e); } });
+/* utenti della console */
+app.get("/api/admin/users", need("utenti", "v"), (req, res) => res.json({ users: auth.users().map(auth.publicAdmin) }));
+app.post("/api/admin/users", need("utenti", "m"), (req, res) => { const r = auth.addUser(req.body || {}); if (r.error) return res.status(400).json(r); log(req, "Utente creato", r.user.user + " (" + r.user.profilo + ")", "utenti"); res.json(r); });
+app.put("/api/admin/users/:user", need("utenti", "m"), (req, res) => { const r = auth.editUser(req.params.user, req.body || {}, req.admin); if (r.error) return res.status(400).json(r); log(req, "Utente modificato", r.user.user + (req.body.password ? " · nuova password" : "") + (req.body.attivo === false ? " · disattivato" : ""), "utenti"); res.json(r); });
+app.delete("/api/admin/users/:user", need("utenti", "e"), (req, res) => { const r = auth.removeUser(req.params.user, req.admin); if (r.error) return res.status(400).json(r); log(req, "Utente eliminato", req.params.user, "utenti"); res.json(r); });
+/* profili e permessi */
+app.post("/api/admin/profiles", need("profili", "m"), (req, res) => { const p = settings.updateProfiles(req.body || {}); log(req, "Permessi dei profili aggiornati", "", "profili"); res.json({ profiles: p }); });
+/* registro attività */
+app.get("/api/admin/audit", need("audit", "v"), (req, res) => res.json({ entries: audit.list().slice(0, 1000) }));
+/* backup e ripristino */
+app.get("/api/admin/backup", need("backup", "v"), (req, res) => {
+  log(req, "Backup scaricato", "", "backup");
+  res.set("Content-Disposition", 'attachment; filename="ticketfarm-backup-' + new Date().toISOString().slice(0, 10) + '.json"').json(settings.backupData());
+});
+app.post("/api/admin/restore", need("backup", "m"), (req, res) => {
+  const r = settings.restoreData(req.body); if (r.error) return res.status(400).json(r);
+  sources.invalidate(); log(req, "Backup ripristinato", "del " + r.created, "backup"); res.json(r);
+});
+app.post("/api/admin/rules", need("regole", "m"), (req, res) => {
   const st = store.load(); const r = st.rules.find(x => x.k === req.body.k);
-  if (r) { r.on = !!req.body.on; store.save(); }
+  if (r) { r.on = !!req.body.on; store.save(); log(req, r.on ? "Regola attivata" : "Regola disattivata", r.t, "regole"); }
   res.json({ rules: st.rules });
 });
 

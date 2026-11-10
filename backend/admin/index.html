@@ -227,6 +227,19 @@ td.act{white-space:nowrap;text-align:right}
 .howto summary{cursor:pointer;list-style:none}.howto summary::-webkit-details-marker{display:none}
 .howto summary::after{content:" ›";color:var(--accent)}
 .howto[open] summary{margin-bottom:6px}
+.rolesw{display:inline-flex;align-items:center;gap:2px;padding:3px;border-radius:999px;background:var(--raise);border:1px solid var(--line);margin-right:auto}
+.rolesw .rl{font-size:11.5px;font-weight:600;color:var(--muted);padding:0 8px 0 10px;text-transform:uppercase;letter-spacing:.08em}
+.rolesw button{border:0;background:none;border-radius:999px;padding:6px 12px;font-weight:600;font-size:12.5px;color:var(--muted);cursor:pointer}
+.rolesw button[aria-pressed="true"]{background:var(--grad);color:#fff}
+.rolebar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--gold-soft);color:var(--gold);border-radius:12px;padding:10px 14px;font-size:13.5px;font-weight:600}
+.matrix td,.matrix th{text-align:center}.matrix td:first-child,.matrix th:first-child{text-align:left}
+.matrix input{width:17px;height:17px;accent-color:#2aa7ff}
+.perm-cell{display:inline-flex;gap:10px}
+.perm-cell label{display:inline-flex;flex-direction:column;align-items:center;font-size:10.5px;color:var(--muted);gap:2px}
+.drop{border:2px dashed var(--line);border-radius:14px;padding:22px;text-align:center;color:var(--muted)}
+.audit-f{display:flex;gap:8px;flex-wrap:wrap}.audit-f .input{max-width:260px}
+@media (max-width:900px){.rolesw .rl{display:none}.rolesw button{padding:6px 9px}}
+@media (max-width:600px){.rolesw{order:3;margin:6px 0 0;width:100%;justify-content:center}.topbar{flex-wrap:wrap}}
 .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,10px);background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:12px;font-size:13.5px;font-weight:500;opacity:0;transition:.25s;pointer-events:none;z-index:50;max-width:calc(100% - 32px)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 .note{font-size:12.5px;color:var(--muted)}
@@ -259,6 +272,10 @@ td.act{white-space:nowrap;text-align:right}
   </aside>
   <div class="content">
     <header class="topbar">
+      <div class="rolesw" id="rolesw" role="group" aria-label="Vedi la console come">
+        <span class="rl">Vedi come</span>
+        <button type="button" data-role="admin">Amministratore</button><button type="button" data-role="resp">Responsabile</button><button type="button" data-role="op">Operatore</button>
+      </div>
       <button class="sw-a" id="theme" type="button" role="switch" aria-checked="false" aria-label="Tema scuro"><svg class="ic s" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g></svg><svg class="ic m" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z" fill="currentColor"/></svg><span class="knob"></span></button>
       <div class="mewrap"><button class="me" id="me" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Il tuo profilo">AD</button>
         <div class="menu" id="me-menu" role="menu" hidden>
@@ -407,18 +424,31 @@ const toCheck = () => S.mails.filter(m=>m.res.state==="warn").length;
 /* menu diviso: il lavoro di ogni giorno, la configurazione, i tutorial */
 const GROUPS = [
   ["Operativo", [["cruscotto","Cruscotto"],["posta","Posta in arrivo"],["ticket","Ticket"],["clienti","Clienti"]]],
-  ["Configurazione", [["tecnici","Tecnici"],["office365","Office 365"],["collegamenti","Collegamenti"],["regole","Riconoscimento"]]],
+  ["Configurazione", [["utenti","Utenti"],["profili","Profili e permessi"],["tecnici","Tecnici"],["office365","Office 365"],["collegamenti","Collegamenti"],["regole","Riconoscimento"],["backup","Backup e ripristino"],["audit","Registro attività"]]],
   ["Tutorial", [["tutorial","Casi d'uso"]]]
 ];
+/* profili: v vedere, m creare/modificare, e eliminare (in uso reale arrivano dal backend) */
+const AREE = [["cruscotto","Cruscotto"],["posta","Posta in arrivo"],["ticket","Ticket"],["clienti","Clienti"],["utenti","Utenti"],["profili","Profili e permessi"],["tecnici","Tecnici"],["office365","Office 365"],["collegamenti","Collegamenti"],["regole","Riconoscimento"],["backup","Backup e ripristino"],["audit","Registro attività"],["tutorial","Tutorial"]];
+let PROFILES = {
+  admin:{nome:"Amministratore", desc:"Tutto, compresa la configurazione", perm:Object.fromEntries(AREE.map(([a])=>[a,"vme"]))},
+  resp:{nome:"Responsabile service", desc:"Lavoro quotidiano, tecnici e regole; vede utenti e registro", perm:{cruscotto:"v",posta:"vm",ticket:"vme",clienti:"vme",utenti:"v",profili:"v",tecnici:"vme",office365:"",collegamenti:"v",regole:"vm",backup:"",audit:"v",tutorial:"v"}},
+  op:{nome:"Operatore", desc:"Posta, ticket e clienti; nessuna configurazione", perm:{cruscotto:"v",posta:"vm",ticket:"vm",clienti:"v",utenti:"",profili:"",tecnici:"",office365:"",collegamenti:"",regole:"",backup:"",audit:"",tutorial:"v"}}
+};
+let ROLE = "admin", REAL_ROLE = "admin";
+const can = (area, right) => ((PROFILES[ROLE]||{perm:{}}).perm[area]||"").includes(right||"v");
+/* nasconde i pulsanti che il profilo non può usare (attributo data-perm="area:diritto") */
+function applyPerms(root){ (root||document).querySelectorAll("[data-perm]").forEach(el=>{ const [a,r] = el.dataset.perm.split(":"); el.hidden = !can(a,r); }); }
 function nav(){
-  $("#nav").innerHTML = GROUPS.map(([g,items])=>`<span class="grp">${g}</span>`+items.map(([k,l])=>`<button type="button" data-v="${k}" ${S.view===k?'aria-current="page"':""}>${l}${k==="posta"&&toCheck()?`<span class="n">${toCheck()}</span>`:""}${k==="tutorial"?`<span class="n">${TUTORIALS.length}</span>`:""}</button>`).join("")).join("");
+  if(!can(S.view,"v")) S.view = "cruscotto";
+  $("#nav").innerHTML = GROUPS.map(([g,items])=>[g, items.filter(([k])=>can(k,"v"))]).filter(([,items])=>items.length).map(([g,items])=>`<span class="grp">${g}</span>`+items.map(([k,l])=>`<button type="button" data-v="${k}" ${S.view===k?'aria-current="page"':""}>${l}${k==="posta"&&toCheck()?`<span class="n">${toCheck()}</span>`:""}${k==="tutorial"?`<span class="n">${TUTORIALS.filter(x=>x.for.includes(ROLE)).length}</span>`:""}</button>`).join("")).join("");
   $("#nav").querySelectorAll("button").forEach(b=>b.onclick=()=>{ S.view=b.dataset.v; S.sel=null; S.tut=null; render(); window.scrollTo(0,0); });
 }
-function render(){ nav(); ({cruscotto,posta,ticket,clienti,tecnici,office365,collegamenti,regole,tutorial})[S.view](); }
+function render(){ nav(); ({cruscotto,posta,ticket,clienti,utenti,profili,tecnici,office365,collegamenti,regole,backup,audit,tutorial})[S.view](); applyPerms(); paintRole(); }
+new MutationObserver(()=>applyPerms($("#main"))).observe(document.getElementById("main"), {childList:true, subtree:true});
 
 /* ---------- Tutorial: 5 casi d'uso operativi, ognuno con video e procedura ---------- */
 const TUTORIALS = [
-  { id:"profilo", n:1, group:"setup", title:"Primo accesso alla console e profilo", where:"Console", time:"40 secondi",
+  { id:"profilo", for:["admin","resp","op"], n:1, group:"setup", title:"Primo accesso alla console e profilo", where:"Console", time:"40 secondi",
     intro:"Al primo accesso l'ufficio entra nella console, completa il profilo e sostituisce la password di prova.",
     steps:[
       {who:"Console", t:"Accedi", d:"All'indirizzo della console compare la schermata di accesso: scrivi <b>utente</b> e <b>password</b>."},
@@ -430,7 +460,7 @@ const TUTORIALS = [
     ],
     result:"Console personale, protetta dalla tua password.",
     tip:"Nella versione di prova online profilo e password restano solo in quel browser." },
-  { id:"tecnico", n:2, group:"setup", title:"Aggiungere un tecnico e dargli l'accesso", where:"Console", time:"1 minuto",
+  { id:"tecnico", for:["admin","resp"], n:2, group:"setup", title:"Aggiungere un tecnico e dargli l'accesso", where:"Console", time:"1 minuto",
     intro:"Ogni tecnico ha il suo accesso all'app. La sua mail aziendale è anche la casella da cui partono i messaggi inoltrati.",
     steps:[
       {who:"Console", t:"Nuovo tecnico", d:"In <b>Configurazione → Tecnici</b> tocca <b>+ Nuovo tecnico</b>."},
@@ -442,7 +472,7 @@ const TUTORIALS = [
     ],
     result:"Il tecnico ha il suo accesso e le sue mail sono riconosciute come messaggi inoltrati.",
     tip:"Nella colonna <b>App</b> vedi chi l'ha già usata e quando ha inviato l'ultimo messaggio." },
-  { id:"installa", n:3, group:"setup", title:"Installare l'app sul telefono del tecnico", where:"App del tecnico", time:"1 minuto",
+  { id:"installa", for:["admin","resp"], n:3, group:"setup", title:"Installare l'app sul telefono del tecnico", where:"App del tecnico", time:"1 minuto",
     intro:"L'app si installa dal browser, senza App Store, e compare sulla schermata Home come le altre.",
     steps:[
       {who:"App", t:"Apri l'indirizzo", d:"Sul telefono apri l'indirizzo dell'app con <b>Chrome</b> (Android) o <b>Safari</b> (iPhone)."},
@@ -454,7 +484,7 @@ const TUTORIALS = [
     ],
     result:"L'app è sul telefono, pronta per inoltrare i messaggi dei clienti.",
     tip:"Toccando <b>Ticket Farm</b> in alto si rivede l'introduzione e si torna alla home." },
-  { id:"cliente", n:4, group:"setup", title:"Aggiungere un cliente con i suoi contatti", where:"Console", time:"1 minuto",
+  { id:"cliente", for:["admin","resp"], n:4, group:"setup", title:"Aggiungere un cliente con i suoi contatti", where:"Console", time:"1 minuto",
     intro:"Dominio e contatti servono a riconoscere le mail del cliente e ad aprire WhatsApp con un tocco.",
     steps:[
       {who:"Console", t:"Nuovo cliente", d:"In <b>Clienti</b> tocca <b>+ Nuovo cliente</b>."},
@@ -466,7 +496,7 @@ const TUTORIALS = [
     ],
     result:"Le mail del cliente si riconoscono da sole e WhatsApp è a un tocco.",
     tip:"Collegati ITSM e Halo, le anagrafiche arrivano da lì; qui si completano i dati che mancano." },
-  { id:"riconoscimento", n:5, group:"setup", title:"Regolare il riconoscimento delle mail", where:"Console", time:"1 minuto",
+  { id:"riconoscimento", for:["admin","resp"], n:5, group:"setup", title:"Regolare il riconoscimento delle mail", where:"Console", time:"1 minuto",
     intro:"Le regole decidono come una mail che arriva a support@ trova il suo ticket e il suo cliente.",
     steps:[
       {who:"Console", t:"Le regole", d:"In <b>Configurazione → Riconoscimento</b>: risposta al ticket, numero nell'oggetto, cliente dall'app, mittente noto, dominio."},
@@ -477,7 +507,7 @@ const TUTORIALS = [
     ],
     result:"Più mail riconosciute da sole, meno lavoro in «Da verificare».",
     tip:"Le regole si provano in ordine: la prima che trova ticket o cliente decide." },
-  { id:"whatsapp", n:6, group:"day", title:"Inoltrare un messaggio WhatsApp del cliente", where:"App del tecnico", time:"1 minuto",
+  { id:"whatsapp", for:["admin","resp","op"], n:6, group:"day", title:"Inoltrare un messaggio WhatsApp del cliente", where:"App del tecnico", time:"1 minuto",
     intro:"Un cliente scrive sul numero personale del tecnico. Il tecnico porta il messaggio in Ticket Farm in pochi tocchi e l'ufficio lo vede subito.",
     steps:[
       {who:"WhatsApp", t:"Copia il messaggio", d:"Tieni premuto il messaggio del cliente (anche più di uno) e tocca <b>Copia</b>."},
@@ -490,7 +520,7 @@ const TUTORIALS = [
     ],
     result:"Il messaggio del cliente è nel ticket con l'ora giusta e l'ufficio lo vede.",
     tip:"Prima di inviare, il riquadro <b>La mail che parte</b> mostra mittente, oggetto e intestazioni." },
-  { id:"mail", n:7, group:"day", title:"Inoltrare una mail arrivata alla casella personale", where:"App del tecnico", time:"1 minuto",
+  { id:"mail", for:["admin","resp","op"], n:7, group:"day", title:"Inoltrare una mail arrivata alla casella personale", where:"App del tecnico", time:"1 minuto",
     intro:"Il cliente ha scritto alla mail personale del tecnico. Dal testo della mail l'app riconosce da sola cliente, ora e oggetto.",
     steps:[
       {who:"Mail", t:"Copia la mail", d:"Tutto il testo, comprese le righe <b>Da</b>, <b>Inviato</b> e <b>Oggetto</b>."},
@@ -502,7 +532,7 @@ const TUTORIALS = [
     ],
     result:"La mail del cliente è nel ticket senza doverla ricopiare.",
     tip:"In alternativa la mail si può inoltrare direttamente a support@efuture.it dal programma di posta." },
-  { id:"verifica", n:9, group:"day", title:"Sistemare le mail da verificare", where:"Console", time:"1 minuto",
+  { id:"verifica", for:["admin","resp","op"], n:9, group:"day", title:"Sistemare le mail da verificare", where:"Console", time:"1 minuto",
     intro:"Una mail senza ticket e senza cliente riconosciuto resta «Da verificare». Basta indicare il cliente e aprire il ticket.",
     steps:[
       {who:"Console", t:"Guarda il cruscotto", d:"Il riquadro <b>Da verificare</b> o il numero oro accanto a <b>Posta in arrivo</b>."},
@@ -514,7 +544,7 @@ const TUTORIALS = [
     ],
     result:"La mail diventa un ticket del cliente giusto.",
     tip:"I messaggi dei tecnici con «cliente da identificare» arrivano qui." },
-  { id:"telefono", n:10, group:"day", title:"Aprire un ticket per una richiesta al telefono", where:"Console", time:"40 secondi",
+  { id:"telefono", for:["admin","resp","op"], n:10, group:"day", title:"Aprire un ticket per una richiesta al telefono", where:"Console", time:"40 secondi",
     intro:"Un cliente chiama l'ufficio. Il ticket si apre dalla console e finisce nel sistema giusto.",
     steps:[
       {who:"Telefono", t:"Il cliente chiama", d:"Annota cliente e problema."},
@@ -526,7 +556,7 @@ const TUTORIALS = [
     ],
     result:"La richiesta telefonica è un ticket tracciato come le altre.",
     tip:"Un ticket creato per errore si toglie con <b>Elimina</b>, dopo la conferma." },
-  { id:"rispondi", n:8, group:"day", title:"Rispondere al cliente e aggiornare il ticket", where:"App del tecnico", time:"1 minuto",
+  { id:"rispondi", for:["admin","resp","op"], n:8, group:"day", title:"Rispondere al cliente e aggiornare il ticket", where:"App del tecnico", time:"1 minuto",
     intro:"Nelle conversazioni il tecnico legge gli aggiornamenti, risponde al cliente su WhatsApp e scrive all'ufficio.",
     steps:[
       {who:"App", t:"Apri Messaggi", d:"Il tag <b>da leggere</b> indica le conversazioni con novità."},
@@ -547,7 +577,7 @@ function tutorial(){
   const t = TUTORIALS.find(x=>x.id===S.tut);
   if(!t){
     $("#main").innerHTML = `<div class="top"><div><h1>Tutorial</h1><p class="sub">Dieci casi d'uso: prima la configurazione, poi il lavoro di tutti i giorni. Ognuno ha un video breve e la procedura passo per passo.</p></div></div>
-      ${[["setup","Configurazione e primo avvio"],["day","Lavoro di tutti i giorni"]].map(([g,gl])=>`<h2 class="tgroup">${gl}</h2><div class="tuts">${TUTORIALS.filter(x=>x.group===g).map(x=>`<button class="tut" type="button" data-t="${x.id}">
+      ${[["setup","Configurazione e primo avvio"],["day","Lavoro di tutti i giorni"]].filter(([g])=>TUTORIALS.some(x=>x.group===g && x.for.includes(ROLE))).map(([g,gl])=>`<h2 class="tgroup">${gl}</h2><div class="tuts">${TUTORIALS.filter(x=>x.group===g && x.for.includes(ROLE)).map(x=>`<button class="tut" type="button" data-t="${x.id}">
         <span class="thumb"><img src="tutorial/${x.n}-${x.id}.jpg" alt="" loading="lazy" onerror="this.remove()"><span class="play" aria-hidden="true">▶</span></span>
         <span class="tbody"><span class="dim">${x.n} · ${x.where} · ${x.time}</span><b>${x.title}</b><span class="dim">${x.intro}</span></span></button>`).join("")}</div>`).join("")}`;
     document.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{ S.tut=b.dataset.t; tutorial(); window.scrollTo(0,0); });
@@ -595,7 +625,7 @@ function cruscotto(){
       <div class="panel"><div style="display:flex;justify-content:space-between;align-items:center"><h2>Da verificare</h2><button class="btn" type="button" id="go-posta">Apri la posta</button></div>
         ${toCheck() ? S.mails.filter(m=>m.res.state==="warn").map(m=>`<div><span class="strong">${esc(m.subj)}</span><div class="dim">${esc(m.fromName)} · ${esc(m.at)}</div></div>`).join("") : `<p class="dim">Niente da verificare: tutte le mail sono state riconosciute.</p>`}
       </div>
-      <div class="panel"><h2>Ticket aperti per tecnico</h2><div class="bars">${byTech.map(([n,v])=>`<div class="bar"><span>${n}</span><span><i style="width:${v/max*100}%"></i></span><u>${v}</u></div>`).join("")}</div>
+      <div class="panel" data-perm="tecnici:v"><h2>Ticket aperti per tecnico</h2><div class="bars">${byTech.map(([n,v])=>`<div class="bar"><span>${n}</span><span><i style="width:${v/max*100}%"></i></span><u>${v}</u></div>`).join("")}</div>
         <p class="note">${fromApp} mail di oggi arrivano dall'app dei tecnici (messaggi WhatsApp o mail dei clienti inoltrati).</p></div>
     </div>`;
   $("#go-posta").onclick = ()=>{ S.view="posta"; render(); };
@@ -652,7 +682,7 @@ function wireFix(m){
 function ticket(){
   const list = S.tickets.filter(t => S.tfilt==="tutti" || t.sys===S.tfilt || (S.tfilt==="aperti" && t.state!=="Chiuso"));
   $("#main").innerHTML = `<div class="top"><div><h1>Ticket</h1><p class="sub">Letti da ITSM e Halo. Il ticket resta nel suo sistema: Ticket Farm li mostra insieme.</p></div>
-      <button class="btn primary" type="button" id="t-new">+ Nuovo ticket</button></div>
+      <button class="btn primary" type="button" id="t-new" data-perm="ticket:m">+ Nuovo ticket</button></div>
     <form class="panel" id="t-form" hidden>
       <h2>Nuovo ticket</h2>
       <div class="formgrid">
@@ -669,7 +699,7 @@ function ticket(){
       ${list.map(t=>{ const c=cl(t.client); return `<tr><td><span class="mono strong">${esc(t.id)}</span><div>${badge(t.sys)}</div></td><td>${esc(c?c.name:t.client)}</td><td>${esc(t.title)}${t.urg?' <span class="pill p-urg">Urgente</span>':""}</td>
         <td><span class="pill ${t.state==="Chiuso"?"p-mut":t.state==="Aperto"?"p-new":t.state.startsWith("In attesa")?"p-warn":"p-ok"}">${esc(t.state)}</span></td>
         <td>${t.tech?`<span class="strong">${t.tech}</span>`:`<span class="dim">da assegnare</span>`}</td><td class="dim">${esc(t.origin)}</td><td class="mono">${esc(t.upd)}</td>
-        <td class="act" data-del="${esc(t.id)}"><button class="btn small danger" type="button" data-ask="${esc(t.id)}">Elimina</button></td></tr>`; }).join("") || `<tr><td colspan="8" class="dim">Nessun ticket</td></tr>`}
+        <td class="act" data-del="${esc(t.id)}"><button class="btn small danger" type="button" data-ask="${esc(t.id)}" data-perm="ticket:e">Elimina</button></td></tr>`; }).join("") || `<tr><td colspan="8" class="dim">Nessun ticket</td></tr>`}
     </tbody></table></div>`;
   document.querySelectorAll(".chip[data-f]").forEach(b=>b.onclick=()=>{ S.tfilt=b.dataset.f; ticket(); });
   const form = $("#t-form");
@@ -684,7 +714,7 @@ function ticket(){
       post("/api/admin/tickets", {client:c.id, title, tech, urg}).then(r=>{ toast("Ticket "+r.ticket.id+" aperto in "+SRC[c.sys]); load(); })
         .catch(err=>{ $("#nt-go").disabled = false; toast("Non riuscito: "+err.message); }); return; }
     const id = c.sys==="Halo" ? "HALO-48"+(++S.seq) : "Tck #7142"+(++S.seq);
-    S.tickets.unshift({id, sys:c.sys, client:c.id, title, state:"Aperto", tech, urg, origin:"Console", upd:"adesso"});
+    S.tickets.unshift({id, sys:c.sys, client:c.id, title, state:"Aperto", tech, urg, origin:"Console", upd:"adesso"}); logLocal("Ticket creato", id+" · "+c.name+" · "+title, "ticket");
     S.tfilt = "tutti"; ticket(); toast("Ticket "+id+" aperto in "+SRC[c.sys]+" (prova)");
   };
   document.querySelectorAll("[data-ask]").forEach(b=>b.onclick=()=>{
@@ -702,11 +732,11 @@ function ticket(){
 /* ---------- Clienti ---------- */
 function clienti(){
   $("#main").innerHTML = `<div class="top"><div><h1>Clienti</h1><p class="sub">Anagrafiche da ITSM e Halo, contatti anche da Office 365. Servono a riconoscere il mittente delle mail.</p></div>
-      <button class="btn primary" type="button" id="c-add">+ Nuovo cliente</button></div>
+      <button class="btn primary" type="button" id="c-add" data-perm="clienti:m">+ Nuovo cliente</button></div>
     <div class="tbl"><table><thead><tr><th>Cliente</th><th>Ticket in</th><th>Dominio</th><th>Contatti</th><th><span class="sr">Azioni</span></th></tr></thead><tbody>
       ${CLIENTS.map(c=>`<tr><td><div style="display:flex;gap:10px;align-items:center">${logo(c)}<div><span class="strong">${esc(c.name)}</span><div class="dim">${esc(c.city||"")}</div></div></div></td><td>${badge(c.sys)}</td><td class="mono">${c.dom?"@"+esc(c.dom):"—"}</td>
         <td>${(c.contacts||[]).map(k=>`<div class="contact"><div>${esc(k.n)} ${badge(k.src)}<div class="dim">${esc(k.mail||"")}${k.tel?" · "+esc(k.tel):""}</div></div>${waBtn(k.tel)}</div>`).join("") || `<span class="dim">Nessun contatto</span>`}</td>
-        <td class="act" data-row="${esc(c.id)}"><button class="btn small" type="button" data-edit="${esc(c.id)}">Modifica</button> <button class="btn small danger" type="button" data-ask="${esc(c.id)}">Elimina</button></td></tr>`).join("") || `<tr><td colspan="5" class="dim">Nessun cliente</td></tr>`}
+        <td class="act" data-row="${esc(c.id)}"><button class="btn small" type="button" data-edit="${esc(c.id)}" data-perm="clienti:m">Modifica</button> <button class="btn small danger" type="button" data-ask="${esc(c.id)}" data-perm="clienti:e">Elimina</button></td></tr>`).join("") || `<tr><td colspan="5" class="dim">Nessun cliente</td></tr>`}
     </tbody></table></div>`;
   $("#c-add").onclick = ()=>clientForm(null);
   document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>clientForm(cl(b.dataset.edit)));
@@ -764,10 +794,10 @@ function clientForm(c){
 /* ---------- Tecnici ---------- */
 const techName = t => t.name || t.nome || "";
 function tecnici(){
-  $("#main").innerHTML = `<div class="top"><div><h1>Tecnici</h1><p class="sub">Le mail che arrivano da questi indirizzi sono messaggi dei clienti inoltrati dall'app, non richieste del tecnico.</p></div><button class="btn primary" type="button" id="t-add">+ Nuovo tecnico</button></div>
+  $("#main").innerHTML = `<div class="top"><div><h1>Tecnici</h1><p class="sub">Le mail che arrivano da questi indirizzi sono messaggi dei clienti inoltrati dall'app, non richieste del tecnico.</p></div><button class="btn primary" type="button" id="t-add" data-perm="tecnici:m">+ Nuovo tecnico</button></div>
     <div class="tbl"><table><thead><tr><th>Tecnico</th><th>Casella che invia</th><th>Zona</th><th>App</th><th>Ultimo invio</th><th>Ticket aperti</th><th><span class="sr">Azioni</span></th></tr></thead><tbody>
       ${TECHS.map(t=>`<tr><td><span class="strong">${esc(t.ini)}</span> · ${esc(techName(t))}</td><td class="mono">${esc(t.mail)}</td><td>${esc(t.zona||"")}</td><td>${t.app?'<span class="pill p-ok">Attiva</span>':'<span class="pill p-mut">Non installata</span>'}</td><td class="mono">${esc(t.last||"—")}</td><td class="mono">${S.tickets.filter(x=>x.tech===t.ini&&x.state!=="Chiuso").length}</td>
-        <td class="act"><button class="btn small" type="button" data-edit="${esc(t.mail)}">Modifica</button> <button class="btn small danger" type="button" data-ask="${esc(t.mail)}">Elimina</button></td></tr>`).join("") || `<tr><td colspan="7" class="dim">Nessun tecnico</td></tr>`}
+        <td class="act"><button class="btn small" type="button" data-edit="${esc(t.mail)}" data-perm="tecnici:m">Modifica</button> <button class="btn small danger" type="button" data-ask="${esc(t.mail)}" data-perm="tecnici:e">Elimina</button></td></tr>`).join("") || `<tr><td colspan="7" class="dim">Nessun tecnico</td></tr>`}
     </tbody></table></div>`;
   $("#t-add").onclick = ()=>techForm(null);
   document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>techForm(TECHS.find(t=>t.mail===b.dataset.edit)));
@@ -810,6 +840,167 @@ function techForm(t){
 }
 
 
+
+/* ---------- profili: cambio vista e default per profilo ---------- */
+function paintRole(){
+  document.querySelectorAll("#rolesw [data-role]").forEach(b=>b.setAttribute("aria-pressed", String(b.dataset.role===ROLE)));
+  /* in uso reale solo un amministratore può provare gli altri profili */
+  $("#rolesw").hidden = BACKEND && LIVE && REAL_ROLE !== "admin";
+}
+function setRole(r){
+  ROLE = r; S.sel = null; S.tut = null;
+  /* filtri e vista d'ingresso sensati per profilo */
+  if(r==="op"){ S.filt = "warn"; S.tfilt = "aperti"; S.view = "posta"; }
+  else if(r==="resp"){ S.filt = "tutti"; S.tfilt = "aperti"; S.view = "cruscotto"; }
+  else { S.filt = "tutti"; S.tfilt = "tutti"; S.view = "cruscotto"; }
+  try{ localStorage.setItem("tf-admin-role", r); }catch(e){}
+  render(); toast("Vista: "+PROFILES[r].nome);
+}
+document.querySelectorAll("#rolesw [data-role]").forEach(b=>b.onclick=()=>setRole(b.dataset.role));
+
+/* registro locale per la versione di prova senza backend */
+const AUDIT_DEMO = [
+  {at:"2026-11-10T09:12:00", user:"mb@efuture.it", azione:"Messaggio inoltrato dall'app", dettaglio:"Caseificio Valle SA · Tck #714139", area:"app"},
+  {at:"2026-11-10T08:41:00", user:"g.verdi", azione:"Mail verificata", dettaglio:"Richiesta preventivo manutenzione → Vini Collina SA", area:"posta"},
+  {at:"2026-11-10T08:30:00", user:"g.verdi", azione:"Accesso alla console", dettaglio:"", area:"accesso"},
+  {at:"2026-11-10T08:05:00", user:"l.bianchi", azione:"Tecnico creato", dettaglio:"gn@efuture.it", area:"tecnici"},
+  {at:"2026-11-09T18:20:00", user:"admin", azione:"Backup scaricato", dettaglio:"", area:"backup"},
+  {at:"2026-11-09T17:02:00", user:"admin", azione:"Regola disattivata", dettaglio:"Dominio del mittente", area:"regole"},
+  {at:"2026-11-09T16:48:00", user:"x.rossi", azione:"Accesso non riuscito", dettaglio:"", area:"accesso"}
+];
+let AUDIT_LOCAL = AUDIT_DEMO.slice();
+const logLocal = (azione, dettaglio, area) => { if(!LIVE) AUDIT_LOCAL.unshift({at:new Date().toISOString(), user:(ME&&ME.user)||"admin", azione, dettaglio:dettaglio||"", area:area||""}); };
+let USERS_LOCAL = [
+  {user:"admin", nome:"Amministratore", mail:"support@efuture.it", profilo:"admin", attivo:true, ultimo:"2026-11-10T09:30:00"},
+  {user:"l.bianchi", nome:"Laura Bianchi", mail:"l.bianchi@efuture.it", profilo:"resp", attivo:true, ultimo:"2026-11-10T08:02:00"},
+  {user:"g.verdi", nome:"Giulia Verdi", mail:"g.verdi@efuture.it", profilo:"op", attivo:true, ultimo:"2026-11-10T08:30:00"},
+  {user:"p.neri", nome:"Paolo Neri", mail:"p.neri@efuture.it", profilo:"op", attivo:false, ultimo:"2026-10-02T11:10:00"}
+];
+const fmtDate = iso => { if(!iso) return "—"; const d = new Date(iso); return isNaN(d) ? iso : d.toLocaleString("it-CH",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}); };
+const getJ = u => fetch(u, {headers:H()}).then(r=>r.ok ? r.json() : r.json().then(j=>Promise.reject(new Error(j.error||r.status))));
+
+/* ---------- Utenti della console ---------- */
+function utenti(){
+  const draw = list => {
+    $("#main").innerHTML = `<div class="top"><div><h1>Utenti</h1><p class="sub">Chi entra nella console e con quale profilo. I tecnici dell'app si gestiscono in Tecnici.</p></div>
+        <button class="btn primary" type="button" id="u-add" data-perm="utenti:m">+ Nuovo utente</button></div>
+      <div class="tbl"><table><thead><tr><th>Utente</th><th>Profilo</th><th>Stato</th><th>Ultimo accesso</th><th><span class="sr">Azioni</span></th></tr></thead><tbody>
+        ${list.map(u=>`<tr><td><span class="strong">${esc(u.nome||u.user)}</span><div class="dim">${esc(u.user)}${u.mail?" · "+esc(u.mail):""}</div></td>
+          <td><span class="pill ${u.profilo==="admin"?"p-new":u.profilo==="resp"?"p-ok":"p-mut"}">${esc((PROFILES[u.profilo]||{}).nome||u.profilo)}</span></td>
+          <td>${u.attivo!==false?'<span class="pill p-ok">Attivo</span>':'<span class="pill p-warn">Disattivato</span>'}</td><td class="mono">${fmtDate(u.ultimo)}</td>
+          <td class="act"><button class="btn small" type="button" data-edit="${esc(u.user)}" data-perm="utenti:m">Modifica</button> <button class="btn small danger" type="button" data-ask="${esc(u.user)}" data-perm="utenti:e">Elimina</button></td></tr>`).join("")}
+      </tbody></table></div>
+      <p class="note">Le password non si vedono mai: un amministratore può impostarne una nuova da Modifica. Deve restare sempre almeno un amministratore attivo.</p>`;
+    $("#u-add").onclick = ()=>userForm(null, list);
+    document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>userForm(list.find(u=>u.user===b.dataset.edit), list));
+    document.querySelectorAll("[data-ask]").forEach(b=>b.onclick=()=>askDelete(b, "l'utente "+b.dataset.ask, ()=>{
+      if(LIVE) return del("/api/admin/users/"+encodeURIComponent(b.dataset.ask)).then(()=>{ toast("Utente eliminato"); utenti(); });
+      const u = USERS_LOCAL.find(x=>x.user===b.dataset.ask);
+      if(u.profilo==="admin" && USERS_LOCAL.filter(x=>x.profilo==="admin"&&x.attivo!==false).length<=1){ toast("Serve almeno un amministratore attivo"); utenti(); return; }
+      USERS_LOCAL = USERS_LOCAL.filter(x=>x!==u); logLocal("Utente eliminato", u.user, "utenti"); utenti(); toast("Utente eliminato (prova)");
+    }, utenti));
+    applyPerms();
+  };
+  if(LIVE) getJ("/api/admin/users").then(r=>draw(r.users)).catch(err=>toast("Utenti non disponibili: "+err.message)); else draw(USERS_LOCAL);
+}
+function userForm(u, list){
+  const isNew = !u; u = u || {user:"", nome:"", mail:"", profilo:"op", attivo:true};
+  openEditor(`<h2>${isNew?"Nuovo utente":"Modifica utente"}</h2>
+    <div class="formgrid">
+      <label class="field"><span>Nome e cognome</span><input class="input" id="uf-nome" required maxlength="80" value="${esc(u.nome||"")}"></label>
+      <label class="field"><span>Nome utente</span><input class="input" id="uf-user" required maxlength="60" value="${esc(u.user)}" ${isNew?"":"readonly"} placeholder="es. l.bianchi"></label>
+      <label class="field wide"><span>Mail</span><input class="input" id="uf-mail" type="email" maxlength="120" value="${esc(u.mail||"")}"></label>
+      <label class="field"><span>Profilo</span><select class="input" id="uf-prof">${Object.entries(PROFILES).map(([k,p])=>`<option value="${k}" ${u.profilo===k?"selected":""}>${esc(p.nome)}</option>`).join("")}</select></label>
+      <label class="field"><span>${isNew?"Password":"Nuova password (facoltativa)"}</span><input class="input" id="uf-pass" type="password" autocomplete="new-password" minlength="8" ${isNew?"required":""} placeholder="almeno 8 caratteri"></label>
+    </div>
+    <p class="note" id="uf-desc">${esc((PROFILES[u.profilo]||{}).desc||"")}</p>
+    ${isNew?"":`<label class="check"><input type="checkbox" id="uf-att" ${u.attivo!==false?"checked":""}> Attivo (se lo togli non può più entrare)</label>`}
+    <div class="actions"><button class="btn primary" type="submit">${isNew?"Crea utente":"Salva"}</button><button class="btn" type="button" data-close>Annulla</button></div>`, ()=>{
+      const body = {user:$("#uf-user").value.trim().toLowerCase(), nome:$("#uf-nome").value.trim(), mail:$("#uf-mail").value.trim(), profilo:$("#uf-prof").value, password:$("#uf-pass").value};
+      if(!isNew) body.attivo = $("#uf-att").checked;
+      if(isNew && body.password.length < 8){ toast("La password deve avere almeno 8 caratteri"); return; }
+      if(LIVE){ (isNew ? post("/api/admin/users", body) : put("/api/admin/users/"+encodeURIComponent(u.user), body)).then(()=>{ closeEditor(); toast(isNew?"Utente creato":"Utente salvato"); utenti(); }).catch(err=>toast("Non riuscito: "+err.message)); return; }
+      if(isNew){ if(USERS_LOCAL.some(x=>x.user===body.user)){ toast("Esiste già un utente con questo nome"); return; } USERS_LOCAL.push({user:body.user, nome:body.nome, mail:body.mail, profilo:body.profilo, attivo:true, ultimo:""}); logLocal("Utente creato", body.user+" ("+body.profilo+")", "utenti"); }
+      else { Object.assign(u, {nome:body.nome, mail:body.mail, profilo:body.profilo, attivo:body.attivo}); logLocal("Utente modificato", u.user, "utenti"); }
+      closeEditor(); utenti(); toast((isNew?"Utente creato":"Utente salvato")+" (prova)");
+    });
+  $("#uf-prof").onchange = e => { $("#uf-desc").textContent = (PROFILES[e.target.value]||{}).desc||""; };
+}
+
+/* ---------- Profili e permessi ---------- */
+function profili(){
+  const edit = can("profili","m");
+  const cell = (k,a) => { const v = PROFILES[k].perm[a]||""; const lock = k==="admin" || !edit;
+    return `<span class="perm-cell">${[["v","Vede"],["m","Modifica"],["e","Elimina"]].map(([r,l])=>`<label><input type="checkbox" data-p="${k}" data-a="${a}" data-r="${r}" ${v.includes(r)?"checked":""} ${lock?"disabled":""}>${l}</label>`).join("")}</span>`; };
+  $("#main").innerHTML = `<div class="top"><div><h1>Profili e permessi</h1><p class="sub">Ogni utente ha un profilo; il profilo decide quali sezioni vede e cosa può creare, modificare o eliminare.</p></div></div>
+    <div class="grid2" style="grid-template-columns:repeat(3,minmax(0,1fr))">${Object.entries(PROFILES).map(([k,p])=>`<div class="panel"><h2>${esc(p.nome)}</h2><p class="dim" style="margin:0">${esc(p.desc)}</p>
+      <span class="dim">${AREE.filter(([a])=>(p.perm[a]||"").includes("v")).length} sezioni su ${AREE.length}</span></div>`).join("")}</div>
+    <div class="tbl"><table class="matrix"><thead><tr><th>Sezione</th>${Object.values(PROFILES).map(p=>`<th>${esc(p.nome)}</th>`).join("")}</tr></thead><tbody>
+      ${AREE.map(([a,l])=>`<tr><td class="strong">${l}</td>${Object.keys(PROFILES).map(k=>`<td>${cell(k,a)}</td>`).join("")}</tr>`).join("")}
+    </tbody></table></div>
+    <div class="actions"><button class="btn primary" type="button" id="pr-save" data-perm="profili:m">Salva permessi</button><span class="note">L'amministratore ha sempre tutti i permessi. «Modifica» o «Elimina» senza «Vede» non hanno effetto.</span></div>`;
+  $("#pr-save").onclick = ()=>{
+    const next = {resp:{}, op:{}};
+    for(const k of ["resp","op"]) for(const [a] of AREE){ next[k][a] = ["v","m","e"].filter(r=>document.querySelector(`[data-p="${k}"][data-a="${a}"][data-r="${r}"]`).checked).join(""); if(next[k][a] && !next[k][a].includes("v")) next[k][a] = "v"+next[k][a]; }
+    if(LIVE){ post("/api/admin/profiles", next).then(r=>{ PROFILES = r.profiles; toast("Permessi salvati"); render(); }).catch(err=>toast("Non salvati: "+err.message)); return; }
+    for(const k of ["resp","op"]) PROFILES[k].perm = next[k];
+    logLocal("Permessi dei profili aggiornati", "", "profili"); toast("Permessi salvati (prova): prova a cambiare vista in alto"); render();
+  };
+}
+
+/* ---------- Backup e ripristino ---------- */
+function backup(){
+  $("#main").innerHTML = `<div class="top"><div><h1>Backup e ripristino</h1><p class="sub">Una copia di impostazioni, utenti, tecnici e conversazioni dell'app, da conservare fuori dal server.</p></div></div>
+    <div class="grid2">
+      <div class="panel"><h2>Scarica un backup</h2><p class="dim" style="margin:0">File JSON con: impostazioni (senza il segreto di Office 365), utenti della console (solo impronte delle password), tecnici, conversazioni e registro mail.</p>
+        <div class="actions"><button class="btn primary" type="button" id="bk-get">Scarica backup adesso</button></div>
+        <p class="note">Consiglio: un backup a settimana e prima di ogni aggiornamento. Sul server conviene anche una copia automatica della cartella <span class="mono">backend/data</span>.</p></div>
+      <div class="panel" data-perm="backup:m"><h2>Ripristina</h2><p class="dim" style="margin:0">Riporta i dati a quelli del file scelto. I dati attuali vengono sostituiti; il segreto di Office 365 resta quello salvato.</p>
+        <label class="drop" for="bk-file">Scegli il file di backup (.json)<input type="file" id="bk-file" accept="application/json,.json" hidden></label>
+        <div id="bk-ask"></div></div>
+    </div>`;
+  $("#bk-get").onclick = ()=>{
+    const save = (data)=>{ const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:"application/json"})); a.download = "ticketfarm-backup-"+new Date().toISOString().slice(0,10)+".json"; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 500); };
+    if(LIVE){ getJ("/api/admin/backup").then(d=>{ save(d); toast("Backup scaricato"); }).catch(err=>toast("Backup non riuscito: "+err.message)); return; }
+    save({app:"Ticket Farm", version:1, created:new Date().toISOString(), prova:true, files:{users:USERS_LOCAL, clienti:CLIENTS, tecnici:TECHS, ticket:S.tickets, regole:S.rules, settings:SETTINGS}});
+    logLocal("Backup scaricato", "", "backup"); toast("Backup scaricato (prova)");
+  };
+  $("#bk-file").onchange = e => {
+    const f = e.target.files[0]; if(!f) return;
+    f.text().then(t=>{ let d; try{ d = JSON.parse(t); }catch(err){ toast("Il file non è un backup valido"); return; }
+      if(d.app!=="Ticket Farm"){ toast("Il file non è un backup di Ticket Farm"); return; }
+      $("#bk-ask").innerHTML = `<p class="rolebar">Ripristinare il backup del ${esc(fmtDate(d.created))}? I dati attuali verranno sostituiti.</p>
+        <div class="actions"><button class="btn danger" type="button" id="bk-yes">Sì, ripristina</button><button class="btn" type="button" id="bk-no">Annulla</button></div>`;
+      $("#bk-no").onclick = ()=>{ $("#bk-ask").innerHTML = ""; e.target.value = ""; };
+      $("#bk-yes").onclick = ()=>{
+        if(LIVE){ post("/api/admin/restore", d).then(()=>{ toast("Backup ripristinato"); load(); }).catch(err=>toast("Ripristino non riuscito: "+err.message)); return; }
+        if(d.files && d.files.users) USERS_LOCAL = d.files.users;
+        if(d.files && d.files.ticket) S.tickets = d.files.ticket;
+        logLocal("Backup ripristinato", "del "+fmtDate(d.created), "backup"); toast("Backup ripristinato (prova)"); backup();
+      };
+    });
+  };
+}
+
+/* ---------- Registro attività ---------- */
+function audit(){
+  const draw = list => {
+    const q = (S.aq||"").toLowerCase(), area = S.aa||"";
+    const rows = list.filter(x=>(!area || x.area===area) && (!q || (x.user+" "+x.azione+" "+x.dettaglio).toLowerCase().includes(q)));
+    const aree = [...new Set(list.map(x=>x.area).filter(Boolean))];
+    $("#main").innerHTML = `<div class="top"><div><h1>Registro attività</h1><p class="sub">Chi ha fatto cosa e quando: accessi, modifiche, messaggi inoltrati dall'app, backup.</p></div></div>
+      <div class="audit-f"><input class="input" id="au-q" type="search" placeholder="Cerca utente, azione, dettaglio" value="${esc(S.aq||"")}">
+        <select class="input" id="au-a"><option value="">Tutte le aree</option>${aree.map(a=>`<option ${a===area?"selected":""}>${esc(a)}</option>`).join("")}</select></div>
+      <div class="tbl"><table><thead><tr><th>Quando</th><th>Chi</th><th>Azione</th><th>Dettaglio</th><th>Area</th></tr></thead><tbody>
+        ${rows.map(x=>`<tr><td class="mono">${fmtDate(x.at)}</td><td class="strong">${esc(x.user)}</td><td>${/non riuscito/i.test(x.azione)?'<span class="pill p-urg">'+esc(x.azione)+'</span>':esc(x.azione)}</td><td class="dim">${esc(x.dettaglio)}</td><td><span class="pill p-mut">${esc(x.area)}</span></td></tr>`).join("") || `<tr><td colspan="5" class="dim">Nessuna voce</td></tr>`}
+      </tbody></table></div>
+      <p class="note">${rows.length} voci${LIVE?"":" · versione di prova: voci di esempio più le azioni fatte in questa pagina"}.</p>`;
+    const qi = $("#au-q"); qi.oninput = ()=>{ S.aq = qi.value; const pos = qi.selectionStart; draw(list); const n = $("#au-q"); n.focus(); n.setSelectionRange(pos,pos); };
+    $("#au-a").onchange = e => { S.aa = e.target.value; draw(list); };
+  };
+  if(LIVE) getJ("/api/admin/audit").then(r=>draw(r.entries)).catch(err=>toast("Registro non disponibile: "+err.message)); else draw(AUDIT_LOCAL);
+}
+
 /* ---------- Office 365: casella di raccolta e lettura della posta ---------- */
 function office365(){
   const g = SETTINGS.graph || {};
@@ -830,7 +1021,7 @@ function office365(){
       <label class="check"><input type="checkbox" id="o-mail" ${g.readMail!==false?"checked":""}> Posta in arrivo (per riconoscere ticket e clienti)</label>
       <label class="check"><input type="checkbox" id="o-contacts" ${g.readContacts!==false?"checked":""}> Contatti (per completare i contatti dei clienti)</label>
       <label class="field" style="max-width:260px"><span>Ogni quanto</span><select class="input" id="o-every">${[1,5,15].map(m=>`<option value="${m}" ${Number(g.every||5)===m?"selected":""}>ogni ${m} minut${m===1?"o":"i"}</option>`).join("")}</select></label>
-      <div class="actions"><button class="btn primary" type="submit">Salva</button><button class="btn" type="button" id="o-test">Prova collegamento</button></div>
+      <div class="actions" data-perm="office365:m"><button class="btn primary" type="submit">Salva</button><button class="btn" type="button" id="o-test">Prova collegamento</button></div>
     </form>
     <div id="o-result"></div>
     <details class="panel howto"><summary><b>Come preparare il collegamento in Microsoft (una volta sola)</b></summary>
@@ -891,7 +1082,7 @@ function collegamenti(){
 /* ---------- Regole di riconoscimento ---------- */
 function regole(){
   $("#main").innerHTML = `<div class="top"><div><h1>Riconoscimento</h1><p class="sub">Per ogni mail che arriva a ${SUPPORT} il backend prova queste regole in ordine. La prima che trova ticket o cliente decide.</p></div></div>
-    <ol class="rules">${S.rules.map((r,i)=>`<li><div><b>${esc(r.t)}</b><small>${esc(r.d)}</small></div><button class="switch" role="switch" aria-checked="${r.on}" aria-label="${esc(r.t)}" data-r="${i}"></button></li>`).join("")}</ol>
+    <ol class="rules">${S.rules.map((r,i)=>`<li><div><b>${esc(r.t)}</b><small>${esc(r.d)}</small></div><button class="switch" role="switch" aria-checked="${r.on}" aria-label="${esc(r.t)}" data-r="${i}" ${can("regole","m")?"":"disabled"}></button></li>`).join("")}</ol>
     <div class="panel"><h2>Indirizzo e intestazioni</h2>
       <dl class="kv"><dt>Indirizzo di raccolta</dt><dd class="mono">${SUPPORT}</dd><dt>Cliente dall'app</dt><dd class="mono">X-TicketFarm-Cliente</dd><dt>Ora del messaggio</dt><dd class="mono">X-TicketFarm-Ora-Messaggio</dd><dt>Origine</dt><dd class="mono">X-TicketFarm-Origine</dd></dl>
       <p class="note">Se nessuna regola trova il cliente, la mail resta in Posta in arrivo come «Da verificare».</p></div>`;
@@ -903,6 +1094,7 @@ function load(){
     LIVE = true; CONN = d.connections; ME = d.me || ME; paintMe();
     CLIENTS.splice(0, CLIENTS.length, ...d.clients); TECHS.splice(0, TECHS.length, ...d.techs);
     S.mails = d.mails; S.tickets = d.tickets; S.rules = d.rules; SETTINGS = d.settings || SETTINGS; O365 = d.o365 || null;
+    if(d.profiles) PROFILES = d.profiles; REAL_ROLE = (d.me && d.me.profilo) || "admin"; if(REAL_ROLE !== "admin") ROLE = REAL_ROLE;
     $("#foot-mode").textContent = d.mode==="live" ? "Collegato a ITSM, Halo e Office 365" : "Backend in modalità prova: mail salvate in outbox, non spedite";
     if(d.appUrl){ const a=$("#app-link"); a.href=d.appUrl; a.hidden=false; }
     render();
@@ -969,6 +1161,7 @@ $("#pf-form").onsubmit = e => {
     .catch(err=>toast("Non salvato: "+err.message));
 };
 function boot(){
+  try{ const r = localStorage.getItem("tf-admin-role"); if(r && PROFILES[r]) ROLE = r; }catch(e){}
   fetch("/api/admin/info").then(r=>r.ok ? r.json() : Promise.reject()).then(info=>{
     BACKEND = true; HINT = info.demo;
     if(TOKEN) load(); else showLogin(HINT);
