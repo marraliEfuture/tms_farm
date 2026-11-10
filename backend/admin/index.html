@@ -88,6 +88,11 @@ button{cursor:pointer}
   .step{grid-column:1!important;grid-row:auto!important}
   .step .who{display:block}
 }
+.shot{display:block;margin-top:8px;padding:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#000;cursor:zoom-in;max-width:100%}
+.shot img{display:block;width:100%;height:auto;max-height:220px;object-fit:contain}
+.shotview figure{margin:0;display:flex;flex-direction:column;gap:10px;align-items:center;max-width:min(1100px,100%);max-height:100%}
+.shotview img{max-width:100%;max-height:calc(100vh - 140px);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.5);background:#000}
+.shotview figcaption{color:#fff;font-weight:600;text-align:center}
 .tip{margin:0;background:var(--gold-soft);border-radius:12px;padding:12px 14px;font-size:14px}
 .linkback{background:none;border:0;padding:0;color:var(--accent);font-weight:600;cursor:pointer;font-size:14px}
 #tut-next{align-self:flex-start}
@@ -299,6 +304,7 @@ td.act{white-space:nowrap;text-align:right}
   </form>
 </section>
 
+<section class="modal shotview" id="shotview" hidden><figure><img alt=""><figcaption></figcaption><button class="btn" type="button" id="shot-x">Chiudi</button></figure></section>
 <section class="modal" id="editor" hidden><form class="panel modal-box wide-box" id="ed-form"></form></section>
 
 <section class="modal" id="profile" hidden>
@@ -596,7 +602,8 @@ function tutorial(){
           ${lanes.map((_,i)=>`<div class="lane-bg" style="grid-column:${i+1};grid-row:2 / span ${t.steps.length+1}"></div>`).join("")}
           ${t.steps.map((x,i)=>`<div class="step l-${laneKey(x.who)}" style="grid-column:${col(x.who)};grid-row:${i+2}">
               ${i?`<span class="arrow" aria-hidden="true">${t.steps[i-1].who===x.who?"↓":"↘"}</span>`:""}
-              <span class="num">${i+1}</span><span class="who">${x.who}</span><b>${x.t}</b><span>${x.d}</span></div>`).join("")}
+              <span class="num">${i+1}</span><span class="who">${x.who}</span><b>${x.t}</b><span>${x.d}</span>
+              <button class="shot" type="button" data-shot="tutorial/shots/${t.n}-${t.id}-${i+1}.jpg" aria-label="Ingrandisci la schermata del passaggio ${i+1}"><img src="tutorial/shots/${t.n}-${t.id}-${i+1}.jpg" alt="Schermata del passaggio ${i+1}: ${x.t}" loading="lazy" onerror="this.parentNode.remove()"></button></div>`).join("")}
           <div class="step result" style="grid-column:1 / -1;grid-row:${t.steps.length+2}"><span class="num">✓</span><b>Risultato</b><span>${t.result}</span></div>
         </div>
       </section>
@@ -604,6 +611,9 @@ function tutorial(){
       <button class="btn" type="button" id="tut-next">Prossimo: ${next.title} ›</button>
     </article>`;
   $("#tut-back").onclick = ()=>{ S.tut=null; tutorial(); };
+  document.querySelectorAll("[data-shot]").forEach(b=>b.onclick=()=>{
+    const v = $("#shotview"); v.hidden = false; $("#shotview img").src = b.dataset.shot; $("#shotview img").alt = b.querySelector("img").alt; $("#shotview figcaption").textContent = b.querySelector("img").alt;
+  });
   $("#tut-next").onclick = ()=>{ S.tut=next.id; tutorial(); window.scrollTo(0,0); };
 }
 
@@ -1139,7 +1149,7 @@ function logout(){
 let HINT = null;
 $("#me").onclick = e => { e.stopPropagation(); const m = $("#me-menu"); m.hidden = !m.hidden; $("#me").setAttribute("aria-expanded", String(!m.hidden)); };
 document.addEventListener("click", e => { if(!e.target.closest(".mewrap")){ $("#me-menu").hidden = true; $("#me").setAttribute("aria-expanded","false"); } });
-document.addEventListener("keydown", e => { if(e.key==="Escape"){ $("#me-menu").hidden = true; $("#profile").hidden = true; $("#editor").hidden = true; } });
+document.addEventListener("keydown", e => { if(e.key==="Escape"){ $("#me-menu").hidden = true; $("#profile").hidden = true; $("#editor").hidden = true; $("#shotview").hidden = true; } });
 $("#me-out").onclick = ()=>{ $("#me-menu").hidden = true; logout(); toast("Sei uscito"); };
 $("#me-edit").onclick = ()=>{
   $("#me-menu").hidden = true; $("#profile").hidden = false;
@@ -1150,6 +1160,8 @@ $("#me-edit").onclick = ()=>{
   $("#pf-nome").focus();
 };
 $("#pf-x").onclick = ()=>{ $("#profile").hidden = true; };
+$("#shot-x").onclick = ()=>{ $("#shotview").hidden = true; };
+$("#shotview").onclick = e => { if(e.target.id==="shotview") $("#shotview").hidden = true; };
 $("#profile").onclick = e => { if(e.target.id==="profile") $("#profile").hidden = true; };
 $("#pf-form").onsubmit = e => {
   e.preventDefault();
