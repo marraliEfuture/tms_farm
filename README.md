@@ -53,7 +53,7 @@ L'app è una **web app installabile** (PWA): niente App Store, si installa dal b
 
 I tecnici **non** hanno bisogno di un account GitHub: GitHub serve solo a chi lavora sul codice.
 
-**Versione di prova pubblica:** <https://marraliefuture.github.io/tms_farm/> (GitHub Pages, dati di esempio, nessuna mail spedita). Da PC con Chrome o Edge e da Android propone l'installazione.
+**Versione di prova pubblica:** app <https://marraliefuture.github.io/tms_farm/> e console <https://marraliefuture.github.io/tms_farm/admin/> (GitHub Pages, dati di esempio, nessuna mail spedita). Da PC con Chrome o Edge e da Android propone l'installazione.
 
 Per una prova veloce senza backend si può aprire `app/index.html` da un piccolo server: con `backendUrl` vuoto in `app/config.js` l'app usa dati di esempio e non manda mail.
 

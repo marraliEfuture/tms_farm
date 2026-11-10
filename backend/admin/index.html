@@ -168,7 +168,7 @@ const cl = id => CLIENTS.find(c=>c.id===id);
 function logo(c){
   const ini = c.name.replace(/\b(SA|Sagl|Srl|SpA|AG|GmbH)\b/g,"").trim().split(/\s+/).slice(0,2).map(w=>w[0]).join("").toUpperCase();
   let h = 0; for(const ch of c.name) h = (h*31 + ch.charCodeAt(0)) % 360;
-  const src = c.dom ? (location.protocol==="file:" ? "https://www.google.com/s2/favicons?sz=128&domain=" : "/api/app/logo?d=") + encodeURIComponent(c.dom) : "";
+  const src = c.dom ? (LIVE ? "/api/app/logo?d=" : "https://www.google.com/s2/favicons?sz=128&domain=") + encodeURIComponent(c.dom) : "";
   return `<span class="lav" style="--h:${h}" aria-hidden="true">${esc(ini)}${src?`<img src="${src}" alt="" loading="lazy" onload="if(this.naturalWidth&&this.naturalWidth<=16)this.remove()" onerror="this.remove()">`:""}</span>`;
 }
 const TECHS = [
@@ -380,7 +380,11 @@ function load(){
     $("#foot-mode").textContent = d.mode==="live" ? "Collegato a ITSM, Halo e Office 365" : "Backend in modalità prova: mail salvate in outbox, non spedite";
     if(d.appUrl){ const a=$("#app-link"); a.href=d.appUrl; a.hidden=false; }
     render();
-  }).catch(()=>render());
+  }).catch(()=>{
+    /* senza backend (file aperto o GitHub Pages): dati di prova, collegamento all'app pubblicata accanto */
+    if(location.hostname.endsWith("github.io")){ $("#foot-mode").textContent = "Console di prova: dati di esempio, non collegata a un backend"; const a=$("#app-link"); a.href="../"; a.hidden=false; }
+    render();
+  });
 }
 load();
 })();
