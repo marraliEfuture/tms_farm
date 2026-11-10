@@ -39,7 +39,7 @@ test("suggerimenti per il responsabile: urgenza, ticket senza tecnico, posta", a
   const clients = await demo.clients(), tickets = (await demo.tickets()).filter(t => t.state !== "Chiuso");
   const r = ai.simulateTeam({ tickets, clients, techs: [{ ini: "MB", zona: "Sud" }, { ini: "LC", zona: "Centro" }], toCheck: 2 });
   assert.equal(r.tips[0].ticket, "Tck #714139");
-  assert.ok(r.tips.some(x => /Assegna HALO-4812 a LC/.test(x.titolo)));
+  assert.ok(r.tips.some(x => /Assegna Tck #714812 a LC/.test(x.titolo)));
   assert.ok(r.tips.some(x => /Verifica 2 mail/.test(x.titolo)));
   assert.match(ai.teamText({ tickets, clients, techs: [{ ini: "MB" }], toCheck: 2, date: "oggi" }), /tecnico: nessuno/);
 });

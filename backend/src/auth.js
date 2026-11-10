@@ -67,8 +67,8 @@ function users() {
   if (fs.existsSync(USERS_FILE)) return JSON.parse(fs.readFileSync(USERS_FILE, "utf8"));
   const list = [];
   if (fs.existsSync(OLD_ADMIN_FILE)) list.push({ ...JSON.parse(fs.readFileSync(OLD_ADMIN_FILE, "utf8")), profilo: "admin", attivo: true });
-  else if (cfg.adminPassword) list.push({ user: cfg.adminUser, nome: "Amministratore", mail: cfg.support, profilo: "admin", attivo: true, hash: hashCode(cfg.adminUser, cfg.adminPassword) });
-  else if (cfg.mode === "demo") list.push({ user: DEMO_ADMIN.user, nome: "Amministratore", mail: cfg.support, profilo: "admin", attivo: true, hash: hashCode(DEMO_ADMIN.user, DEMO_ADMIN.password) });
+  else if (cfg.adminPassword) list.push({ user: cfg.adminUser, nome: "Amministratore", mail: "admin@efuture.it", profilo: "admin", attivo: true, hash: hashCode(cfg.adminUser, cfg.adminPassword) });
+  else if (cfg.mode === "demo") list.push({ user: DEMO_ADMIN.user, nome: "Amministratore", mail: "admin@efuture.it", profilo: "admin", attivo: true, hash: hashCode(DEMO_ADMIN.user, DEMO_ADMIN.password) });
   if (cfg.mode === "demo" && !cfg.adminPassword) {
     list.push({ user: "l.bianchi", nome: "Laura Bianchi", mail: "l.bianchi@efuture.it", profilo: "resp", attivo: true, hash: hashCode("l.bianchi", DEMO_ADMIN.password) });
     list.push({ user: "g.verdi", nome: "Giulia Verdi", mail: "g.verdi@efuture.it", profilo: "op", attivo: true, hash: hashCode("g.verdi", DEMO_ADMIN.password) });

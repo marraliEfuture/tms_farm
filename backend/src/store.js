@@ -6,7 +6,7 @@ const cfg = require("./config");
 const FILE = path.join(cfg.dataDir, "state.json");
 const DEFAULT_RULES = [
   { k: "reply", t: "Risposta a una mail del ticket", d: "In-Reply-To o References contiene l'identificativo di una mail mandata da ITSM o Halo", on: true },
-  { k: "subj", t: "Numero del ticket nell'oggetto", d: "Oggetto con «Tck #714139» (ITSM) o «HALO-4821» (Halo)", on: true },
+  { k: "subj", t: "Numero del ticket nell'oggetto", d: "Oggetto con «Tck #714139» (ITSM) o «Tck #714821» (Halo)", on: true },
   { k: "hdr", t: "Cliente indicato dall'app del tecnico", d: "Intestazione X-TicketFarm-Cliente nelle mail che partono dall'app", on: true },
   { k: "from", t: "Mittente è un contatto noto", d: "Indirizzo presente nei contatti di ITSM, Halo o Office 365", on: true },
   { k: "dom", t: "Dominio del mittente", d: "Es. @caseificiovalle.ch porta a Caseificio Valle SA", on: true },

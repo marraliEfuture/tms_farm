@@ -316,7 +316,7 @@ app.get("/api/admin/state", async (req, res, next) => {
     mails = mails.filter(m => !hidden.has(m.id));
     if (mine) return res.json({ threads: [], ai: { enabled: false }, profiles: settings.profiles(), o365: null, settings: null, me: auth.publicAdmin(req.admin), mode: cfg.mode, support: "", appUrl: cfg.appUrl,
       clients: clients.filter(c => c.id === mine), tickets: tickets.filter(t => t.client === mine), techs: techsPublic().map(({ mail, ...t }) => ({ ...t, mail: "" })), mails: [], rules: [], customRules: [], aree: [], limiti: auth.limitInfo(), connections: [] });
-    res.json({ customRules: st.customRules || [], aree: settings.aree(), limiti: auth.limitInfo(), threads, ai: settings.aiPublic(), profiles: settings.profiles(), o365, settings: settings.can(req.admin.profilo || "admin", "office365", "v") ? settings.publicView() : null, me: auth.publicAdmin(req.admin), mode: cfg.mode, support: settings.support(), appUrl: cfg.appUrl, clients, tickets, techs: techsPublic(), mails, rules: st.rules, connections: await sources.status() });
+    res.json({ sistema: settings.sistema(), customRules: st.customRules || [], aree: settings.aree(), limiti: auth.limitInfo(), threads, ai: settings.aiPublic(), profiles: settings.profiles(), o365, settings: settings.can(req.admin.profilo || "admin", "office365", "v") ? settings.publicView() : null, me: auth.publicAdmin(req.admin), mode: cfg.mode, support: settings.support(), appUrl: cfg.appUrl, clients, tickets, techs: techsPublic(), mails, rules: st.rules, connections: await sources.status() });
   } catch (e) { next(e); }
 });
 /* l'ufficio scrive nella conversazione del tecnico: il messaggio arriva nell'app come «Ticket Farm» */
@@ -340,7 +340,7 @@ app.post("/api/admin/mails/:id/resolve", need("posta", "m"), async (req, res, ne
     if (!m || !c) return res.status(400).json({ error: "mail o cliente non trovati" });
     const ticket = cfg.mode === "demo" ? sources.demo.createTicket(c, m.subj, "") : "";
     log(req, "Mail verificata", m.subj + " → " + c.name, "posta");
-    m.res = { ...(m.res || {}), state: "new", client: c.id, ticket, act: ticket ? "Aperto " + ticket + " per " + c.name + " (simulato)." : "Cliente indicato: " + c.name + ". Il ticket va aperto in " + c.sys + "." };
+    m.res = { ...(m.res || {}), state: "new", client: c.id, ticket, act: ticket ? "Aperto " + ticket + " per " + c.name + " (simulato)." : "Cliente indicato: " + c.name + ". Il ticket va aperto nel sistema dei ticket." };
     store.save();
     res.json({ ok: true, mail: m });
   } catch (e) { next(e); }
@@ -354,7 +354,7 @@ app.post("/api/admin/tickets", need("ticket", "m"), async (req, res, next) => {
     if (!c || !title) return res.status(400).json({ error: "cliente o richiesta mancanti" });
     if (own) req.body.tech = "";
     if (req.body.tech && !auth.techs().some(t => t.ini === req.body.tech && t.attivo !== false && !t.eliminato)) return res.status(400).json({ error: "tecnico non attivo: scegline un altro" });
-    if (cfg.mode !== "demo") return res.status(501).json({ error: "dal vivo il ticket va aperto in " + c.sys + ": collegamento non ancora disponibile" });
+    if (cfg.mode !== "demo") return res.status(501).json({ error: "dal vivo il ticket va aperto nel sistema dei ticket collegato: collegamento non ancora disponibile" });
     const id = sources.demo.createTicket(c, title, String(req.body.tech || ""), { urg: !!req.body.urg, origin: "Console" });
     log(req, "Ticket creato", id + " · " + c.name + " · " + title, "ticket");
     res.json({ ticket: { id, sys: c.sys, client: c.id, title } });
@@ -363,7 +363,7 @@ app.post("/api/admin/tickets", need("ticket", "m"), async (req, res, next) => {
 /* modificare un ticket: stato, tecnico, urgenza, data dell'intervento, richiesta */
 app.put("/api/admin/tickets/:id", need("ticket", "m"), (req, res) => {
   if (req.admin.profilo === "cliente") return res.status(403).json({ error: "il cliente apre ticket ma non li modifica" });
-  if (cfg.mode !== "demo") return res.status(501).json({ error: "dal vivo il ticket si modifica in ITSM o Halo: collegamento non ancora disponibile" });
+  if (cfg.mode !== "demo") return res.status(501).json({ error: "dal vivo il ticket si modifica nel sistema dei ticket collegato: collegamento non ancora disponibile" });
   const b = req.body || {};
   if (b.tech && !auth.techs().some(t => t.ini === b.tech && t.attivo !== false && !t.eliminato)) return res.status(400).json({ error: "tecnico non attivo: scegline un altro" });
   const t = sources.demo.updateTicket(req.params.id, b);
@@ -473,6 +473,8 @@ app.delete("/api/admin/profiles/:key", need("profili", "e"), (req, res) => {
   if (r.error) return res.status(400).json(r); log(req, "Profilo eliminato", req.params.key, "profili"); res.json(r);
 });
 /* aree di lavoro */
+/* sistema dei ticket in uso: i collegamenti sono alternativi (uno solo alla volta) */
+app.post("/api/admin/sistema", need("collegamenti", "m"), (req, res) => { const r = settings.setSistema(req.body.sistema); if (r.error) return res.status(400).json(r); sources.invalidate(); log(req, "Sistema dei ticket in uso", r.sistema, "collegamenti"); res.json(r); });
 app.get("/api/admin/aree", need("aree", "v"), (req, res) => res.json({ aree: settings.aree() }));
 app.post("/api/admin/aree", need("aree", "m"), (req, res) => { const r = settings.addArea(req.body || {}); if (r.error) return res.status(400).json(r); log(req, "Area di lavoro creata", r.area.nome, "aree"); res.json(r); });
 app.put("/api/admin/aree/:id", need("aree", "m"), (req, res) => { const r = settings.editArea(req.params.id, req.body || {}); if (r.error) return res.status(400).json(r); log(req, "Area di lavoro modificata", r.area.nome, "aree"); res.json(r); });

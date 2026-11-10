@@ -32,12 +32,12 @@ test("testo della mail: WhatsApp con ora per riga e nota del tecnico", () => {
 });
 
 test("risposta del tecnico a un cliente che ha scritto per mail: cliente in copia, ufficio in A", async () => {
-  const m = mail.buildMessage({ tech, client: null, ticket: "HALO-4821", isNew: false, subject: "Re: HALO-4821 - Spettrofotometro", text: "Passo domani alle 9.",
-    inReplyTo: "<p8Hh2kQmL0aZ1x@halo.efuture.it>", time: "", origin: "risposta del tecnico al cliente", cc: "g.bernasconi@laboratorioesempio.ch" });
+  const m = mail.buildMessage({ tech, client: null, ticket: "Tck #714821", isNew: false, subject: "Re: Tck #714821 - Spettrofotometro", text: "Passo domani alle 9.",
+    inReplyTo: "<p8Hh2kQmL0aZ1x@itsm.efuture.it>", time: "", origin: "risposta del tecnico al cliente", cc: "g.bernasconi@laboratorioesempio.ch" });
   const s = await raw(m);
   assert.match(s, /^To: support@/m);
   assert.match(s, /^Cc: g\.bernasconi@laboratorioesempio\.ch/m);
-  assert.match(s, /^Subject: Re: HALO-4821/m);
-  const n = await raw(mail.buildMessage({ tech, client: null, ticket: "HALO-4821", isNew: false, subject: "Re: HALO-4821", text: "nota", origin: "nota del tecnico" }));
+  assert.match(s, /^Subject: Re: Tck #714821/m);
+  const n = await raw(mail.buildMessage({ tech, client: null, ticket: "Tck #714821", isNew: false, subject: "Re: Tck #714821", text: "nota", origin: "nota del tecnico" }));
   assert.doesNotMatch(n, /^Cc:/m);
 });

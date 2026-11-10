@@ -130,6 +130,10 @@ function removeArea(id) {
   if (!a) return { error: "area non trovata" };
   a.eliminato = new Date().toISOString(); a.attivo = false; save(s); return { ok: true };
 }
+/* sistema dei ticket collegato: uno solo alla volta (ITSM oppure Halo) */
+const SISTEMI = ["ITSM", "Halo"];
+function sistema() { const v = load().sistema; return SISTEMI.includes(v) ? v : "ITSM"; }
+function setSistema(v) { if (!SISTEMI.includes(v)) return { error: "sistema non valido" }; const s = load(); s.sistema = v; save(s); return { ok: true, sistema: v }; }
 /* limite di utenti attivi (console + tecnici dell'app); 0 = nessun limite */
 function limiti() { const l = load().limiti || {}; return { maxUtenti: Number(l.maxUtenti) > 0 ? Math.floor(Number(l.maxUtenti)) : 0 }; }
 function updateLimiti({ maxUtenti }) {
@@ -156,4 +160,4 @@ function restoreData(b) {
   }
   return { ok: true, created: b.created };
 }
-module.exports = { ai, aiPublic, updateAi, support, graph, publicView, update, AREE, profiles, updateProfiles, addProfile, editProfile, removeProfile, aree, addArea, editArea, removeArea, limiti, updateLimiti, can, backupData, restoreData };
+module.exports = { ai, aiPublic, updateAi, support, graph, publicView, update, AREE, profiles, updateProfiles, addProfile, editProfile, removeProfile, aree, addArea, editArea, removeArea, limiti, updateLimiti, sistema, setSistema, SISTEMI, can, backupData, restoreData };

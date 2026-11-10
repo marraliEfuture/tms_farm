@@ -89,8 +89,8 @@ test("aree di lavoro: crea, assegna a tecnici e agenti, modifica, elimina", asyn
 
 test("ticket: modifica di stato, tecnico e data; un tecnico disattivato non si assegna", async () => {
   const ad = await login("admin", "admin123");
-  const r = await call("PUT", "/api/admin/tickets/HALO-4812", ad, { state: "Pianificato", tech: "LC", plan: { day: 2, time: "10:30" } });
+  const r = await call("PUT", "/api/admin/tickets/" + encodeURIComponent("Tck #714812"), ad, { state: "Pianificato", tech: "LC", plan: { day: 2, time: "10:30" } });
   assert.equal(r.status, 200); assert.equal(r.json.ticket.tech, "LC"); assert.deepEqual(r.json.ticket.plan, { day: 2, time: "10:30" });
   await call("PUT", "/api/admin/techs/gn%40efuture.it", ad, { attivo: false });
-  assert.equal((await call("PUT", "/api/admin/tickets/HALO-4812", ad, { tech: "GN" })).status, 400);
+  assert.equal((await call("PUT", "/api/admin/tickets/" + encodeURIComponent("Tck #714812"), ad, { tech: "GN" })).status, 400);
 });

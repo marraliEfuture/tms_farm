@@ -353,23 +353,23 @@ let curSys = "", curTel = "";
 let SUPPORT = "support@efuture.it", ME = "mb@efuture.it";
 const SRC = {Halo:"Halo", ITSM:"ITSM", O365:"Office 365"};
 const CLIENTS_BASE = [
-  {id:"lab", lat:46.0037, lng:8.9511, name:"Laboratorio Esempio SA", city:"Lugano", sys:"Halo",
+  {id:"lab", lat:46.0037, lng:8.9511, name:"Laboratorio Esempio SA", city:"Lugano", sys:"ITSM",
    contacts:[{n:"Giulia Bernasconi", src:"Halo", tel:"+41 79 410 22 18"}],
-   open:[{id:"HALO-4821", t:"Spettrofotometro: errore lampada", state:"Pianificato", plan:{day:1,time:"09:00"}}]},
+   open:[{id:"Tck #714821", t:"Spettrofotometro: errore lampada", state:"Pianificato", plan:{day:1,time:"09:00"}}]},
   {id:"cas", lat:45.8706, lng:8.9817, name:"Caseificio Valle SA", city:"Mendrisio", sys:"ITSM",
    contacts:[{n:"Marco Rossi", src:"O365", tel:"+41 78 655 01 90"}],
    open:[{id:"Tck #714139", t:"Analizzatore latte: letture instabili", urg:true, state:"In lavorazione", plan:null}]},
-  {id:"acq", lat:45.834, lng:9.03, name:"Acque Lario Sagl", city:"Chiasso", sys:"Halo",
+  {id:"acq", lat:45.834, lng:9.03, name:"Acque Lario Sagl", city:"Chiasso", sys:"ITSM",
    contacts:[{n:"Sara Fontana", src:"O365", tel:""}], open:[]},
   {id:"alp", lat:46.1946, lng:9.0244, name:"Labor Alpina SA", city:"Bellinzona", sys:"ITSM",
    contacts:[{n:"Luca Pedrazzini", src:"ITSM", tel:"+41 79 233 87 12"}], open:[]},
   {id:"che", lat:46.0937, lng:8.918, name:"Chemlab Ticino Sagl", city:"Mezzovico", sys:"ITSM",
    contacts:[{n:"Anna Croci", src:"ITSM", tel:"+41 76 118 40 27"}],
    open:[{id:"Tck #714133", t:"Titolatore: taratura annuale", state:"Pianificato", plan:{day:0,time:"14:00"}}]},
-  {id:"far", lat:46.1709, lng:8.7995, name:"Farmacia Centrale Locarno", city:"Locarno", sys:"Halo",
+  {id:"far", lat:46.1709, lng:8.7995, name:"Farmacia Centrale Locarno", city:"Locarno", sys:"ITSM",
    contacts:[{n:"Elena Mariotta", src:"Halo", tel:"+41 79 512 66 03"}],
-   open:[{id:"HALO-4799", t:"Bilancia analitica: guasto", state:"In attesa ricambio", plan:null}]},
-  {id:"vin", lat:46.059, lng:8.931, name:"Vini Collina SA", city:"Taverne", sys:"Halo",
+   open:[{id:"Tck #714799", t:"Bilancia analitica: guasto", state:"In attesa ricambio", plan:null}]},
+  {id:"vin", lat:46.059, lng:8.931, name:"Vini Collina SA", city:"Taverne", sys:"ITSM",
    contacts:[{n:"Paolo Ghirlanda", src:"O365", tel:"+41 76 300 14 59"}], open:[]}
 ];
 let CLIENTS = JSON.parse(JSON.stringify(CLIENTS_BASE));
@@ -382,15 +382,15 @@ function freshState(){
   return {
     tab:"messaggi", csearch:"", openThread:null, seq:4830,
     threads:[
-      {ticket:"HALO-4821", client:"lab", clientMail:"g.bernasconi@laboratorioesempio.ch", unread:true, msgs:[
+      {ticket:"Tck #714821", client:"lab", clientMail:"g.bernasconi@laboratorioesempio.ch", unread:true, msgs:[
         {k:"fwd", from:"Giulia Bernasconi", t:"ieri 18:05", text:"Buonasera, lo spettrofotometro dà di nuovo errore lampada all'accensione."},
         {k:"tf", t:"07:40", text:"La cliente chiede un passaggio domani mattina: fissato alle 9:00.",
-         forClient:"Buongiorno, confermo il passaggio domani alle 9:00 per lo spettrofotometro (pratica HALO-4821). Buona giornata."}
+         forClient:"Buongiorno, confermo il passaggio domani alle 9:00 per lo spettrofotometro (pratica Tck #714821). Buona giornata."}
       ]},
       {ticket:"Tck #714139", client:"cas", unread:true, msgs:[
         {k:"tf", t:"07:55", text:"Nuovo ticket assegnato a te: analizzatore latte con letture instabili. Urgente."}
       ]},
-      {ticket:"HALO-4799", client:"far", unread:false, msgs:[
+      {ticket:"Tck #714799", client:"far", unread:false, msgs:[
         {k:"me", t:"ven 16:20", text:"Serve la cella di carico, l'ho segnata nel rapporto."}
       ]}
     ],
@@ -426,7 +426,8 @@ function waBtn(tel, text, label){
   return `<a class="wa" href="${u}" target="_blank" rel="noopener" aria-label="${esc(label||"Apri WhatsApp")}" title="WhatsApp ${esc(tel)}" onclick="event.stopPropagation()">${WA_ICON}${label?`<span>${esc(label)}</span>`:""}</a>`;
 }
 const firstTel = c => c ? ((c.contacts||[]).find(k=>k.tel)||{}).tel || "" : "";
-const badge = s => `<span class="pill s-${s}">${SRC[s]}</span>`;
+/* il sistema dei ticket (ITSM, Halo…) e la fonte dei contatti non si mostrano al tecnico */
+const badge = s => "";
 const nowStr = () => new Date().toTimeString().slice(0,5);
 const digits = s => String(s||"").replace(/\D/g,"").slice(-9);
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove("show"),2800); }
@@ -439,7 +440,7 @@ function suggestions(f){
   const n = digits(f.number);
   if(n.length >= 7) CLIENTS.forEach(c => c.contacts.forEach(k => { if(digits(k.tel) === n) add(c, "Numero di "+k.n); }));
   const who = waName(f.text).toLowerCase();
-  if(who) CLIENTS.forEach(c => c.contacts.forEach(k => { if(k.n.toLowerCase() === who || who.includes(k.n.toLowerCase())) add(c, k.n+" è un contatto in "+SRC[k.src]); }));
+  if(who) CLIENTS.forEach(c => c.contacts.forEach(k => { if(k.n.toLowerCase() === who || who.includes(k.n.toLowerCase())) add(c, k.n+" è un contatto del cliente"); }));
   const em = /[\w.+-]+@([\w-]+(?:\.[\w-]+)+)/.exec(f.mailFrom||"");
   if(em) CLIENTS.forEach(c => { if(DOM[c.id] === em[1].toLowerCase()) add(c, "La mail arriva da @"+em[1]); });
   const low = f.text.toLowerCase();
@@ -456,11 +457,11 @@ function updateCount(){ const n = S.threads.filter(t=>t.unread).length; const c=
 function renderMessaggi(){
   const el = $("#s-messaggi");
   el.innerHTML = (API ? "" : `<div class="banner">Modalità prova: nessuna mail parte davvero. Per collegare l'app al backend imposta backendUrl in config.js.</div>`) + `<div><h2 class="sec">Messaggi</h2><p class="sub">Le conversazioni con i tuoi clienti, ticket per ticket</p></div>
-    <div class="list">${S.threads.map((th,i)=>{ const c=cl(th.client)||{name:"Cliente da identificare",sys:"Halo"}; const l=lastOf(th);
+    <div class="list">${S.threads.map((th,i)=>{ const c=cl(th.client)||{name:"Cliente da identificare",sys:"ITSM"}; const l=lastOf(th);
       return `<button class="item${th.unread?" unread":""}" data-i="${i}">
         <div class="row"><span class="nm who-row">${th.client?logo(c):""}${esc(c.name)}</span><span class="tm">${esc(l.t)}</span></div>
         <div class="row" style="justify-content:flex-start"><span class="mono">${esc(th.ticket)}</span>${th.client?badge(c.sys):""}</div>
-        <span class="pv">${l.k==="tf"?"Ticket Farm: ":l.k==="fwd"?"Dal cliente: ":"Tu: "}${esc(l.text)}</span></button>`;}).join("")}</div>`;
+        <span class="pv">${l.k==="tf"?"Ufficio: ":l.k==="fwd"?"Dal cliente: ":"Tu: "}${esc(l.text)}</span></button>`;}).join("")}</div>`;
   el.querySelectorAll(".item").forEach(b=>b.onclick=()=>openChat(+b.dataset.i));
   updateCount();
 }
@@ -668,9 +669,9 @@ function drawDest(){
   const c = cl(f.client);
   const known = c.contacts.some(k => digits(k.tel) && digits(k.tel) === digits(f.number));
   const opts = c.open.map(o=>`<button class="opt" type="button" data-d="${o.id}" aria-pressed="${f.dest===o.id}"><span>Aggiungi a ${o.id}<small>${esc(o.t)}</small></span>${o.urg?'<span class="pill p-urg">Urgente</span>':""}</button>`).join("")
-    + `<button class="opt" type="button" data-d="new" aria-pressed="${f.dest==="new"}"><span>Nuova richiesta<small>Ticket Farm apre il ticket in ${SRC[c.sys]}</small></span></button>`;
+    + `<button class="opt" type="button" data-d="new" aria-pressed="${f.dest==="new"}"><span>Nuova richiesta<small>Si apre un nuovo ticket per questo cliente</small></span></button>`;
   box.innerHTML = `<div class="field"><span>Dove va</span><div class="seg">${opts}</div></div>
-    ${digits(f.number).length>=7 && !known ? `<label class="chk" style="margin-top:10px"><input type="checkbox" id="f-rem" ${f.remember?"checked":""}> Salva ${esc(f.number)} sul cliente in ${SRC[c.sys]}</label>`:""}`;
+    ${digits(f.number).length>=7 && !known ? `<label class="chk" style="margin-top:10px"><input type="checkbox" id="f-rem" ${f.remember?"checked":""}> Salva ${esc(f.number)} tra i contatti del cliente</label>`:""}`;
   box.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{ f.dest=b.dataset.d; drawDest(); });
   const r = $("#f-rem"); if(r) r.onchange = e => f.remember = e.target.checked;
 }
@@ -693,7 +694,7 @@ function send(){
     th.msgs.push(fwd); if(fwd.mailFrom) th.clientMail = fwd.mailFrom;
     answer = null;
   } else if(c){
-    ++S.seq; const id = c.sys==="Halo" ? "HALO-"+S.seq : "Tck #7142"+String(S.seq).slice(-2);
+    ++S.seq; const id = "Tck #71"+S.seq;
     th = {ticket:id, client:c.id, clientMail:fwd.mailFrom||"", unread:false, msgs:[fwd]}; S.threads.unshift(th);
     c.open.unshift({id, t:body.slice(0,46)+(body.length>46?"…":"")});
     answer = {k:"tf", t:"", text:"Nuovo ticket "+id+".",
@@ -715,7 +716,7 @@ function send(){
 function renderClienti(){
   const el = $("#s-clienti"), q = S.csearch.toLowerCase();
   const list = CLIENTS.filter(c => !q || (c.name+" "+c.city+" "+c.contacts.map(k=>k.n+" "+k.tel).join(" ")).toLowerCase().includes(q));
-  el.innerHTML = `<div><h2 class="sec">Clienti</h2><p class="sub">Letti da Ticket Farm: anagrafiche da ITSM e Halo, contatti da Office 365</p></div>
+  el.innerHTML = `<div><h2 class="sec">Clienti</h2><p class="sub">I tuoi clienti e i loro contatti</p></div>
     <input class="input" id="c-q" type="search" placeholder="Cerca cliente, persona o numero" value="${esc(S.csearch)}">
     <div class="list">${list.length ? list.map(c=>`<div class="item" data-c="${c.id}" role="button" tabindex="0">
       <div class="row"><span class="nm who-row">${logo(c)}${esc(c.name)}</span><span class="row" style="gap:8px">${waBtn(firstTel(c))}${badge(c.sys)}</span></div>
@@ -774,7 +775,7 @@ function clientSheet(id){
   root.innerHTML = `<div class="sheet-bg" id="sb"><div class="sheet" role="dialog" aria-label="${esc(c.name)}">
     <div class="grab"></div>
     <div class="row"><div class="client who-row">${logo(c,40)}${esc(c.name)}</div>${badge(c.sys)}</div>
-    <span class="sub">${esc(c.city)} · ticket in ${SRC[c.sys]}</span>
+    <span class="sub">${esc(c.city)}</span>
     <div class="field"><span>Contatti</span><div class="kv">${c.contacts.map(k=>`<div class="row"><span>${esc(k.n)}<br><span class="mono">${esc(k.tel||"numero non presente")}</span></span><span class="row" style="gap:8px">${waBtn(k.tel, "", "WhatsApp")}${badge(k.src)}</span></div>`).join("")}</div></div>
     <div class="field"><span>Ticket aperti</span><div class="kv">${c.open.length ? c.open.map(o=>`<div><span class="mono">${o.id}</span> · ${esc(o.t)}</div>`).join("") : `<span class="sub">Nessuno</span>`}</div></div>
     <button class="btn primary block" id="cs-fwd" type="button">Inoltra un messaggio di questo cliente</button>

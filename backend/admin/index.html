@@ -150,6 +150,7 @@ tbody tr.sel td{background:var(--accent-soft)}
 .msg-f{display:flex;gap:8px;align-items:flex-end}.msg-f textarea{resize:vertical}
 .ts-chat{max-height:260px}
 @media (max-width:900px){.msgs{grid-template-columns:minmax(0,1fr)}.msg-l{position:static}.msg-list{max-height:260px}}
+.conn.spento{opacity:.7}.conn.inuso{border-color:var(--ok)}
 .atags{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}.atag{--ac:#2aa7ff;display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--ink);background:color-mix(in srgb,var(--ac) 14%,transparent);border:1px solid color-mix(in srgb,var(--ac) 45%,transparent);border-radius:999px;padding:2px 9px}
 .atag::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--ac)}
 .achecks{display:flex;gap:6px 14px;flex-wrap:wrap}
@@ -433,19 +434,22 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
 (function(){
 const SUPPORT = "support@efuture.it";
 const SRC = {ITSM:"ITSM", Halo:"Halo", O365:"Office 365"};
-const badge = s => `<span class="pill s-${s}">${SRC[s]}</span>`;
+/* ITSM, Halo, Office 365: si vedono solo nelle schermate di configurazione, mai a chi lavora sui ticket */
+const CFG_VIEWS = ["collegamenti","office365","regole","posta"];
+const badge = s => CFG_VIEWS.includes(S.view) ? `<span class="pill s-${s}">${SRC[s]}</span>` : "";
+let SISTEMA = (()=>{ try{ return localStorage.getItem("tf-admin-sistema") || "ITSM"; }catch(e){ return "ITSM"; } })();
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const $ = s => document.querySelector(s);
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove("show"),3000); }
 
 const CLIENTS = [
-  {id:"lab", name:"Laboratorio Esempio SA", city:"Lugano", sys:"Halo", dom:"laboratorioesempio.ch", contacts:[{n:"Giulia Bernasconi", src:"Halo", mail:"g.bernasconi@laboratorioesempio.ch", tel:"+41 79 410 22 18"}]},
+  {id:"lab", name:"Laboratorio Esempio SA", city:"Lugano", sys:"ITSM", dom:"laboratorioesempio.ch", contacts:[{n:"Giulia Bernasconi", src:"Halo", mail:"g.bernasconi@laboratorioesempio.ch", tel:"+41 79 410 22 18"}]},
   {id:"cas", name:"Caseificio Valle SA", city:"Mendrisio", sys:"ITSM", dom:"caseificiovalle.ch", contacts:[{n:"Marco Rossi", src:"O365", mail:"m.rossi@caseificiovalle.ch", tel:"+41 78 655 01 90"}]},
-  {id:"acq", name:"Acque Lario Sagl", city:"Chiasso", sys:"Halo", dom:"acquelario.ch", contacts:[{n:"Sara Fontana", src:"O365", mail:"s.fontana@acquelario.ch", tel:""}]},
+  {id:"acq", name:"Acque Lario Sagl", city:"Chiasso", sys:"ITSM", dom:"acquelario.ch", contacts:[{n:"Sara Fontana", src:"O365", mail:"s.fontana@acquelario.ch", tel:""}]},
   {id:"alp", name:"Labor Alpina SA", city:"Bellinzona", sys:"ITSM", dom:"laboralpina.ch", contacts:[{n:"Luca Pedrazzini", src:"ITSM", mail:"l.pedrazzini@laboralpina.ch", tel:"+41 79 233 87 12"}]},
   {id:"che", name:"Chemlab Ticino Sagl", city:"Mezzovico", sys:"ITSM", dom:"chemlab-ticino.ch", contacts:[{n:"Anna Croci", src:"ITSM", mail:"a.croci@chemlab-ticino.ch", tel:"+41 76 118 40 27"}]},
-  {id:"far", name:"Farmacia Centrale Locarno", city:"Locarno", sys:"Halo", dom:"farmaciacentrale-locarno.ch", contacts:[{n:"Elena Mariotta", src:"Halo", mail:"e.mariotta@farmaciacentrale-locarno.ch", tel:"+41 79 512 66 03"}]},
-  {id:"vin", name:"Vini Collina SA", city:"Taverne", sys:"Halo", dom:"vinicollina.ch", contacts:[{n:"Paolo Ghirlanda", src:"O365", mail:"p.ghirlanda@vinicollina.ch", tel:"+41 76 300 14 59"}]}
+  {id:"far", name:"Farmacia Centrale Locarno", city:"Locarno", sys:"ITSM", dom:"farmaciacentrale-locarno.ch", contacts:[{n:"Elena Mariotta", src:"Halo", mail:"e.mariotta@farmaciacentrale-locarno.ch", tel:"+41 79 512 66 03"}]},
+  {id:"vin", name:"Vini Collina SA", city:"Taverne", sys:"ITSM", dom:"vinicollina.ch", contacts:[{n:"Paolo Ghirlanda", src:"O365", mail:"p.ghirlanda@vinicollina.ch", tel:"+41 76 300 14 59"}]}
 ];
 const cl = id => CLIENTS.find(c=>c.id===id);
 /* storico: tecnici, clienti e utenti disattivati o eliminati restano sui ticket con il loro nome */
@@ -492,35 +496,35 @@ function fresh(){
     customRules:[{id:"r1", tipo:"parola", valore:"centrifug", cliente:"alp", on:true}],
     rules:[
       {k:"reply", t:"Risposta a una mail del ticket", d:"In-Reply-To o References contiene l'identificativo di una mail mandata da ITSM o Halo", on:true},
-      {k:"subj", t:"Numero del ticket nell'oggetto", d:"Oggetto con «Tck #714139» (ITSM) o «HALO-4821» (Halo)", on:true},
+      {k:"subj", t:"Numero del ticket nell'oggetto", d:"Oggetto con «Tck #714139» (ITSM) o «Tck #714821» (Halo)", on:true},
       {k:"hdr", t:"Cliente indicato dall'app del tecnico", d:"Intestazione X-TicketFarm-Cliente nelle mail che partono dall'app", on:true},
       {k:"from", t:"Mittente è un contatto noto", d:"Indirizzo presente nei contatti di ITSM, Halo o Office 365", on:true},
       {k:"dom", t:"Dominio del mittente", d:"Es. @caseificiovalle.ch porta a Caseificio Valle SA", on:true}
     ],
     threads:[
-      {ticket:"HALO-4821", client:"lab", tech:"MB", techMail:"mb@efuture.it", clientMail:"g.bernasconi@laboratorioesempio.ch", msgs:[
+      {ticket:"Tck #714821", client:"lab", tech:"MB", techMail:"mb@efuture.it", clientMail:"g.bernasconi@laboratorioesempio.ch", msgs:[
         {k:"fwd", from:"Giulia Bernasconi", t:"ieri 18:05", text:"Buonasera, lo spettrofotometro dà di nuovo errore lampada all'accensione."},
-        {k:"tf", t:"07:40", by:"Laura Bianchi", id:"o1", text:"La cliente chiede un passaggio domani mattina: fissato alle 9:00.", forClient:"Buongiorno, confermo il passaggio domani alle 9:00 per lo spettrofotometro (pratica HALO-4821). Buona giornata."}]},
+        {k:"tf", t:"07:40", by:"Laura Bianchi", id:"o1", text:"La cliente chiede un passaggio domani mattina: fissato alle 9:00.", forClient:"Buongiorno, confermo il passaggio domani alle 9:00 per lo spettrofotometro (pratica Tck #714821). Buona giornata."}]},
       {ticket:"Tck #714139", client:"cas", tech:"MB", techMail:"mb@efuture.it", msgs:[
         {k:"tf", t:"07:55", text:"Nuovo ticket assegnato a te: analizzatore latte con letture instabili. Urgente."},
         {k:"fwd", from:"Marco Rossi", t:"07:51", text:"Buongiorno, l'analizzatore continua a dare letture diverse sullo stesso campione. Potete passare oggi?"},
         {k:"me", t:"08:20", text:"Chiamo il cliente in mattinata e fisso l'intervento."}]},
-      {ticket:"HALO-4799", client:"far", tech:"MB", techMail:"mb@efuture.it", msgs:[
+      {ticket:"Tck #714799", client:"far", tech:"MB", techMail:"mb@efuture.it", msgs:[
         {k:"me", t:"ven 16:20", text:"Serve la cella di carico, l'ho segnata nel rapporto."}]},
       {ticket:"Tck #714136", client:"alp", tech:"LC", techMail:"lc@efuture.it", msgs:[
         {k:"fwd", from:"Luca Pedrazzini", t:"09:01", text:"La centrifuga vibra molto sopra i 3000 giri, l'abbiamo fermata."},
         {k:"me", t:"09:05", text:"Probabile cuscinetto. Passo nel pomeriggio a verificare."}]}
     ],
     tickets:[
-      {id:"Tck #714139", opened:dago(0), plan:null, sys:"ITSM", client:"cas", title:"Analizzatore latte: letture instabili", state:"In lavorazione", tech:"MB", urg:true, origin:"ITSM", upd:"08:20"},
-      {id:"Tck #714133", opened:dago(6), plan:{day:0,time:"14:00"}, sys:"ITSM", client:"che", title:"Titolatore: taratura annuale", state:"Pianificato", tech:"MB", origin:"ITSM", upd:"ieri"},
+      {id:"Tck #714139", opened:dago(0), plan:null, sys:"ITSM", client:"cas", title:"Analizzatore latte: letture instabili", state:"In lavorazione", tech:"MB", urg:true, origin:"Mail cliente", upd:"08:20"},
+      {id:"Tck #714133", opened:dago(6), plan:{day:0,time:"14:00"}, sys:"ITSM", client:"che", title:"Titolatore: taratura annuale", state:"Pianificato", tech:"MB", origin:"Mail cliente", upd:"ieri"},
       {id:"Tck #714128", opened:dago(12), sys:"ITSM", client:"alp", title:"HPLC: manutenzione ordinaria", state:"Chiuso", tech:"LC", origin:"Mail cliente", upd:"ven"},
-      {id:"HALO-4821", opened:dago(1), plan:{day:1,time:"09:00"}, sys:"Halo", client:"lab", title:"Spettrofotometro: errore lampada", state:"Pianificato", tech:"MB", origin:"WhatsApp tecnico", upd:"07:40"},
-      {id:"HALO-4799", opened:dago(9), plan:null, sys:"Halo", client:"far", title:"Bilancia analitica: guasto", state:"In attesa ricambio", tech:"MB", origin:"Telefono", upd:"ven"},
-      {id:"HALO-4812", opened:dago(1), sys:"Halo", client:"vin", title:"Ordine reagenti e agenti", state:"Aperto", tech:"", origin:"Mail cliente", upd:"ieri"},
+      {id:"Tck #714821", opened:dago(1), plan:{day:1,time:"09:00"}, sys:"ITSM", client:"lab", title:"Spettrofotometro: errore lampada", state:"Pianificato", tech:"MB", origin:"WhatsApp tecnico", upd:"07:40"},
+      {id:"Tck #714799", opened:dago(9), plan:null, sys:"ITSM", client:"far", title:"Bilancia analitica: guasto", state:"In attesa ricambio", tech:"MB", origin:"Telefono", upd:"ven"},
+      {id:"Tck #714812", opened:dago(1), sys:"ITSM", client:"vin", title:"Ordine reagenti e agenti", state:"Aperto", tech:"", origin:"Mail cliente", upd:"ieri"},
       {id:"Tck #714136", opened:dago(3), sys:"ITSM", client:"alp", title:"Centrifuga: vibrazioni anomale", state:"In lavorazione", tech:"LC", origin:"Telefono", upd:"09:05"},
-      {id:"HALO-4806", opened:dago(5), sys:"Halo", client:"acq", title:"pH-metro: calibrazione", state:"In attesa cliente", tech:"GN", origin:"Mail cliente", upd:"lun"},
-      {id:"Tck #714121", opened:dago(24), sys:"ITSM", client:"che", title:"Bilancia di precisione: verifica metrica", state:"Chiuso", tech:"FB", origin:"ITSM", upd:"21/10"}
+      {id:"Tck #714806", opened:dago(5), sys:"ITSM", client:"acq", title:"pH-metro: calibrazione", state:"In attesa cliente", tech:"GN", origin:"Mail cliente", upd:"lun"},
+      {id:"Tck #714121", opened:dago(24), sys:"ITSM", client:"che", title:"Bilancia di precisione: verifica metrica", state:"Chiuso", tech:"FB", origin:"Mail cliente", upd:"21/10"}
     ],
     mails:[
       {id:1, at:"08:20", from:"mb@efuture.it", fromName:"Tecnico Zona Sud", subj:"Re: Tck #714139 - Analizzatore latte: letture instabili",
@@ -530,11 +534,11 @@ function fresh(){
       {id:2, at:"08:12", from:"mb@efuture.it", fromName:"Tecnico Zona Sud", subj:"Messaggio WhatsApp - Acque Lario Sagl",
        hdr:[["X-TicketFarm-Cliente","Acque Lario Sagl"],["X-TicketFarm-Ora-Messaggio","9/11/2026 08:05"],["X-TicketFarm-Origine","WhatsApp del tecnico"]],
        body:"Salve, sono Sara di Acque Lario. Il pH-metro da banco non si accende più. Lo portiamo noi da voi o passate?",
-       res:{state:"new", ticket:"HALO-4830", client:"acq", how:["tech","hdr"], act:"Aperto HALO-4830 in Halo per Acque Lario Sagl e assegnato a MB."}},
-      {id:3, at:"07:40", from:"g.bernasconi@laboratorioesempio.ch", fromName:"Giulia Bernasconi", subj:"Re: HALO-4821 - Spettrofotometro: errore lampada",
-       hdr:[["In-Reply-To","<p8Hh2kQmL0aZ1x@halo.efuture.it>"]],
+       res:{state:"new", ticket:"Tck #714830", client:"acq", how:["tech","hdr"], act:"Aperto Tck #714830 in ITSM per Acque Lario Sagl e assegnato a MB."}},
+      {id:3, at:"07:40", from:"g.bernasconi@laboratorioesempio.ch", fromName:"Giulia Bernasconi", subj:"Re: Tck #714821 - Spettrofotometro: errore lampada",
+       hdr:[["In-Reply-To","<p8Hh2kQmL0aZ1x@itsm.efuture.it>"]],
        body:"Buongiorno, è possibile un passaggio domani mattina? Grazie.",
-       res:{state:"ok", ticket:"HALO-4821", client:"lab", how:["reply","subj"], act:"Aggiunto a HALO-4821 in Halo. Notificato il tecnico MB nell'app."}},
+       res:{state:"ok", ticket:"Tck #714821", client:"lab", how:["reply","subj"], act:"Aggiunto a Tck #714821 in ITSM. Notificato il tecnico MB nell'app."}},
       {id:4, at:"07:31", from:"lc@efuture.it", fromName:"Tecnico Zona Centro", subj:"Messaggio WhatsApp - cliente da identificare",
        hdr:[["X-TicketFarm-Cliente","da identificare"],["X-TicketFarm-Ora-Messaggio","8/11/2026 19:12"],["X-TicketFarm-Origine","WhatsApp del tecnico"]],
        body:"Buonasera, il frigorifero dei campioni non tiene la temperatura, è sui 9 gradi. Domani riuscite?",
@@ -542,7 +546,7 @@ function fresh(){
       {id:5, at:"07:02", from:"info@nuovolab.ch", fromName:"Nuovo Lab Sagl", subj:"Richiesta preventivo manutenzione",
        hdr:[],
        body:"Buongiorno, vorremmo un preventivo per la manutenzione annuale di due centrifughe.",
-       res:{state:"warn", ticket:"", client:"", how:[], act:"Mittente sconosciuto e nessun riferimento a un ticket. Scegli il cliente o crealo in ITSM o Halo."}},
+       res:{state:"warn", ticket:"", client:"", how:[], act:"Mittente sconosciuto e nessun riferimento a un ticket. Scegli il cliente o crealo nel sistema dei ticket."}},
       {id:6, at:"ieri 17:48", from:"m.rossi@caseificiovalle.ch", fromName:"Marco Rossi", subj:"Analizzatore latte",
        hdr:[],
        body:"Buonasera, l'analizzatore dà letture instabili da due giorni. Potete passare?",
@@ -640,21 +644,21 @@ const TUTORIALS = [
     intro:"Dominio e contatti servono a riconoscere le mail del cliente e ad aprire WhatsApp con un tocco.",
     steps:[
       {who:"Console", t:"Nuovo cliente", d:"In <b>Clienti</b> tocca <b>+ Nuovo cliente</b>."},
-      {who:"Console", t:"Dati principali", d:"Ragione sociale, città e dove vanno i ticket: <b>ITSM</b> o <b>Halo</b>."},
+      {who:"Console", t:"Dati principali", d:"Ragione sociale, città e dominio delle mail."},
       {who:"Console", t:"Dominio delle mail", d:"Per esempio <b>caseificiovalle.ch</b>: le mail da quel dominio vengono riconosciute."},
       {who:"Console", t:"Contatti", d:"Nome, mail e <b>telefono</b> (con +39 o il prefisso del paese). <b>+ Aggiungi contatto</b> per altri."},
       {who:"Console", t:"Crea cliente", d:"Compare con logo e pulsante <b>WhatsApp</b>."},
       {who:"App", t:"Il tecnico lo trova", d:"In <b>Clienti</b> e tra le proposte di <b>Inoltra</b>, con il pulsante verde."}
     ],
     result:"Le mail del cliente si riconoscono da sole e WhatsApp è a un tocco.",
-    tip:"Collegati ITSM e Halo, le anagrafiche arrivano da lì; qui si completano i dati che mancano." },
+    tip:"Con il sistema dei ticket collegato le anagrafiche arrivano da lì; qui si completano i dati che mancano." },
   { id:"riconoscimento", for:["admin","resp"], n:5, group:"setup", title:"Regolare il riconoscimento delle mail", where:"Console", time:"1 minuto",
     intro:"Le regole decidono come una mail che arriva a support@ trova il suo ticket e il suo cliente.",
     steps:[
       {who:"Console", t:"Le regole", d:"In <b>Configurazione → Riconoscimento</b>: risposta al ticket, numero nell'oggetto, cliente dall'app, mittente noto, dominio."},
       {who:"Console", t:"Attiva o disattiva", d:"Con l'interruttore accanto alla regola. Esempio: spegni <b>Dominio</b> se più clienti usano lo stesso dominio."},
       {who:"Console", t:"Indirizzo e intestazioni", d:"Sotto le regole: l'indirizzo di raccolta e le intestazioni usate dall'app."},
-      {who:"Console", t:"Collegamenti", d:"In <b>Collegamenti</b> lo stato di ITSM, Halo e Office 365; <b>Prova collegamento</b> rilegge i dati."},
+      {who:"Console", t:"Collegamenti", d:"In <b>Collegamenti</b> scegli il sistema dei ticket in uso (uno solo) e vedi lo stato di Office 365; <b>Prova collegamento</b> rilegge i dati."},
       {who:"Console", t:"Controlla in Posta", d:"Apri una mail: vedi quali regole l'hanno riconosciuta."}
     ],
     result:"Più mail riconosciute da sole, meno lavoro in «Da verificare».",
@@ -667,7 +671,7 @@ const TUTORIALS = [
       {who:"App", t:"Scegli ticket o cliente", d:"Tocca il ticket aperto. Se non c'è, il cliente con <b>Nuova richiesta</b>. Se non lo trovi, <b>Non lo trovo</b>."},
       {who:"App", t:"Controlla l'ora", d:"Se il cliente ha scritto prima: <b>15 min fa</b>, <b>1 ora fa</b>, <b>3 ore fa</b> o <b>Ieri</b>."},
       {who:"App", t:"Nota per l'ufficio", d:"Facoltativa, per esempio «Passo io alle 14»."},
-      {who:"App", t:"Invia a Ticket Farm", d:"Parte una mail dalla tua casella a support@efuture.it, con il ticket nell'intestazione."},
+      {who:"App", t:"Invia a Ticket Farm", d:"Il messaggio arriva all'ufficio, già collegato al ticket del cliente."},
       {who:"Console", t:"Arriva in Posta in arrivo", d:"<b>Riconosciuta</b> sul ticket esistente oppure <b>Nuovo ticket</b>."}
     ],
     result:"Il messaggio del cliente è nel ticket con l'ora giusta e l'ufficio lo vede.",
@@ -683,7 +687,7 @@ const TUTORIALS = [
       {who:"Console", t:"Arriva in Posta in arrivo", d:"Collegata al ticket, con mittente e ora originali."}
     ],
     result:"La mail del cliente è nel ticket senza doverla ricopiare.",
-    tip:"In alternativa la mail si può inoltrare direttamente a support@efuture.it dal programma di posta." },
+    tip:"Mittente e ora restano quelli della mail del cliente." },
   { id:"verifica", for:["admin","resp","agent"], n:9, group:"day", title:"Sistemare le mail da verificare", where:"Console", time:"1 minuto",
     intro:"Una mail senza ticket e senza cliente riconosciuto resta «Da verificare». Basta indicare il cliente e aprire il ticket.",
     steps:[
@@ -691,7 +695,7 @@ const TUTORIALS = [
       {who:"Console", t:"Filtra Da verificare", d:"In <b>Posta in arrivo</b> tocca il filtro <b>Da verificare</b>."},
       {who:"Console", t:"Apri la mail", d:"A destra: mittente, intestazioni, testo e i passaggi del riconoscimento."},
       {who:"Console", t:"Scegli il cliente", d:"Lascia attivo <b>Ricorda il mittente</b>: la prossima volta sarà riconosciuto da solo."},
-      {who:"Console", t:"Apri il ticket", d:"Finisce nel sistema del cliente, ITSM o Halo."},
+      {who:"Console", t:"Apri il ticket", d:"Finisce nel sistema dei ticket collegato."},
       {who:"App", t:"Il tecnico lo vede", d:"Il ticket compare nell'app del tecnico assegnato."}
     ],
     result:"La mail diventa un ticket del cliente giusto.",
@@ -701,7 +705,7 @@ const TUTORIALS = [
     steps:[
       {who:"Telefono", t:"Il cliente chiama", d:"Annota cliente e problema."},
       {who:"Console", t:"Nuovo ticket", d:"In <b>Ticket</b> tocca <b>+ Nuovo ticket</b>."},
-      {who:"Console", t:"Scegli il cliente", d:"La console dice se il ticket va in <b>ITSM</b> o in <b>Halo</b>."},
+      {who:"Console", t:"Scegli il cliente", d:"Scegli l'azienda: il tecnico assegnato lo vede subito nell'app."},
       {who:"Console", t:"Tecnico e richiesta", d:"Scegli il tecnico (o <b>Da assegnare</b>) e scrivi la richiesta. Spunta <b>Urgente</b> se serve."},
       {who:"Console", t:"Crea ticket", d:"Compare in cima all'elenco con il suo numero."},
       {who:"App", t:"Il tecnico lo vede", d:"Il ticket è nell'app del tecnico scelto."}
@@ -792,7 +796,7 @@ function respHome(){
   const loads = TECHS.map(t=>({t, n:open.filter(x=>x.tech===t.ini).length, u:open.filter(x=>x.tech===t.ini && x.urg).length, oggi:open.filter(x=>x.tech===t.ini && x.plan && x.plan.day===0).length}));
   const max = Math.max(1, ...loads.map(x=>x.n));
   const why = t => t.urg && !t.plan ? ["Da pianificare","urg"] : !t.tech ? ["Senza tecnico","new"] : ["In attesa","wait"];
-  $("#main").innerHTML = `<div class="top"><div><h1>Riepilogo</h1><p class="sub">${giorno(0).replace(/^./,x=>x.toUpperCase())} · ${open.length} ticket aperti tra ITSM e Halo</p></div></div>
+  $("#main").innerHTML = `<div class="top"><div><h1>Riepilogo</h1><p class="sub">${giorno(0).replace(/^./,x=>x.toUpperCase())} · ${open.length} ticket aperti</p></div></div>
     <div class="riep">
       <div class="riep-main">
         <section class="remind${remClosed()?" closed":""}" id="rem"${AI.enabled?"":" hidden"}><div class="rem-h"><span class="rem-i" aria-hidden="true">☀</span><b id="rem-title">Situazione di oggi</b><button class="linkback" type="button" id="rem-again" hidden>Riscrivi</button><button class="linkback" type="button" id="rem-tog">${remClosed()?"Mostra":"Riduci"}</button></div>
@@ -898,42 +902,40 @@ function mailDetail0(m){
 }
 function wireFix(m){
   const sel = $("#fx-client"), go = $("#fx-go");
-  sel.onchange = ()=>{ go.disabled = !sel.value; if(sel.value) go.textContent = "Apri il ticket in "+SRC[cl(sel.value).sys]; };
+  sel.onchange = ()=>{ go.disabled = !sel.value; if(sel.value) go.textContent = "Apri il ticket in "+SISTEMA; };
   go.onclick = ()=>{
     if(LIVE){ go.disabled = true; post("/api/admin/mails/"+encodeURIComponent(m.id)+"/resolve", {client:sel.value}).then(r=>{ m.res = r.mail.res; load(); toast(m.res.act); }).catch(e=>{ go.disabled=false; toast("Non riuscito: "+e.message); }); return; }
-    const c = cl(sel.value); const id = c.sys==="Halo" ? "HALO-48"+(++S.seq) : "Tck #7142"+(++S.seq);
+    const c = cl(sel.value); const id = "Tck #7148"+(++S.seq);
     const tech = (TECHS.find(t=>t.mail===m.from)||{}).ini || "";
     S.tickets.unshift({id, sys:c.sys, client:c.id, title:m.subj.replace(/^Messaggio WhatsApp - .*/,"Richiesta da WhatsApp del tecnico"), state:"Aperto", tech, origin: tech?"WhatsApp tecnico":"Mail cliente", upd:"adesso"});
     if($("#fx-learn").checked && !tech) c.contacts.push({n:m.fromName, src:c.sys, mail:m.from, tel:""});
-    m.res = {state:"new", ticket:id, client:c.id, how:m.res.how, act:"Aperto "+id+" in "+SRC[c.sys]+" per "+c.name+(tech?" e assegnato a "+tech+". Il tecnico lo vede nell'app.":".")};
-    posta(); nav(); toast("Ticket "+id+" aperto in "+SRC[c.sys]);
+    m.res = {state:"new", ticket:id, client:c.id, how:m.res.how, act:"Aperto "+id+" in "+SISTEMA+" per "+c.name+(tech?" e assegnato a "+tech+". Il tecnico lo vede nell'app.":".")};
+    posta(); nav(); toast("Ticket "+id+" aperto");
   };
 }
 
 /* ---------- Ticket ---------- */
 function ticket(){
-  $("#main").innerHTML = `<div class="top"><div><h1>Ticket</h1><p class="sub">Letti da ITSM e Halo. Il ticket resta nel suo sistema: Ticket Farm li mostra insieme.</p></div>
+  $("#main").innerHTML = `<div class="top"><div><h1>Ticket</h1><p class="sub">Tutti i ticket, con ricerca e filtri.</p></div>
       <button class="btn primary" type="button" id="t-new" data-perm="ticket:m">+ Nuovo ticket</button></div>
     <form class="panel" id="t-form" hidden>
       <h2>Nuovo ticket</h2>
       <div class="formgrid">
-        <label class="field" ${ROLE==="cliente"?"hidden":""}><span>Cliente</span><select class="input" id="nt-client" required><option value="">Scegli il cliente…</option>${liveClients().filter(alive).map(c=>`<option value="${c.id}" ${ROLE==="cliente"&&c.id===myClientId()?"selected":""}>${esc(c.name)} · ${SRC[c.sys]}</option>`).join("")}</select></label>
+        <label class="field" ${ROLE==="cliente"?"hidden":""}><span>Cliente</span><select class="input" id="nt-client" required><option value="">Scegli il cliente…</option>${liveClients().filter(alive).map(c=>`<option value="${c.id}" ${ROLE==="cliente"&&c.id===myClientId()?"selected":""}>${esc(c.name)}</option>`).join("")}</select></label>
         <label class="field" ${ROLE==="cliente"?"hidden":""}><span>Tecnico</span><select class="input" id="nt-tech"><option value="">Da assegnare</option>${TECHS.filter(alive).map(t=>`<option value="${t.ini}">${t.ini} · ${esc(t.name||t.nome||"")}</option>`).join("")}</select></label>
         <label class="field wide"><span>Richiesta</span><input class="input" id="nt-title" maxlength="120" placeholder="Es. Bilancia analitica: non si accende" required></label>
       </div>
       <label class="check"><input type="checkbox" id="nt-urg"> Urgente</label>
-      <p class="note" id="nt-where">Il ticket viene aperto nel sistema del cliente (ITSM o Halo).</p>
       <div class="actions"><button class="btn primary" type="submit" id="nt-go">Crea ticket</button><button class="btn" type="button" id="nt-x">Annulla</button></div>
     </form>
     <div class="panel filters" id="tf">
-      <div class="f-row"><label class="f-q"><span class="sr">Cerca</span><input class="input" id="tf-q" type="search" placeholder="Numero ticket (es. 714139, HALO-4821), richiesta o cliente" value="${esc(S.tf.q)}"></label>
+      <div class="f-row"><label class="f-q"><span class="sr">Cerca</span><input class="input" id="tf-q" type="search" placeholder="Numero ticket (es. 714139, Tck #714821), richiesta o cliente" value="${esc(S.tf.q)}"></label>
         <button class="btn small" type="button" id="tf-x">Azzera filtri</button></div>
       <div class="chips" id="tf-stato"></div>
       <div class="f-grid">
         <label class="field" id="tf-client-w"><span>Cliente</span><select class="input" id="tf-client"><option value="">Tutti i clienti</option>${[...CLIENTS].sort((a,b)=>a.name.localeCompare(b.name)).map(c=>`<option value="${c.id}">${esc(c.name)}${c.eliminato?" (eliminato)":c.attivo===false?" (disattivato)":""}</option>`).join("")}</select></label>
         <label class="field" id="tf-tech-w"><span>Tecnico</span><select class="input" id="tf-tech"><option value="">Tutti i tecnici</option><option value="-">Da assegnare</option>${TECHS.map(t=>`<option value="${t.ini}">${t.ini} · ${esc(techName(t))}${t.eliminato?" (eliminato)":t.attivo===false?" (disattivato)":""}</option>`).join("")}</select></label>
         <label class="field" id="tf-area-w"><span>Area di lavoro</span><select class="input" id="tf-area"><option value="">Tutte le aree</option>${AREE_LIST.filter(a=>!a.eliminato).map(a=>`<option value="${a.id}">${esc(a.nome)}</option>`).join("")}</select></label>
-        <label class="field"><span>Sistema</span><select class="input" id="tf-sys"><option value="">ITSM e Halo</option><option>ITSM</option><option>Halo</option></select></label>
         <label class="field"><span>Origine</span><select class="input" id="tf-origin"><option value="">Tutte le origini</option>${[...new Set(S.tickets.map(t=>t.origin).filter(Boolean))].sort().map(o=>`<option>${esc(o)}</option>`).join("")}</select></label>
         <label class="field"><span>Aperto</span><select class="input" id="tf-per"><option value="">In qualsiasi data</option><option value="0">Oggi</option><option value="7">Ultimi 7 giorni</option><option value="30">Ultimi 30 giorni</option><option value="c">Dal… al…</option></select></label>
         <label class="field" id="tf-dal-w"><span>Dal</span><input class="input" id="tf-dal" type="date" value="${esc(S.tf.dal)}"></label>
@@ -947,7 +949,7 @@ function ticket(){
   if(mine){ F.tech = mine; $("#tf-tech-w").hidden = true; $("#tf-n").dataset.mine = "1"; }
   const own = ROLE==="cliente" ? myClientId() : "";
   if(own){ F.client = own; $("#tf-client-w").hidden = true; $("#tf-tech-w").hidden = true; $("#tf-area-w").hidden = true; }
-  ["client","tech","sys","origin","per","area"].forEach(k=>$("#tf-"+k).value = F[k]||"");
+  ["client","tech","origin","per","area"].forEach(k=>$("#tf-"+k).value = F[k]||"");
   const STATI = [["aperti","Tutti gli aperti", t=>t.state!=="Chiuso"],["Aperto","Aperti", t=>t.state==="Aperto"],["In lavorazione","In lavorazione", t=>t.state==="In lavorazione"],["Pianificato","Pianificati", t=>t.state==="Pianificato"],["attesa","In attesa", t=>/attesa/i.test(t.state)],["Chiuso","Chiusi", t=>t.state==="Chiuso"],["tutti","Tutti", ()=>true]];
   const norm = x => String(x||"").toLowerCase().replace(/[^a-z0-9]/g,"");
   const base = t => {
@@ -979,24 +981,23 @@ function ticket(){
   };
   $("#tf-stato").onclick = e => { const b = e.target.closest("[data-st]"); if(b){ F.stato = b.dataset.st; paint(); } };
   $("#tf-q").oninput = e => { F.q = e.target.value; paint(); };
-  ["client","tech","sys","origin","per","dal","al","area"].forEach(k=>$("#tf-"+k).onchange = e => { F[k] = e.target.value; paint(); });
+  ["client","tech","origin","per","dal","al","area"].forEach(k=>$("#tf-"+k).onchange = e => { F[k] = e.target.value; paint(); });
   $("#tf-urg").onchange = e => { F.urg = e.target.checked; paint(); };
   $("#tf-x").onclick = () => { S.tf = tfReset(); ticket(); };
   paint();
   const form = $("#t-form");
   $("#t-new").onclick = ()=>{ form.hidden = false; $("#nt-client").focus(); };
   $("#nt-x").onclick = ()=>{ form.hidden = true; form.reset(); };
-  $("#nt-client").onchange = e => { const c = cl(e.target.value); $("#nt-where").textContent = c ? "Sarà aperto in "+SRC[c.sys]+"." : "Il ticket viene aperto nel sistema del cliente (ITSM o Halo)."; };
   form.onsubmit = e => {
     e.preventDefault();
     const c = cl($("#nt-client").value), title = $("#nt-title").value.trim(), tech = $("#nt-tech").value, urg = $("#nt-urg").checked;
     if(!c || !title){ toast("Scegli il cliente e scrivi la richiesta"); return; }
     if(LIVE){ $("#nt-go").disabled = true;
-      post("/api/admin/tickets", {client:c.id, title, tech, urg}).then(r=>{ toast("Ticket "+r.ticket.id+" aperto in "+SRC[c.sys]); load(); })
+      post("/api/admin/tickets", {client:c.id, title, tech, urg}).then(r=>{ toast("Ticket "+r.ticket.id+" aperto"); load(); })
         .catch(err=>{ $("#nt-go").disabled = false; toast("Non riuscito: "+err.message); }); return; }
-    const id = c.sys==="Halo" ? "HALO-48"+(++S.seq) : "Tck #7142"+(++S.seq);
+    const id = "Tck #7148"+(++S.seq);
     S.tickets.unshift({id, opened:dago(0), sys:c.sys, client:c.id, title, state:"Aperto", tech, urg, origin:"Console", upd:"adesso"}); logLocal("Ticket creato", id+" · "+c.name+" · "+title, "ticket");
-    S.tf = tfReset(); ticket(); toast("Ticket "+id+" aperto in "+SRC[c.sys]+" (prova)");
+    S.tf = tfReset(); ticket(); toast("Ticket "+id+" aperto (prova)");
   };
 }
 /* modifica del ticket: stato, tecnico (solo attivi), urgenza, intervento, richiesta */
@@ -1014,7 +1015,7 @@ function ticketForm(t){
       <label class="field"><span>Ora</span><input class="input" id="te-time" type="time" value="${esc(time)}"></label>
     </div>
     <label class="check"><input type="checkbox" id="te-urg" ${t.urg?"checked":""}> Urgente</label>
-    <p class="note">${LIVE ? "Dal vivo la modifica va fatta in "+SRC[t.sys]+": qui si aggiorna quando il collegamento sarà attivo." : "Nella prova la modifica resta in questa pagina."}</p>
+    <p class="note">${LIVE ? "Dal vivo la modifica arriva nel sistema dei ticket quando il collegamento sarà attivo." : "Nella prova la modifica resta in questa pagina."}</p>
     <div class="actions"><button class="btn primary" type="submit">Salva</button><button class="btn" type="button" data-close>Annulla</button></div>`, ()=>{
       const d = $("#te-day").value, tm = $("#te-time").value;
       const body = {title:$("#te-title").value.trim(), state:$("#te-state").value, tech:$("#te-tech").value, urg:$("#te-urg").checked, plan: d!=="" && tm ? {day:+d, time:tm} : null};
@@ -1116,13 +1117,12 @@ function clienti(){
   const F = S.cf = S.cf || cfReset(), mine = ROLE==="op" ? myTech().ini : "";
   if(mine && F.mine===undefined) F.mine = true;
   const openOf = c => S.tickets.filter(t=>t.client===c.id && t.state!=="Chiuso");
-  $("#main").innerHTML = `<div class="top"><div><h1>Clienti</h1><p class="sub">Anagrafiche da ITSM e Halo, contatti anche da Office 365. Servono a riconoscere il mittente delle mail.</p></div>
+  $("#main").innerHTML = `<div class="top"><div><h1>Clienti</h1><p class="sub">Le aziende clienti e i loro contatti. Servono anche a riconoscere chi scrive.</p></div>
       <button class="btn primary" type="button" id="c-add" data-perm="clienti:m">+ Nuovo cliente</button></div>
     <div class="panel filters">
       <div class="f-row"><label class="f-q"><span class="sr">Cerca</span><input class="input" id="cl-q" type="search" placeholder="Nome, città, contatto, mail, telefono o dominio" value="${esc(F.q)}"></label>
         <button class="btn small" type="button" id="cl-x">Azzera filtri</button></div>
       <div class="f-grid">
-        <label class="field"><span>Sistema</span><select class="input" id="cl-sys"><option value="">ITSM e Halo</option><option>ITSM</option><option>Halo</option></select></label>
         <label class="field"><span>Città</span><select class="input" id="cl-city"><option value="">Tutte le città</option>${[...new Set(CLIENTS.map(c=>c.city).filter(Boolean))].sort().map(x=>`<option>${esc(x)}</option>`).join("")}</select></label>
       </div>
       <div class="chips">
@@ -1133,8 +1133,8 @@ function clienti(){
       </div>
     </div>
     <p class="f-count" id="cl-n" aria-live="polite"></p>
-    <div class="tbl"><table><thead><tr><th>Cliente</th><th>Ticket in</th><th>Ticket aperti</th><th>Dominio</th><th>Contatti</th><th><span class="sr">Azioni</span></th></tr></thead><tbody id="cl-body"></tbody></table></div>`;
-  $("#cl-sys").value = F.sys; $("#cl-city").value = F.city;
+    <div class="tbl"><table><thead><tr><th>Cliente</th><th>Ticket aperti</th><th>Dominio</th><th>Contatti</th><th><span class="sr">Azioni</span></th></tr></thead><tbody id="cl-body"></tbody></table></div>`;
+  $("#cl-city").value = F.city;
   const norm = x => String(x||"").toLowerCase();
   const paint = () => {
     const list = CLIENTS.filter(c=>{
@@ -1147,10 +1147,10 @@ function clienti(){
       if(F.q){ const q = norm(F.q), qd = q.replace(/[^0-9+]/g,""); if(![c.name, c.city, c.dom, ...(c.contacts||[]).flatMap(k=>[k.n,k.mail])].some(v=>norm(v).includes(q)) && !(qd.length>2 && (c.contacts||[]).some(k=>String(k.tel||"").replace(/[^0-9+]/g,"").includes(qd)))) return false; }
       return true; }).sort((a,b)=>a.name.localeCompare(b.name));
     $("#cl-n").textContent = list.length+" di "+liveClients().length+" clienti";
-    $("#cl-body").innerHTML = list.map(c=>{ const o = openOf(c); return `<tr><td><div style="display:flex;gap:10px;align-items:center">${logo(c)}<div><span class="strong">${clientTag(c)}</span><div class="dim">${esc(c.city||"")}</div></div></div></td><td>${badge(c.sys)}</td>
+    $("#cl-body").innerHTML = list.map(c=>{ const o = openOf(c); return `<tr><td><div style="display:flex;gap:10px;align-items:center">${logo(c)}<div><span class="strong">${clientTag(c)}</span><div class="dim">${esc(c.city||"")}</div></div></div></td>
         <td>${o.length?`<button class="tlink strong" type="button" data-tk="${esc(c.id)}">${o.length} aperti</button>${o.some(t=>t.urg)?' <span class="pill p-urg">Urgente</span>':""}`:`<span class="dim">nessuno</span>`}</td><td class="mono">${c.dom?"@"+esc(c.dom):"—"}</td>
         <td>${(c.contacts||[]).map(k=>`<div class="contact"><div>${esc(k.n)} ${badge(k.src)}<div class="dim">${esc(k.mail||"")}${k.tel?" · "+esc(k.tel):""}</div></div>${waBtn(k.tel)}</div>`).join("") || `<span class="dim">Nessun contatto</span>`}</td>
-        <td class="act" data-row="${esc(c.id)}">${c.eliminato ? `<button class="btn small" type="button" data-rest="${esc(c.id)}" data-perm="clienti:m">Ripristina</button>` : `<button class="btn small" type="button" data-edit="${esc(c.id)}" data-perm="clienti:m">Modifica</button> <button class="btn small" type="button" data-onoff="${esc(c.id)}" data-perm="clienti:m">${c.attivo===false?"Riattiva":"Disattiva"}</button> <button class="btn small danger" type="button" data-ask="${esc(c.id)}" data-perm="clienti:e">Elimina</button>`}</td></tr>`; }).join("") || `<tr><td colspan="6" class="dim">Nessun cliente con questi filtri</td></tr>`;
+        <td class="act" data-row="${esc(c.id)}">${c.eliminato ? `<button class="btn small" type="button" data-rest="${esc(c.id)}" data-perm="clienti:m">Ripristina</button>` : `<button class="btn small" type="button" data-edit="${esc(c.id)}" data-perm="clienti:m">Modifica</button> <button class="btn small" type="button" data-onoff="${esc(c.id)}" data-perm="clienti:m">${c.attivo===false?"Riattiva":"Disattiva"}</button> <button class="btn small danger" type="button" data-ask="${esc(c.id)}" data-perm="clienti:e">Elimina</button>`}</td></tr>`; }).join("") || `<tr><td colspan="5" class="dim">Nessun cliente con questi filtri</td></tr>`;
     $("#cl-body").querySelectorAll("[data-tk]").forEach(b=>b.onclick=()=>{ S.view="ticket"; S.tf = Object.assign(tfReset(), {client:b.dataset.tk}); render(); });
     $("#cl-body").querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>clientForm(cl(b.dataset.edit)));
     $("#cl-body").querySelectorAll("[data-onoff]").forEach(b=>b.onclick=()=>{ const c = cl(b.dataset.onoff), on = c.attivo===false;
@@ -1166,7 +1166,6 @@ function clienti(){
     }, clienti));
   };
   $("#cl-q").oninput = e => { F.q = e.target.value; paint(); };
-  $("#cl-sys").onchange = e => { F.sys = e.target.value; paint(); };
   $("#cl-city").onchange = e => { F.city = e.target.value; paint(); };
   ["open","wa","mine","old"].forEach(k=>{ const el = $("#cl-"+k); if(el) el.onchange = e => { F[k] = e.target.checked; paint(); }; });
   $("#cl-x").onclick = () => { S.cf = cfReset(); clienti(); };
@@ -1197,15 +1196,14 @@ function clientForm(c){
     <div class="formgrid">
       <label class="field wide"><span>Ragione sociale</span><input class="input" id="cf-name" required maxlength="120" value="${esc(c.name)}"></label>
       <label class="field"><span>Città</span><input class="input" id="cf-city" maxlength="60" value="${esc(c.city||"")}"></label>
-      <label class="field"><span>Ticket in</span><select class="input" id="cf-sys"><option value="ITSM" ${c.sys==="ITSM"?"selected":""}>ITSM</option><option value="Halo" ${c.sys==="Halo"?"selected":""}>Halo</option></select></label>
       <label class="field wide"><span>Dominio delle mail</span><input class="input" id="cf-dom" placeholder="es. caseificiovalle.ch" value="${esc(c.dom||"")}"></label>
     </div>
     <div class="field"><span>Contatti</span><div id="cf-contacts">${(c.contacts||[]).map(contactRow).join("")}</div>
       <button class="linkback" type="button" id="cf-addc">+ Aggiungi contatto</button></div>
     <p class="note">Il numero di telefono serve per il pulsante WhatsApp; il dominio per riconoscere le mail del cliente.</p>
     <div class="actions"><button class="btn primary" type="submit">${isNew ? "Crea cliente" : "Salva"}</button><button class="btn" type="button" data-close>Annulla</button></div>`, ()=>{
-      const contacts = [...document.querySelectorAll("#cf-contacts .crow")].map(r=>({n:r.querySelector('[data-k="n"]').value.trim(), mail:r.querySelector('[data-k="mail"]').value.trim(), tel:r.querySelector('[data-k="tel"]').value.trim(), src:$("#cf-sys").value==="Halo"?"Halo":"ITSM"})).filter(k=>k.n||k.mail||k.tel);
-      const body = {name:$("#cf-name").value.trim(), city:$("#cf-city").value.trim(), sys:$("#cf-sys").value, dom:$("#cf-dom").value.trim().replace(/^@/,"").toLowerCase(), contacts};
+      const contacts = [...document.querySelectorAll("#cf-contacts .crow")].map(r=>({n:r.querySelector('[data-k="n"]').value.trim(), mail:r.querySelector('[data-k="mail"]').value.trim(), tel:r.querySelector('[data-k="tel"]').value.trim(), src:SISTEMA})).filter(k=>k.n||k.mail||k.tel);
+      const body = {name:$("#cf-name").value.trim(), city:$("#cf-city").value.trim(), sys:SISTEMA, dom:$("#cf-dom").value.trim().replace(/^@/,"").toLowerCase(), contacts};
       if(!body.name){ toast("Scrivi la ragione sociale"); return; }
       if(LIVE){ (isNew ? post("/api/admin/clients", body) : put("/api/admin/clients/"+encodeURIComponent(c.id), body))
         .then(()=>{ closeEditor(); toast(isNew ? "Cliente creato" : "Cliente salvato"); load(); }).catch(err=>toast("Non riuscito: "+err.message)); return; }
@@ -1463,7 +1461,7 @@ const AUDIT_DEMO = [
 let AUDIT_LOCAL = AUDIT_DEMO.slice();
 const logLocal = (azione, dettaglio, area) => { if(!LIVE) AUDIT_LOCAL.unshift({at:new Date().toISOString(), user:(ME&&ME.user)||"admin", azione, dettaglio:dettaglio||"", area:area||""}); };
 let USERS_LOCAL = [
-  {user:"admin", nome:"Amministratore", mail:"support@efuture.it", profilo:"admin", attivo:true, ultimo:"2026-11-10T09:30:00"},
+  {user:"admin", nome:"Amministratore", mail:"admin@efuture.it", profilo:"admin", attivo:true, ultimo:"2026-11-10T09:30:00"},
   {user:"l.bianchi", nome:"Laura Bianchi", mail:"l.bianchi@efuture.it", profilo:"resp", attivo:true, ultimo:"2026-11-10T08:02:00"},
   {user:"g.verdi", nome:"Giulia Verdi", mail:"g.verdi@efuture.it", profilo:"op", attivo:true, ultimo:"2026-11-10T08:30:00"},
   {user:"a.neri", nome:"Andrea Neri", mail:"a.neri@efuture.it", profilo:"agent", attivo:true, aree:["a-sud","a-lab"], ultimo:"2026-11-10T07:58:00"},
@@ -1760,7 +1758,7 @@ function office365(){
       {ok:true, t:"Contatti di "+mb, d:"42 contatti"}],
       messages:[
         {at:"10/11 09:12", fromName:"Tecnico Zona Sud", from:"mb@efuture.it", subj:"Re: Tck #714139 - Analizzatore latte: letture instabili", hdr:[["In-Reply-To",""],["X-TicketFarm-Ora-Messaggio",""]]},
-        {at:"10/11 08:47", fromName:"Giulia Bernasconi", from:"g.bernasconi@laboratorioesempio.ch", subj:"Re: HALO-4821 - Spettrofotometro: errore lampada", hdr:[["In-Reply-To",""]]},
+        {at:"10/11 08:47", fromName:"Giulia Bernasconi", from:"g.bernasconi@laboratorioesempio.ch", subj:"Re: Tck #714821 - Spettrofotometro: errore lampada", hdr:[["In-Reply-To",""]]},
         {at:"10/11 08:05", fromName:"Tecnico Zona Sud", from:"mb@efuture.it", subj:"Messaggio WhatsApp - Acque Lario Sagl", hdr:[["X-TicketFarm-Cliente",""]]},
         {at:"09/11 17:48", fromName:"Marco Rossi", from:"m.rossi@caseificiovalle.ch", subj:"Analizzatore latte", hdr:[]}]}, true), 700);
   };
@@ -1819,17 +1817,26 @@ function assistente(){
 
 /* ---------- Collegamenti ---------- */
 function collegamenti(){
+  const sys = SISTEMA, edit = can("collegamenti","m");
   const C = (LIVE && CONN) ? CONN : [
     {n:"ITSM", how:"Database e API di itsm.efuture.it", what:"Ticket, clienti, contatti, identificativi delle mail inviate", sync:"1 min fa"},
     {n:"Halo", how:"API REST di Halo", what:"Ticket, clienti, contatti, identificativi delle mail inviate", sync:"1 min fa"},
-    {n:"Office 365", how:"Microsoft Graph", what:"Contatti aziendali e casella "+SUPPORT, sync:"adesso"},
-    {n:"Casella "+SUPPORT, how:"Letta ogni minuto", what:"Mail dei clienti e dell'app dei tecnici", sync:"adesso"}
+    {n:"Office 365", how:"Microsoft Graph", what:"Posta della casella di raccolta e contatti aziendali", sync:"adesso"}
   ];
-  $("#main").innerHTML = `<div class="top"><div><h1>Collegamenti</h1><p class="sub">Da dove legge il backend. L'app dei tecnici non si collega a questi sistemi: scrive solo mail a ${SUPPORT} e legge dal backend.</p></div></div>
-    <div class="conns">${C.map((c,i)=>`<div class="panel conn"><div class="row"><h2>${esc(c.n)}</h2><span class="dim">${c.ok===false?"non collegato":"<span class=\"dot\"></span>&nbsp; collegato"}</span></div>
-      <dl class="kv"><dt>Come</dt><dd>${esc(c.how)}</dd><dt>Cosa legge</dt><dd>${esc(c.what)}</dd><dt>Ultima lettura</dt><dd>${c.sync}</dd></dl>
-      <button class="btn" type="button" data-t="${i}" style="align-self:flex-start">Prova collegamento</button></div>`).join("")}</div>`;
-  document.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{ if(LIVE){ load().then(()=>toast("Dati riletti")); } else toast(C[+b.dataset.t].n+": collegamento riuscito (prova)"); });
+  const tk = C.filter(c=>c.n==="ITSM"||c.n==="Halo"), other = C.filter(c=>c.n!=="ITSM"&&c.n!=="Halo");
+  const card = (c,i,alt) => `<div class="panel conn ${alt?(c.n===sys?"inuso":"spento"):""}"><div class="row"><h2>${esc(c.n)}</h2>${alt?(c.n===sys?'<span class="pill p-ok">In uso</span>':'<span class="pill p-mut">Non in uso</span>'):`<span class="dim">${c.ok===false?"non collegato":"<span class=\"dot\"></span>&nbsp; collegato"}</span>`}</div>
+      <dl class="kv"><dt>Come</dt><dd>${esc(c.how)}</dd><dt>Cosa legge</dt><dd>${esc(c.what)}</dd><dt>Ultima lettura</dt><dd>${alt && c.n!==sys ? "—" : esc(c.sync||"")}</dd></dl>
+      <div class="actions">${alt && c.n!==sys ? `<button class="btn" type="button" data-use="${esc(c.n)}" ${edit?"":"disabled"}>Usa ${esc(c.n)}</button>` : `<button class="btn" type="button" data-t="${esc(c.n)}">Prova collegamento</button>`}</div></div>`;
+  $("#main").innerHTML = `<div class="top"><div><h1>Collegamenti</h1><p class="sub">Da dove legge il backend. I sistemi dei ticket sono alternativi: se ne usa uno solo alla volta. L'app dei tecnici non si collega a questi sistemi.</p></div></div>
+    <h2 class="tgroup">Sistema dei ticket</h2>
+    <div class="conns">${tk.map((c,i)=>card(c,i,true)).join("")}</div>
+    <p class="note">Cambiando sistema, ticket e clienti vengono letti da quello nuovo. Utenti, tecnici, aree e conversazioni restano.</p>
+    <h2 class="tgroup">Posta e contatti</h2>
+    <div class="conns">${other.map((c,i)=>card(c,i,false)).join("")}</div>`;
+  document.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{ if(LIVE){ load().then(()=>toast("Dati riletti")); } else toast(b.dataset.t+": collegamento riuscito (prova)"); });
+  document.querySelectorAll("[data-use]").forEach(b=>b.onclick=()=>{ const v = b.dataset.use; if(!confirmInline(b)) return;
+    if(LIVE) return post("/api/admin/sistema", {sistema:v}).then(r=>{ SISTEMA = r.sistema; toast("Sistema dei ticket in uso: "+v); load().then(collegamenti); }).catch(err=>toast("Non riuscito: "+err.message));
+    SISTEMA = v; try{ localStorage.setItem("tf-admin-sistema", v); }catch(e){} logLocal("Sistema dei ticket in uso", v, "collegamenti"); toast("Sistema dei ticket in uso: "+v+" (prova)"); collegamenti(); });
 }
 
 /* ---------- Regole di riconoscimento ---------- */
@@ -1870,18 +1877,18 @@ function load(){
   return fetch("/api/admin/state", {headers:H()}).then(r=>{ if(r.status===401) throw {auth:true}; return r.ok ? r.json() : Promise.reject(new Error("errore "+r.status)); }).then(d=>{
     LIVE = true; CONN = d.connections; ME = d.me || ME; paintMe();
     CLIENTS.splice(0, CLIENTS.length, ...d.clients); TECHS.splice(0, TECHS.length, ...d.techs);
-    S.mails = d.mails; S.tickets = d.tickets; S.threads = d.threads || []; S.customRules = d.customRules || []; if(d.aree) AREE_LIST = d.aree; if(d.limiti) LIMITI = d.limiti; S.rules = d.rules; SETTINGS = d.settings || SETTINGS; O365 = d.o365 || null;
+    S.mails = d.mails; S.tickets = d.tickets; S.threads = d.threads || []; S.customRules = d.customRules || []; if(d.sistema) SISTEMA = d.sistema; if(d.aree) AREE_LIST = d.aree; if(d.limiti) LIMITI = d.limiti; S.rules = d.rules; SETTINGS = d.settings || SETTINGS; O365 = d.o365 || null;
     if(d.ai) AI = d.ai;
     if(d.profiles) PROFILES = d.profiles; REAL_ROLE = (d.me && d.me.profilo) || "admin"; if(REAL_ROLE !== "admin") ROLE = REAL_ROLE;
     if(!BOOTED){ BOOTED = true; landing(); }
-    $("#foot-mode").textContent = d.mode==="live" ? "Collegato a ITSM, Halo e Office 365" : "Backend in modalità prova: mail salvate in outbox, non spedite";
+    $("#foot-mode").textContent = d.mode==="live" ? "Collegato" : "Modalità prova: le mail non partono davvero";
     if(d.appUrl){ const a=$("#app-link"); a.href=d.appUrl; a.hidden=false; }
     render();
   }).catch(err=>{ if(err && err.auth){ logout(); return; } toast("Backend non raggiungibile: "+(err && err.message || "")); render(); });
 }
 /* senza backend (file aperto o GitHub Pages): dati di prova, accesso e profilo solo in questo browser */
 const OFF_USER = {user:"admin", password:"admin123"};
-function offProfile(){ let p = null; try{ p = JSON.parse(localStorage.getItem("tf-admin-profile")||"null"); }catch(e){} return Object.assign({user:"admin", nome:"Amministratore", mail:"support@efuture.it", home:"cruscotto", vista:"op"}, p||{}); }
+function offProfile(){ let p = null; try{ p = JSON.parse(localStorage.getItem("tf-admin-profile")||"null"); }catch(e){} return Object.assign({user:"admin", nome:"Amministratore", mail:"admin@efuture.it", home:"cruscotto", vista:"op"}, p||{}); }
 function startOffline(){
   if(location.hostname.endsWith("github.io")){ $("#foot-mode").textContent = "Console di prova: dati di esempio, non collegata a un backend"; const a=$("#app-link"); a.href="../"; a.hidden=false; }
   ME = offProfile(); if(!BOOTED){ BOOTED = true; landing(); } paintMe(); render();
