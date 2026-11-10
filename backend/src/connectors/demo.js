@@ -48,11 +48,18 @@ module.exports = {
     ];
   },
   /* solo in prova: simula il ticket che ITSM o Halo aprirebbero alla prima mail */
-  createTicket(client, title, techIni) {
+  createTicket(client, title, techIni, opts) {
+    opts = opts || {};
     seq++;
     const id = client.sys === "Halo" ? "HALO-48" + seq : "Tck #7142" + seq;
-    TICKETS.unshift({ id, sys: client.sys, client: client.id, title, state: "Aperto", tech: techIni || "", origin: "App tecnico", upd: "adesso", msgIds: [] });
+    TICKETS.unshift({ id, sys: client.sys, client: client.id, title, state: "Aperto", tech: techIni || "", urg: !!opts.urg, origin: opts.origin || "App tecnico", upd: "adesso", msgIds: [] });
     return id;
+  },
+  deleteTicket(id) {
+    const i = TICKETS.findIndex(t => t.id === id);
+    if (i < 0) return false;
+    TICKETS.splice(i, 1);
+    return true;
   },
   seedThreads: { "mb@efuture.it": THREADS_MB },
   inbound: INBOUND,

@@ -170,6 +170,22 @@ app.post("/api/admin/mails/:id/resolve", async (req, res, next) => {
     res.json({ ok: true, mail: m });
   } catch (e) { next(e); }
 });
+/* creare ed eliminare ticket: in prova sui dati di esempio; dal vivo vanno fatti in ITSM o Halo (da collegare) */
+app.post("/api/admin/tickets", async (req, res, next) => {
+  try {
+    const { clients } = await sources.data();
+    const c = clients.find(x => x.id === req.body.client), title = String(req.body.title || "").trim().slice(0, 120);
+    if (!c || !title) return res.status(400).json({ error: "cliente o richiesta mancanti" });
+    if (cfg.mode !== "demo") return res.status(501).json({ error: "dal vivo il ticket va aperto in " + c.sys + ": collegamento non ancora disponibile" });
+    const id = sources.demo.createTicket(c, title, String(req.body.tech || ""), { urg: !!req.body.urg, origin: "Console" });
+    res.json({ ticket: { id, sys: c.sys, client: c.id, title } });
+  } catch (e) { next(e); }
+});
+app.delete("/api/admin/tickets/:id", (req, res) => {
+  if (cfg.mode !== "demo") return res.status(501).json({ error: "dal vivo i ticket si chiudono in ITSM o Halo, non si eliminano da qui" });
+  if (!sources.demo.deleteTicket(req.params.id)) return res.status(404).json({ error: "ticket non trovato" });
+  res.json({ ok: true });
+});
 app.post("/api/admin/rules", (req, res) => {
   const st = store.load(); const r = st.rules.find(x => x.k === req.body.k);
   if (r) { r.on = !!req.body.on; store.save(); }

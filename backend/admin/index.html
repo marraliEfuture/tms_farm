@@ -20,6 +20,7 @@
   color-scheme:dark;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{height:100%}
 body{background:var(--bg);color:var(--text);font-family:var(--f-body);font-size:14.5px;line-height:1.5;margin:0}
 button,input,select,textarea{font:inherit;color:inherit}
@@ -112,6 +113,18 @@ tbody tr.sel td{background:var(--accent-soft)}
 .bar u{text-decoration:none;text-align:right;font-variant-numeric:tabular-nums;color:#fff}
 .lav{position:relative;display:inline-grid;place-items:center;flex:0 0 auto;width:34px;height:34px;border-radius:9px;overflow:hidden;font-weight:700;font-size:13px;color:#fff;background:hsl(var(--h) 55% 42%)}
 .lav img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;padding:3px}
+.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.formgrid .wide{grid-column:1/-1}
+.check{display:flex;align-items:center;gap:8px;font-size:13.5px}
+.check input{width:18px;height:18px;accent-color:#2aa7ff}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn.small{padding:5px 12px;font-size:12.5px}
+.btn.danger{border-color:rgba(255,122,102,.4);color:var(--red);background:transparent}
+.btn.danger[data-yes]{background:var(--red);color:#000;border-color:var(--red)}
+td.act{white-space:nowrap;text-align:right}
+.confirm{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;font-size:12.5px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (max-width:600px){.formgrid{grid-template-columns:minmax(0,1fr)}}
 .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,10px);background:#fff;color:#000;padding:11px 16px;border-radius:12px;font-size:13.5px;font-weight:500;opacity:0;transition:.25s;pointer-events:none;z-index:50;max-width:calc(100% - 32px)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 .note{font-size:12.5px;color:var(--muted)}
@@ -319,14 +332,52 @@ function wireFix(m){
 /* ---------- Ticket ---------- */
 function ticket(){
   const list = S.tickets.filter(t => S.tfilt==="tutti" || t.sys===S.tfilt || (S.tfilt==="aperti" && t.state!=="Chiuso"));
-  $("#main").innerHTML = `<div class="top"><div><h1>Ticket</h1><p class="sub">Letti da ITSM e Halo. Il ticket resta nel suo sistema: Ticket Farm li mostra insieme.</p></div></div>
+  $("#main").innerHTML = `<div class="top"><div><h1>Ticket</h1><p class="sub">Letti da ITSM e Halo. Il ticket resta nel suo sistema: Ticket Farm li mostra insieme.</p></div>
+      <button class="btn primary" type="button" id="t-new">+ Nuovo ticket</button></div>
+    <form class="panel" id="t-form" hidden>
+      <h2>Nuovo ticket</h2>
+      <div class="formgrid">
+        <label class="field"><span>Cliente</span><select class="input" id="nt-client" required><option value="">Scegli il cliente…</option>${CLIENTS.map(c=>`<option value="${c.id}">${esc(c.name)} · ${SRC[c.sys]}</option>`).join("")}</select></label>
+        <label class="field"><span>Tecnico</span><select class="input" id="nt-tech"><option value="">Da assegnare</option>${TECHS.map(t=>`<option value="${t.ini}">${t.ini} · ${esc(t.name||t.nome||"")}</option>`).join("")}</select></label>
+        <label class="field wide"><span>Richiesta</span><input class="input" id="nt-title" maxlength="120" placeholder="Es. Bilancia analitica: non si accende" required></label>
+      </div>
+      <label class="check"><input type="checkbox" id="nt-urg"> Urgente</label>
+      <p class="note" id="nt-where">Il ticket viene aperto nel sistema del cliente (ITSM o Halo).</p>
+      <div class="actions"><button class="btn primary" type="submit" id="nt-go">Crea ticket</button><button class="btn" type="button" id="nt-x">Annulla</button></div>
+    </form>
     <div class="chips">${[["tutti","Tutti"],["aperti","Aperti"],["ITSM","ITSM"],["Halo","Halo"]].map(([k,l])=>`<button class="chip" data-f="${k}" aria-pressed="${S.tfilt===k}">${l}</button>`).join("")}</div>
-    <div class="tbl"><table><thead><tr><th>Ticket</th><th>Cliente</th><th>Richiesta</th><th>Stato</th><th>Tecnico</th><th>Origine</th><th>Agg.</th></tr></thead><tbody>
+    <div class="tbl"><table><thead><tr><th>Ticket</th><th>Cliente</th><th>Richiesta</th><th>Stato</th><th>Tecnico</th><th>Origine</th><th>Agg.</th><th><span class="sr">Azioni</span></th></tr></thead><tbody>
       ${list.map(t=>{ const c=cl(t.client); return `<tr><td><span class="mono strong">${esc(t.id)}</span><div>${badge(t.sys)}</div></td><td>${esc(c?c.name:t.client)}</td><td>${esc(t.title)}${t.urg?' <span class="pill p-urg">Urgente</span>':""}</td>
         <td><span class="pill ${t.state==="Chiuso"?"p-mut":t.state==="Aperto"?"p-new":t.state.startsWith("In attesa")?"p-warn":"p-ok"}">${esc(t.state)}</span></td>
-        <td>${t.tech?`<span class="strong">${t.tech}</span>`:`<span class="dim">da assegnare</span>`}</td><td class="dim">${esc(t.origin)}</td><td class="mono">${esc(t.upd)}</td></tr>`; }).join("")}
+        <td>${t.tech?`<span class="strong">${t.tech}</span>`:`<span class="dim">da assegnare</span>`}</td><td class="dim">${esc(t.origin)}</td><td class="mono">${esc(t.upd)}</td>
+        <td class="act" data-del="${esc(t.id)}"><button class="btn small danger" type="button" data-ask="${esc(t.id)}">Elimina</button></td></tr>`; }).join("") || `<tr><td colspan="8" class="dim">Nessun ticket</td></tr>`}
     </tbody></table></div>`;
   document.querySelectorAll(".chip[data-f]").forEach(b=>b.onclick=()=>{ S.tfilt=b.dataset.f; ticket(); });
+  const form = $("#t-form");
+  $("#t-new").onclick = ()=>{ form.hidden = false; $("#nt-client").focus(); };
+  $("#nt-x").onclick = ()=>{ form.hidden = true; form.reset(); };
+  $("#nt-client").onchange = e => { const c = cl(e.target.value); $("#nt-where").textContent = c ? "Sarà aperto in "+SRC[c.sys]+"." : "Il ticket viene aperto nel sistema del cliente (ITSM o Halo)."; };
+  form.onsubmit = e => {
+    e.preventDefault();
+    const c = cl($("#nt-client").value), title = $("#nt-title").value.trim(), tech = $("#nt-tech").value, urg = $("#nt-urg").checked;
+    if(!c || !title){ toast("Scegli il cliente e scrivi la richiesta"); return; }
+    if(LIVE){ $("#nt-go").disabled = true;
+      post("/api/admin/tickets", {client:c.id, title, tech, urg}).then(r=>{ toast("Ticket "+r.ticket.id+" aperto in "+SRC[c.sys]); load(); })
+        .catch(err=>{ $("#nt-go").disabled = false; toast("Non riuscito: "+err.message); }); return; }
+    const id = c.sys==="Halo" ? "HALO-48"+(++S.seq) : "Tck #7142"+(++S.seq);
+    S.tickets.unshift({id, sys:c.sys, client:c.id, title, state:"Aperto", tech, urg, origin:"Console", upd:"adesso"});
+    S.tfilt = "tutti"; ticket(); toast("Ticket "+id+" aperto in "+SRC[c.sys]+" (prova)");
+  };
+  document.querySelectorAll("[data-ask]").forEach(b=>b.onclick=()=>{
+    const cell = b.parentNode, id = b.dataset.ask;
+    cell.innerHTML = `<span class="confirm">Eliminare ${esc(id)}? <button class="btn small danger" type="button" data-yes>Sì, elimina</button> <button class="btn small" type="button" data-no>No</button></span>`;
+    cell.querySelector("[data-no]").onclick = ()=>ticket();
+    cell.querySelector("[data-yes]").onclick = ()=>{
+      if(LIVE){ fetch("/api/admin/tickets/"+encodeURIComponent(id), {method:"DELETE"}).then(r=>r.ok?r.json():r.json().then(j=>Promise.reject(new Error(j.error||r.status))))
+        .then(()=>{ toast("Ticket "+id+" eliminato"); load(); }).catch(err=>{ toast("Non riuscito: "+err.message); ticket(); }); return; }
+      S.tickets = S.tickets.filter(t=>t.id!==id); ticket(); toast("Ticket "+id+" eliminato (prova)");
+    };
+  });
 }
 
 /* ---------- Clienti ---------- */
