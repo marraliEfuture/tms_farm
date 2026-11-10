@@ -146,9 +146,18 @@ tbody tr.sel td{background:var(--accent-soft)}
 .bub p{margin:0;color:var(--ink);white-space:pre-wrap}.bub-w{font-size:12px;font-weight:700;color:var(--muted)}.bub-t{font-size:11px;color:var(--muted);align-self:flex-end}
 .bub.fwd{border-left:3px solid #25d366}.bub.tf{align-self:flex-end;background:var(--accent-soft);border-color:transparent}.bub.tf .bub-w{color:var(--accent)}
 .bub-fc{border-left:3px solid var(--gold);padding:4px 8px;font-size:13px;color:var(--text);display:flex;flex-direction:column;gap:2px}.bub-fc b{font-size:11px;color:var(--gold)}
+.bub-x{display:flex;gap:10px;justify-content:flex-end}.bub-x .linkback{font-size:12px}.warnb{color:var(--red)!important}
 .msg-f{display:flex;gap:8px;align-items:flex-end}.msg-f textarea{resize:vertical}
 .ts-chat{max-height:260px}
 @media (max-width:900px){.msgs{grid-template-columns:minmax(0,1fr)}.msg-l{position:static}.msg-list{max-height:260px}}
+.atags{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}.atag{--ac:#2aa7ff;display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--ink);background:color-mix(in srgb,var(--ac) 14%,transparent);border:1px solid color-mix(in srgb,var(--ac) 45%,transparent);border-radius:999px;padding:2px 9px}
+.atag::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--ac)}
+.achecks{display:flex;gap:6px 14px;flex-wrap:wrap}
+.panel.limitbar{display:flex;flex-direction:row;gap:12px 16px;align-items:center;justify-content:flex-start;text-align:left;flex-wrap:wrap;padding:12px 16px;margin-bottom:10px}.limitbar span{color:var(--muted);font-size:13px}.limitbar.full{border-color:var(--red);background:var(--red-soft)}
+.limitmsg{display:flex;flex-direction:column;gap:4px;border:1px solid var(--red);background:var(--red-soft);border-radius:12px;padding:12px 14px;margin-bottom:6px}.limitmsg b{color:var(--red)}.limitmsg span{font-size:13px;color:var(--text)}
+.lock{font-size:12px;color:var(--muted)}
+.profcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:12px}.profcards .panel{display:flex;flex-direction:column;gap:6px}.profcards h2{font-size:16px;margin:0}.profcards .actions{margin-top:auto}
+.limitbar .lim{margin:0;flex:0 0 200px;flex-direction:row;align-items:center;gap:8px}.limitbar .lim .input{width:90px}.limitbar .lim span{font-size:12px}
 .filters{display:flex;flex-direction:column;gap:12px;margin-bottom:10px}
 .f-row{display:flex;gap:10px;align-items:center}.f-q{flex:1}
 .f-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
@@ -365,7 +374,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
           <div class="menu-head"><b id="me-name">Amministratore</b><span id="me-mail"></span></div>
           <div class="rolesw" id="rolesw" role="group" aria-label="Vedi la console come">
             <span class="rl">Vedi come</span>
-            <button type="button" data-role="op">Tecnico</button><button type="button" data-role="resp">Responsabile</button><button type="button" data-role="admin">Amministratore</button>
+            <button type="button" data-role="op">Tecnico</button><button type="button" data-role="agent">Agente</button><button type="button" data-role="resp">Responsabile</button><button type="button" data-role="cliente">Cliente</button><button type="button" data-role="admin">Amministratore</button>
           </div>
           <button type="button" role="menuitem" id="me-edit">Modifica profilo</button>
           <button type="button" role="menuitem" id="me-out">Esci</button>
@@ -439,6 +448,20 @@ const CLIENTS = [
   {id:"vin", name:"Vini Collina SA", city:"Taverne", sys:"Halo", dom:"vinicollina.ch", contacts:[{n:"Paolo Ghirlanda", src:"O365", mail:"p.ghirlanda@vinicollina.ch", tel:"+41 76 300 14 59"}]}
 ];
 const cl = id => CLIENTS.find(c=>c.id===id);
+/* storico: tecnici, clienti e utenti disattivati o eliminati restano sui ticket con il loro nome */
+const alive = x => x && x.attivo!==false && !x.eliminato;
+const liveClients = () => CLIENTS.filter(c=>!c.eliminato);
+const techByIni = ini => TECHS.find(t=>t.ini===ini);
+const techTag = ini => { const t = techByIni(ini); if(!ini) return `<span class="dim">da assegnare</span>`; return `<span class="strong" title="${t?esc(techName(t)):""}">${esc(ini)}</span>${t && t.eliminato ? ' <span class="pill p-mut">eliminato</span>' : t && t.attivo===false ? ' <span class="pill p-warn">disattivato</span>' : ""}`; };
+const clientTag = c => c ? esc(c.name)+(c.eliminato?' <span class="pill p-mut">eliminato</span>':c.attivo===false?' <span class="pill p-warn">disattivato</span>':"") : "";
+let AREE_LIST = [
+  {id:"a-sud", nome:"Sottoceneri", desc:"Lugano, Mendrisio, Chiasso", colore:"#2aa7ff", attivo:true},
+  {id:"a-centro", nome:"Sopraceneri", desc:"Bellinzona, Locarno, Valli", colore:"#22aa66", attivo:true},
+  {id:"a-lab", nome:"Laboratori e farmacie", desc:"Clienti con strumenti di misura", colore:"#d9ab45", attivo:true}
+];
+let LIMITI = {max:0, attivi:0, pieno:false};
+const areaTag = id => { const a = AREE_LIST.find(x=>x.id===id); return a ? `<span class="atag" style="--ac:${esc(a.colore)}">${esc(a.nome)}${a.eliminato?" (eliminata)":""}</span>` : ""; };
+const myClientId = () => (ME && ME.cliente) || (ROLE==="cliente" ? "cas" : "");
 /* WhatsApp: link wa.me dal numero del contatto (senza prefisso internazionale si assume +39) */
 function waBtn(tel){
   let d = String(tel||"").trim(); if(!d) return "";
@@ -454,17 +477,19 @@ function logo(c){
   return `<span class="lav" style="--h:${h}" aria-hidden="true">${esc(ini)}${src?`<img src="${src}" alt="" loading="lazy" onload="if(this.naturalWidth&&this.naturalWidth<=16)this.remove()" onerror="this.remove()">`:""}</span>`;
 }
 const TECHS = [
-  {ini:"MB", name:"Tecnico Zona Sud", mail:"mb@efuture.it", zona:"Sud", app:true, last:"08:20"},
-  {ini:"LC", name:"Tecnico Zona Centro", mail:"lc@efuture.it", zona:"Centro", app:true, last:"ieri"},
-  {ini:"GN", name:"Tecnico Zona Nord", mail:"gn@efuture.it", zona:"Nord", app:false, last:"—"}
+  {ini:"MB", name:"Tecnico Zona Sud", mail:"mb@efuture.it", zona:"Sud", app:true, last:"08:20", attivo:true, aree:["a-sud","a-lab"]},
+  {ini:"LC", name:"Tecnico Zona Centro", mail:"lc@efuture.it", zona:"Centro", app:true, last:"ieri", attivo:true, aree:["a-centro"]},
+  {ini:"GN", name:"Tecnico Zona Nord", mail:"gn@efuture.it", zona:"Nord", app:false, last:"—", attivo:true, aree:["a-centro"]},
+  {ini:"FB", name:"Franco Bassi", mail:"fb@efuture.it", zona:"Sud", app:true, last:"21/10", attivo:false, aree:["a-sud"]}
 ];
 
-const tfReset = () => ({q:"", stato:"aperti", client:"", tech:"", sys:"", origin:"", per:"", dal:"", al:"", urg:false});
-const cfReset = () => ({q:"", sys:"", city:"", open:false, wa:false});
+const tfReset = () => ({q:"", stato:"aperti", client:"", tech:"", sys:"", origin:"", per:"", dal:"", al:"", urg:false, area:""});
+const cfReset = () => ({q:"", sys:"", city:"", open:false, wa:false, old:false});
 const dago = n => { const d = new Date(); d.setDate(d.getDate()-n); return d.toISOString().slice(0,10); };
 function fresh(){
   return {
     view:"cruscotto", sel:null, filt:"tutti", tf:tfReset(), cf:cfReset(), seq:31,
+    customRules:[{id:"r1", tipo:"parola", valore:"centrifug", cliente:"alp", on:true}],
     rules:[
       {k:"reply", t:"Risposta a una mail del ticket", d:"In-Reply-To o References contiene l'identificativo di una mail mandata da ITSM o Halo", on:true},
       {k:"subj", t:"Numero del ticket nell'oggetto", d:"Oggetto con «Tck #714139» (ITSM) o «HALO-4821» (Halo)", on:true},
@@ -475,7 +500,7 @@ function fresh(){
     threads:[
       {ticket:"HALO-4821", client:"lab", tech:"MB", techMail:"mb@efuture.it", clientMail:"g.bernasconi@laboratorioesempio.ch", msgs:[
         {k:"fwd", from:"Giulia Bernasconi", t:"ieri 18:05", text:"Buonasera, lo spettrofotometro dà di nuovo errore lampada all'accensione."},
-        {k:"tf", t:"07:40", by:"Laura Bianchi", text:"La cliente chiede un passaggio domani mattina: fissato alle 9:00.", forClient:"Buongiorno, confermo il passaggio domani alle 9:00 per lo spettrofotometro (pratica HALO-4821). Buona giornata."}]},
+        {k:"tf", t:"07:40", by:"Laura Bianchi", id:"o1", text:"La cliente chiede un passaggio domani mattina: fissato alle 9:00.", forClient:"Buongiorno, confermo il passaggio domani alle 9:00 per lo spettrofotometro (pratica HALO-4821). Buona giornata."}]},
       {ticket:"Tck #714139", client:"cas", tech:"MB", techMail:"mb@efuture.it", msgs:[
         {k:"tf", t:"07:55", text:"Nuovo ticket assegnato a te: analizzatore latte con letture instabili. Urgente."},
         {k:"fwd", from:"Marco Rossi", t:"07:51", text:"Buongiorno, l'analizzatore continua a dare letture diverse sullo stesso campione. Potete passare oggi?"},
@@ -495,7 +520,7 @@ function fresh(){
       {id:"HALO-4812", opened:dago(1), sys:"Halo", client:"vin", title:"Ordine reagenti e agenti", state:"Aperto", tech:"", origin:"Mail cliente", upd:"ieri"},
       {id:"Tck #714136", opened:dago(3), sys:"ITSM", client:"alp", title:"Centrifuga: vibrazioni anomale", state:"In lavorazione", tech:"LC", origin:"Telefono", upd:"09:05"},
       {id:"HALO-4806", opened:dago(5), sys:"Halo", client:"acq", title:"pH-metro: calibrazione", state:"In attesa cliente", tech:"GN", origin:"Mail cliente", upd:"lun"},
-      {id:"Tck #714121", opened:dago(24), sys:"ITSM", client:"che", title:"Bilancia di precisione: verifica metrica", state:"Chiuso", tech:"MB", origin:"ITSM", upd:"21/10"}
+      {id:"Tck #714121", opened:dago(24), sys:"ITSM", client:"che", title:"Bilancia di precisione: verifica metrica", state:"Chiuso", tech:"FB", origin:"ITSM", upd:"21/10"}
     ],
     mails:[
       {id:1, at:"08:20", from:"mb@efuture.it", fromName:"Tecnico Zona Sud", subj:"Re: Tck #714139 - Analizzatore latte: letture instabili",
@@ -547,18 +572,22 @@ const toCheck = () => S.mails.filter(m=>m.res.state==="warn").length;
 /* menu diviso: il lavoro di ogni giorno, la configurazione, i tutorial */
 const GROUPS = [
   ["Operativo", [["cruscotto","Riepilogo"],["ticket","Ticket"],["messaggi","Messaggi"],["clienti","Clienti"]]],
-  ["Configurazione", [["utenti","Utenti"],["profili","Profili e permessi"],["tecnici","Tecnici"],["office365","Office 365"],["ai","Assistente AI"],["posta","Posta in arrivo"],["regole","Riconoscimento"],["collegamenti","Collegamenti"],["backup","Backup e ripristino"],["audit","Registro attività"]]],
+  ["Configurazione", [["utenti","Utenti"],["profili","Profili e permessi"],["tecnici","Tecnici"],["aree","Aree di lavoro"],["office365","Office 365"],["ai","Assistente AI"],["posta","Posta in arrivo"],["regole","Riconoscimento"],["collegamenti","Collegamenti"],["backup","Backup e ripristino"],["audit","Registro attività"]]],
   ["Tutorial", [["tutorial","Casi d'uso"]]]
 ];
 /* profili: v vedere, m creare/modificare, e eliminare (in uso reale arrivano dal backend) */
-const AREE = [["cruscotto","Riepilogo"],["ticket","Ticket"],["clienti","Clienti"],["utenti","Utenti"],["profili","Profili e permessi"],["tecnici","Tecnici"],["office365","Office 365"],["ai","Assistente AI"],["posta","Posta in arrivo"],["regole","Riconoscimento"],["collegamenti","Collegamenti"],["backup","Backup e ripristino"],["audit","Registro attività"],["tutorial","Tutorial"]];
+const AREE = [["cruscotto","Riepilogo"],["ticket","Ticket e messaggi"],["clienti","Clienti"],["utenti","Utenti"],["profili","Profili e permessi"],["tecnici","Tecnici"],["aree","Aree di lavoro"],["office365","Office 365"],["ai","Assistente AI"],["posta","Posta in arrivo"],["regole","Riconoscimento"],["collegamenti","Collegamenti"],["backup","Backup e ripristino"],["audit","Registro attività"],["tutorial","Tutorial"]];
+const PP = o => Object.fromEntries(AREE.map(([a])=>[a, o[a]||""]));
 let PROFILES = {
-  admin:{nome:"Amministratore", desc:"Tutto, compresa la configurazione", perm:Object.fromEntries(AREE.map(([a])=>[a,"vme"]))},
-  resp:{nome:"Responsabile service", desc:"Lavoro quotidiano, tecnici e regole; vede utenti e registro", perm:{cruscotto:"v",posta:"vm",ticket:"vme",clienti:"vme",utenti:"v",profili:"v",tecnici:"vme",office365:"",ai:"",collegamenti:"v",regole:"vm",backup:"",audit:"v",tutorial:"v"}},
-  op:{nome:"Tecnico", desc:"I suoi interventi, ticket e clienti; nessuna configurazione", perm:{cruscotto:"v",posta:"",ticket:"vm",clienti:"v",utenti:"",profili:"",tecnici:"",office365:"",ai:"",collegamenti:"",regole:"",backup:"",audit:"",tutorial:"v"}}
+  admin:{nome:"Amministratore", desc:"Tutto, compresa la configurazione", base:true, perm:Object.fromEntries(AREE.map(([a])=>[a,"vme"]))},
+  resp:{nome:"Responsabile service", desc:"Lavoro quotidiano, tecnici, aree e regole; vede utenti e registro", base:true, perm:PP({cruscotto:"v",posta:"vm",ticket:"vme",clienti:"vme",utenti:"v",profili:"v",tecnici:"vme",aree:"vme",collegamenti:"v",regole:"vm",audit:"v",tutorial:"v"})},
+  agent:{nome:"Agente", desc:"Ufficio: ticket, messaggi, clienti e posta in arrivo delle sue aree di lavoro", base:true, perm:PP({cruscotto:"v",posta:"vm",ticket:"vm",clienti:"vm",tecnici:"v",aree:"v",tutorial:"v"})},
+  op:{nome:"Tecnico", desc:"I suoi interventi, messaggi, ticket e clienti; nessuna configurazione", base:true, perm:PP({cruscotto:"v",ticket:"vm",clienti:"v",tutorial:"v"})},
+  cliente:{nome:"Cliente", desc:"Solo i ticket della propria azienda: li vede e ne apre di nuovi", base:true, perm:PP({cruscotto:"v",ticket:"vm"})}
 };
 let ROLE = "op", REAL_ROLE = "admin", BOOTED = false;   /* all'ingresso si vede la console come Tecnico, sul cruscotto */
-const can = (area, right) => ((PROFILES[ROLE]||{perm:{}}).perm[area==="messaggi"?"ticket":area]||"").includes(right||"v");
+/* Messaggi segue i permessi dei Ticket; il cliente non vede le conversazioni interne tra tecnici e ufficio */
+const can = (area, right) => area==="messaggi" && ROLE==="cliente" ? false : ((PROFILES[ROLE]||{perm:{}}).perm[area==="messaggi"?"ticket":area]||"").includes(right||"v");
 /* nasconde i pulsanti che il profilo non può usare (attributo data-perm="area:diritto") */
 function applyPerms(root){ (root||document).querySelectorAll("[data-perm]").forEach(el=>{ const [a,r] = el.dataset.perm.split(":"); el.hidden = !can(a,r); }); }
 function nav(){
@@ -566,12 +595,12 @@ function nav(){
   $("#nav").innerHTML = GROUPS.map(([g,items])=>[g, items.filter(([k])=>can(k,"v"))]).filter(([,items])=>items.length).map(([g,items])=>`<span class="grp">${g}</span>`+items.map(([k,l])=>`<button type="button" data-v="${k}" ${S.view===k?'aria-current="page"':""}>${l}${k==="posta"&&toCheck()?`<span class="n">${toCheck()}</span>`:""}${k==="tutorial"?`<span class="n">${TUTORIALS.filter(x=>x.for.includes(ROLE)).length}</span>`:""}</button>`).join("")).join("");
   $("#nav").querySelectorAll("button").forEach(b=>b.onclick=()=>{ S.view=b.dataset.v; S.sel=null; S.tut=null; render(); window.scrollTo(0,0); });
 }
-function render(){ nav(); ({cruscotto,posta,ticket,messaggi,clienti,utenti,profili,tecnici,office365,ai:assistente,collegamenti,regole,backup,audit,tutorial})[S.view](); applyPerms(); paintRole(); }
+function render(){ nav(); ({cruscotto,posta,ticket,messaggi,clienti,aree:areeView,utenti,profili,tecnici,office365,ai:assistente,collegamenti,regole,backup,audit,tutorial})[S.view](); applyPerms(); paintRole(); }
 new MutationObserver(()=>applyPerms($("#main"))).observe(document.getElementById("main"), {childList:true, subtree:true});
 
 /* ---------- Tutorial: 5 casi d'uso operativi, ognuno con video e procedura ---------- */
 const TUTORIALS = [
-  { id:"profilo", for:["admin","resp","op"], n:1, group:"setup", title:"Primo accesso alla console e profilo", where:"Console", time:"40 secondi",
+  { id:"profilo", for:["admin","resp","op","agent"], n:1, group:"setup", title:"Primo accesso alla console e profilo", where:"Console", time:"40 secondi",
     intro:"Al primo accesso l'ufficio entra nella console, completa il profilo e sostituisce la password di prova.",
     steps:[
       {who:"Console", t:"Accedi", d:"All'indirizzo della console compare la schermata di accesso: scrivi <b>utente</b> e <b>password</b>."},
@@ -607,7 +636,7 @@ const TUTORIALS = [
     ],
     result:"L'app è sul telefono, pronta per inoltrare i messaggi dei clienti.",
     tip:"Toccando <b>Ticket Farm</b> in alto si rivede l'introduzione e si torna alla home." },
-  { id:"cliente", for:["admin","resp"], n:4, group:"setup", title:"Aggiungere un cliente con i suoi contatti", where:"Console", time:"1 minuto",
+  { id:"cliente", for:["admin","resp","agent"], n:4, group:"setup", title:"Aggiungere un cliente con i suoi contatti", where:"Console", time:"1 minuto",
     intro:"Dominio e contatti servono a riconoscere le mail del cliente e ad aprire WhatsApp con un tocco.",
     steps:[
       {who:"Console", t:"Nuovo cliente", d:"In <b>Clienti</b> tocca <b>+ Nuovo cliente</b>."},
@@ -655,7 +684,7 @@ const TUTORIALS = [
     ],
     result:"La mail del cliente è nel ticket senza doverla ricopiare.",
     tip:"In alternativa la mail si può inoltrare direttamente a support@efuture.it dal programma di posta." },
-  { id:"verifica", for:["admin","resp"], n:9, group:"day", title:"Sistemare le mail da verificare", where:"Console", time:"1 minuto",
+  { id:"verifica", for:["admin","resp","agent"], n:9, group:"day", title:"Sistemare le mail da verificare", where:"Console", time:"1 minuto",
     intro:"Una mail senza ticket e senza cliente riconosciuto resta «Da verificare». Basta indicare il cliente e aprire il ticket.",
     steps:[
       {who:"Console", t:"Guarda il Riepilogo", d:"Il riquadro <b>Da verificare</b> o il numero oro accanto a <b>Posta in arrivo</b>."},
@@ -667,7 +696,7 @@ const TUTORIALS = [
     ],
     result:"La mail diventa un ticket del cliente giusto.",
     tip:"I messaggi dei tecnici con «cliente da identificare» arrivano qui." },
-  { id:"telefono", for:["admin","resp","op"], n:10, group:"day", title:"Aprire un ticket per una richiesta al telefono", where:"Console", time:"40 secondi",
+  { id:"telefono", for:["admin","resp","op","agent"], n:10, group:"day", title:"Aprire un ticket per una richiesta al telefono", where:"Console", time:"40 secondi",
     intro:"Un cliente chiama l'ufficio. Il ticket si apre dalla console e finisce nel sistema giusto.",
     steps:[
       {who:"Telefono", t:"Il cliente chiama", d:"Annota cliente e problema."},
@@ -737,7 +766,22 @@ function tutorial(){
 /* ---------- Cruscotto ---------- */
 function cruscotto(){
   if(ROLE==="op") return tecnicoHome();
+  if(ROLE==="cliente") return clienteHome();
   return respHome();
+}
+/* ---------- Riepilogo del Cliente: i ticket della sua azienda ---------- */
+function clienteHome(){
+  const c = cl(myClientId()) || {name:"", contacts:[]}, mine = S.tickets.filter(t=>t.client===c.id), open = mine.filter(t=>t.state!=="Chiuso");
+  $("#main").innerHTML = `<div class="top"><div><h1>Riepilogo</h1><p class="sub">${esc(c.name)} · ${giorno(0)}</p></div><button class="btn primary" type="button" id="ch-new" data-perm="ticket:m">+ Nuova richiesta</button></div>
+    <div class="glance" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:16px">
+      <div class="gl"><b>${open.length}</b><span>richieste aperte</span></div>
+      <div class="gl"><b>${open.filter(t=>t.plan).length}</b><span>interventi fissati</span></div>
+      <div class="gl"><b>${mine.filter(t=>t.state==="Chiuso").length}</b><span>chiuse</span></div></div>
+    <h2 class="r-h">Le vostre richieste aperte</h2>
+    <ol class="acts">${open.map(t=>`<li class="act-i ${t.urg?"urg":/attesa/i.test(t.state)?"wait":""}"><span class="act-t">${t.plan?(t.plan.day===0?"Oggi ":t.plan.day===1?"Domani ":giorno(t.plan.day)+" ")+t.plan.time:esc(t.state)}</span>
+      <div><b>${esc(t.title)}</b><div class="dim"><span class="mono">${esc(t.id)}</span> · ${esc(t.state)}${t.tech?" · tecnico "+esc(t.tech):""}</div><div class="actions"><button class="btn small primary" type="button" data-open="${esc(t.id)}">Apri</button></div></div></li>`).join("") || `<p class="dim">Nessuna richiesta aperta.</p>`}</ol>`;
+  document.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>ticketSheet(b.dataset.open));
+  $("#ch-new").onclick = ()=>{ S.view = "ticket"; render(); const f = $("#t-form"); if(f){ f.hidden = false; $("#nt-title").focus(); } };
 }
 /* ---------- Riepilogo di chi coordina: suggerimenti dell'AI, cosa seguire, carico dei tecnici ---------- */
 function respHome(){
@@ -827,8 +871,15 @@ function posta(){
   document.querySelectorAll(".chip[data-f]").forEach(b=>b.onclick=()=>{ S.filt=b.dataset.f; posta(); });
   document.querySelectorAll("tr[data-m]").forEach(r=>r.onclick=()=>{ S.sel=r.dataset.m; posta(); });
   if(m && m.res.state==="warn") wireFix(m);
+  if(m && $("#m-arch")) $("#m-arch").onclick = ()=>askDelete($("#m-arch"), "questa mail dall'elenco", ()=>{
+    if(LIVE) return del("/api/admin/mails/"+encodeURIComponent(m.id)).then(()=>{ toast("Mail archiviata"); S.sel = null; load(); });
+    S.mails = S.mails.filter(x=>x!==m); S.sel = null; logLocal("Mail archiviata", m.subj, "posta"); posta(); nav(); toast("Mail archiviata (prova)");
+  }, posta);
 }
 function mailDetail(m){
+  return mailDetail0(m).replace(/<\/div>\s*$/, `<div class="actions"><button class="btn small danger" type="button" id="m-arch" data-perm="posta:e">Archivia</button><span class="lock">La mail sparisce da qui; resta nella casella di posta e nel ticket.</span></div></div>`);
+}
+function mailDetail0(m){
   const isTech = TECHS.some(t=>t.mail===m.from);
   const keys = isTech ? ["tech","reply","subj","hdr"] : ["reply","subj","from","dom"];
   const c = cl(m.res.client);
@@ -840,7 +891,7 @@ function mailDetail(m){
     <div class="body">${esc(m.body)}</div>
     <div><h2 style="margin-bottom:8px">Come è stata riconosciuta</h2><ol class="steps">${keys.map(k=>`<li class="${m.res.how.includes(k)?"ok":"skip"}">${HOW[k]}${m.res.how.includes(k)?"":" — no"}</li>`).join("")}</ol></div>
     <p style="margin:0" class="${m.res.state==="warn"?"":"strong"}">${esc(m.res.act)}</p>
-    ${m.res.state==="warn" ? `<div class="field"><span>Cliente</span><select class="input" id="fx-client"><option value="">Scegli il cliente…</option>${CLIENTS.map(c=>`<option value="${c.id}">${esc(c.name)} · ${SRC[c.sys]}</option>`).join("")}</select></div>
+    ${m.res.state==="warn" ? `<div class="field"><span>Cliente</span><select class="input" id="fx-client"><option value="">Scegli il cliente…</option>${liveClients().map(c=>`<option value="${c.id}">${esc(c.name)} · ${SRC[c.sys]}</option>`).join("")}</select></div>
       <label class="field" style="flex-direction:row;align-items:center;gap:10px;text-transform:none"><input type="checkbox" id="fx-learn" checked style="width:18px;height:18px;accent-color:#2aa7ff"> <span style="text-transform:none;letter-spacing:0;font-weight:500;color:var(--text);font-size:13.5px">Ricorda ${isTech?"":"il mittente "+esc(m.from)+" "}per questo cliente</span></label>
       <button class="btn primary" type="button" id="fx-go" disabled>Apri il ticket</button>` : ""}
   </div>`;
@@ -866,8 +917,8 @@ function ticket(){
     <form class="panel" id="t-form" hidden>
       <h2>Nuovo ticket</h2>
       <div class="formgrid">
-        <label class="field"><span>Cliente</span><select class="input" id="nt-client" required><option value="">Scegli il cliente…</option>${CLIENTS.map(c=>`<option value="${c.id}">${esc(c.name)} · ${SRC[c.sys]}</option>`).join("")}</select></label>
-        <label class="field"><span>Tecnico</span><select class="input" id="nt-tech"><option value="">Da assegnare</option>${TECHS.map(t=>`<option value="${t.ini}">${t.ini} · ${esc(t.name||t.nome||"")}</option>`).join("")}</select></label>
+        <label class="field" ${ROLE==="cliente"?"hidden":""}><span>Cliente</span><select class="input" id="nt-client" required><option value="">Scegli il cliente…</option>${liveClients().filter(alive).map(c=>`<option value="${c.id}" ${ROLE==="cliente"&&c.id===myClientId()?"selected":""}>${esc(c.name)} · ${SRC[c.sys]}</option>`).join("")}</select></label>
+        <label class="field" ${ROLE==="cliente"?"hidden":""}><span>Tecnico</span><select class="input" id="nt-tech"><option value="">Da assegnare</option>${TECHS.filter(alive).map(t=>`<option value="${t.ini}">${t.ini} · ${esc(t.name||t.nome||"")}</option>`).join("")}</select></label>
         <label class="field wide"><span>Richiesta</span><input class="input" id="nt-title" maxlength="120" placeholder="Es. Bilancia analitica: non si accende" required></label>
       </div>
       <label class="check"><input type="checkbox" id="nt-urg"> Urgente</label>
@@ -879,8 +930,9 @@ function ticket(){
         <button class="btn small" type="button" id="tf-x">Azzera filtri</button></div>
       <div class="chips" id="tf-stato"></div>
       <div class="f-grid">
-        <label class="field"><span>Cliente</span><select class="input" id="tf-client"><option value="">Tutti i clienti</option>${[...CLIENTS].sort((a,b)=>a.name.localeCompare(b.name)).map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select></label>
-        <label class="field" id="tf-tech-w"><span>Tecnico</span><select class="input" id="tf-tech"><option value="">Tutti i tecnici</option><option value="-">Da assegnare</option>${TECHS.map(t=>`<option value="${t.ini}">${t.ini} · ${esc(techName(t))}</option>`).join("")}</select></label>
+        <label class="field" id="tf-client-w"><span>Cliente</span><select class="input" id="tf-client"><option value="">Tutti i clienti</option>${[...CLIENTS].sort((a,b)=>a.name.localeCompare(b.name)).map(c=>`<option value="${c.id}">${esc(c.name)}${c.eliminato?" (eliminato)":c.attivo===false?" (disattivato)":""}</option>`).join("")}</select></label>
+        <label class="field" id="tf-tech-w"><span>Tecnico</span><select class="input" id="tf-tech"><option value="">Tutti i tecnici</option><option value="-">Da assegnare</option>${TECHS.map(t=>`<option value="${t.ini}">${t.ini} · ${esc(techName(t))}${t.eliminato?" (eliminato)":t.attivo===false?" (disattivato)":""}</option>`).join("")}</select></label>
+        <label class="field" id="tf-area-w"><span>Area di lavoro</span><select class="input" id="tf-area"><option value="">Tutte le aree</option>${AREE_LIST.filter(a=>!a.eliminato).map(a=>`<option value="${a.id}">${esc(a.nome)}</option>`).join("")}</select></label>
         <label class="field"><span>Sistema</span><select class="input" id="tf-sys"><option value="">ITSM e Halo</option><option>ITSM</option><option>Halo</option></select></label>
         <label class="field"><span>Origine</span><select class="input" id="tf-origin"><option value="">Tutte le origini</option>${[...new Set(S.tickets.map(t=>t.origin).filter(Boolean))].sort().map(o=>`<option>${esc(o)}</option>`).join("")}</select></label>
         <label class="field"><span>Aperto</span><select class="input" id="tf-per"><option value="">In qualsiasi data</option><option value="0">Oggi</option><option value="7">Ultimi 7 giorni</option><option value="30">Ultimi 30 giorni</option><option value="c">Dal… al…</option></select></label>
@@ -893,7 +945,9 @@ function ticket(){
     <div class="tbl"><table><thead><tr><th>Ticket</th><th>Cliente</th><th>Richiesta</th><th>Stato</th><th>Tecnico</th><th>Origine</th><th>Aperto</th><th>Agg.</th><th><span class="sr">Azioni</span></th></tr></thead><tbody id="tf-body"></tbody></table></div>`;
   const F = S.tf, mine = ROLE==="op" ? myTech().ini : "";
   if(mine){ F.tech = mine; $("#tf-tech-w").hidden = true; $("#tf-n").dataset.mine = "1"; }
-  ["client","tech","sys","origin","per"].forEach(k=>$("#tf-"+k).value = F[k]);
+  const own = ROLE==="cliente" ? myClientId() : "";
+  if(own){ F.client = own; $("#tf-client-w").hidden = true; $("#tf-tech-w").hidden = true; $("#tf-area-w").hidden = true; }
+  ["client","tech","sys","origin","per","area"].forEach(k=>$("#tf-"+k).value = F[k]||"");
   const STATI = [["aperti","Tutti gli aperti", t=>t.state!=="Chiuso"],["Aperto","Aperti", t=>t.state==="Aperto"],["In lavorazione","In lavorazione", t=>t.state==="In lavorazione"],["Pianificato","Pianificati", t=>t.state==="Pianificato"],["attesa","In attesa", t=>/attesa/i.test(t.state)],["Chiuso","Chiusi", t=>t.state==="Chiuso"],["tutti","Tutti", ()=>true]];
   const norm = x => String(x||"").toLowerCase().replace(/[^a-z0-9]/g,"");
   const base = t => {
@@ -901,6 +955,7 @@ function ticket(){
     if(F.tech==="-" ? t.tech : F.tech && t.tech!==F.tech) return false;
     if(F.sys && t.sys!==F.sys) return false;
     if(F.origin && t.origin!==F.origin) return false;
+    if(F.area){ const tt = techByIni(t.tech); if(!tt || !(tt.aree||[]).includes(F.area)) return false; }
     if(F.urg && !t.urg) return false;
     const d = t.opened||"";
     if(F.per==="c"){ if(F.dal && d<F.dal) return false; if(F.al && d>F.al) return false; }
@@ -910,20 +965,21 @@ function ticket(){
   };
   const paint = () => {
     $("#tf-dal-w").hidden = $("#tf-al-w").hidden = F.per!=="c";
-    const pre = S.tickets.filter(base), st = STATI.find(x=>x[0]===F.stato) || STATI[0];
+    const pre = S.tickets.filter(t=>!own || t.client===own).filter(base), st = STATI.find(x=>x[0]===F.stato) || STATI[0];
     $("#tf-stato").innerHTML = STATI.map(([k,l,f])=>`<button class="chip" type="button" data-st="${k}" aria-pressed="${F.stato===k}">${l} <span class="dim">${pre.filter(f).length}</span></button>`).join("");
     const list = pre.filter(st[2]).sort((a,b)=>(b.opened||"").localeCompare(a.opened||""));
-    $("#tf-n").textContent = (mine?"I tuoi ticket · ":"")+list.length+" di "+S.tickets.filter(t=>!mine||t.tech===mine).length;
-    $("#tf-body").innerHTML = list.map(t=>{ const c=cl(t.client); return `<tr><td><button class="tlink mono strong" type="button" data-open="${esc(t.id)}">${esc(t.id)}</button><div>${badge(t.sys)}</div></td><td>${esc(c?c.name:t.client)}</td><td>${esc(t.title)}${t.urg?' <span class="pill p-urg">Urgente</span>':""}</td>
+    $("#tf-n").textContent = (mine?"I tuoi ticket · ":own?"I ticket della tua azienda · ":"")+list.length+" di "+S.tickets.filter(t=>(!mine||t.tech===mine)&&(!own||t.client===own)).length;
+    $("#tf-body").innerHTML = list.map(t=>{ const c=cl(t.client); return `<tr><td><button class="tlink mono strong" type="button" data-open="${esc(t.id)}">${esc(t.id)}</button><div>${badge(t.sys)}</div></td><td>${c?clientTag(c):esc(t.client)}</td><td>${esc(t.title)}${t.urg?' <span class="pill p-urg">Urgente</span>':""}</td>
         <td><span class="pill ${t.state==="Chiuso"?"p-mut":t.state==="Aperto"?"p-new":t.state.startsWith("In attesa")?"p-warn":"p-ok"}">${esc(t.state)}</span></td>
-        <td>${t.tech?`<span class="strong">${t.tech}</span>`:`<span class="dim">da assegnare</span>`}</td><td class="dim">${esc(t.origin)}</td><td class="mono">${t.opened?esc(t.opened.split("-").reverse().join("/")):"—"}</td><td class="mono">${esc(t.upd)}</td>
-        <td class="act" data-del="${esc(t.id)}"><button class="btn small" type="button" data-open="${esc(t.id)}">Apri</button> <button class="btn small danger" type="button" data-ask="${esc(t.id)}" data-perm="ticket:e">Elimina</button></td></tr>`; }).join("") || `<tr><td colspan="9" class="dim">Nessun ticket con questi filtri</td></tr>`;
+        <td>${techTag(t.tech)}</td><td class="dim">${esc(t.origin)}</td><td class="mono">${t.opened?esc(t.opened.split("-").reverse().join("/")):"—"}</td><td class="mono">${esc(t.upd)}</td>
+        <td class="act" data-del="${esc(t.id)}"><button class="btn small" type="button" data-open="${esc(t.id)}">Apri</button>${ROLE==="cliente"?"":` <button class="btn small" type="button" data-tedit="${esc(t.id)}" data-perm="ticket:m">Modifica</button>`} <button class="btn small danger" type="button" data-ask="${esc(t.id)}" data-perm="ticket:e">Elimina</button></td></tr>`; }).join("") || `<tr><td colspan="9" class="dim">Nessun ticket con questi filtri</td></tr>`;
     $("#tf-body").querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>ticketSheet(b.dataset.open));
     $("#tf-body").querySelectorAll("[data-ask]").forEach(askTicket);
+    $("#tf-body").querySelectorAll("[data-tedit]").forEach(b=>b.onclick=()=>ticketForm(S.tickets.find(t=>t.id===b.dataset.tedit)));
   };
   $("#tf-stato").onclick = e => { const b = e.target.closest("[data-st]"); if(b){ F.stato = b.dataset.st; paint(); } };
   $("#tf-q").oninput = e => { F.q = e.target.value; paint(); };
-  ["client","tech","sys","origin","per","dal","al"].forEach(k=>$("#tf-"+k).onchange = e => { F[k] = e.target.value; paint(); });
+  ["client","tech","sys","origin","per","dal","al","area"].forEach(k=>$("#tf-"+k).onchange = e => { F[k] = e.target.value; paint(); });
   $("#tf-urg").onchange = e => { F.urg = e.target.checked; paint(); };
   $("#tf-x").onclick = () => { S.tf = tfReset(); ticket(); };
   paint();
@@ -943,6 +999,32 @@ function ticket(){
     S.tf = tfReset(); ticket(); toast("Ticket "+id+" aperto in "+SRC[c.sys]+" (prova)");
   };
 }
+/* modifica del ticket: stato, tecnico (solo attivi), urgenza, intervento, richiesta */
+const STATI_T = ["Aperto","In lavorazione","Pianificato","In attesa cliente","In attesa ricambio","Chiuso"];
+function ticketForm(t){
+  if(!t) return;
+  const day = t.plan ? t.plan.day : "", time = t.plan ? t.plan.time : "";
+  const techOpts = TECHS.filter(x=>alive(x) || x.ini===t.tech).map(x=>`<option value="${x.ini}" ${x.ini===t.tech?"selected":""} ${alive(x)?"":"disabled"}>${x.ini} · ${esc(techName(x))}${alive(x)?"":" (non attivo)"}</option>`).join("");
+  openEditor(`<div class="row-h"><h2>Modifica ${esc(t.id)}</h2>${badge(t.sys)}</div>
+    <div class="formgrid">
+      <label class="field wide"><span>Richiesta</span><input class="input" id="te-title" maxlength="120" required value="${esc(t.title)}"></label>
+      <label class="field"><span>Stato</span><select class="input" id="te-state">${STATI_T.map(x=>`<option ${x===t.state?"selected":""}>${x}</option>`).join("")}</select></label>
+      <label class="field"><span>Tecnico</span><select class="input" id="te-tech"><option value="">Da assegnare</option>${techOpts}</select></label>
+      <label class="field"><span>Intervento</span><select class="input" id="te-day"><option value="">Non pianificato</option>${Array.from({length:15},(_,i)=>`<option value="${i}" ${String(day)===String(i)?"selected":""}>${i===0?"Oggi":i===1?"Domani":giorno(i)}</option>`).join("")}</select></label>
+      <label class="field"><span>Ora</span><input class="input" id="te-time" type="time" value="${esc(time)}"></label>
+    </div>
+    <label class="check"><input type="checkbox" id="te-urg" ${t.urg?"checked":""}> Urgente</label>
+    <p class="note">${LIVE ? "Dal vivo la modifica va fatta in "+SRC[t.sys]+": qui si aggiorna quando il collegamento sarà attivo." : "Nella prova la modifica resta in questa pagina."}</p>
+    <div class="actions"><button class="btn primary" type="submit">Salva</button><button class="btn" type="button" data-close>Annulla</button></div>`, ()=>{
+      const d = $("#te-day").value, tm = $("#te-time").value;
+      const body = {title:$("#te-title").value.trim(), state:$("#te-state").value, tech:$("#te-tech").value, urg:$("#te-urg").checked, plan: d!=="" && tm ? {day:+d, time:tm} : null};
+      if(!body.title){ toast("Scrivi la richiesta"); return; }
+      if(d!=="" && !tm){ toast("Indica anche l'ora dell'intervento"); return; }
+      if(LIVE) return put("/api/admin/tickets/"+encodeURIComponent(t.id), body).then(()=>{ closeEditor(); toast("Ticket salvato"); load(); }).catch(err=>toast("Non riuscito: "+err.message));
+      Object.assign(t, body, {upd:"adesso"}); logLocal("Ticket modificato", t.id+" · "+t.state+(t.tech?" · "+t.tech:""), "ticket");
+      closeEditor(); render(); toast("Ticket salvato (prova)");
+    });
+}
 function askTicket(b){ b.onclick=()=>{
     const cell = b.parentNode, id = b.dataset.ask;
     cell.innerHTML = `<span class="confirm">Eliminare ${esc(id)}? <button class="btn small danger" type="button" data-yes>Sì, elimina</button> <button class="btn small" type="button" data-no>No</button></span>`;
@@ -956,14 +1038,18 @@ function askTicket(b){ b.onclick=()=>{
 }
 
 /* ---------- Messaggi: le conversazioni dei tecnici con Ticket Farm, ticket per ticket ---------- */
-const bubbles = th => (th.msgs||[]).map(m=>{
+/* conferma con un secondo tocco sullo stesso pulsante */
+function confirmInline(b){ if(b.dataset.sure){ return true; } b.dataset.sure = "1"; const t = b.textContent; b.textContent = "Sicuro? Tocca di nuovo"; b.classList.add("warnb"); setTimeout(()=>{ delete b.dataset.sure; b.textContent = t; b.classList.remove("warnb"); }, 3000); return false; }
+const bubbles = (th, tools) => (th.msgs||[]).map((m, i)=>{
   const who = m.k==="fwd" ? (m.from||"Cliente")+" · inoltrato da "+(th.tech||"tecnico") : m.k==="me" ? (m.cc?"Messaggio al cliente":"Nota interna")+" · tecnico "+(th.tech||"") : (m.by ? m.by+" · ufficio" : "Ufficio");
-  return `<div class="bub ${m.k}"><span class="bub-w">${esc(who)}</span><p>${esc(m.text)}</p>${m.forClient?`<div class="bub-fc"><b>Testo per il cliente</b>${esc(m.forClient)}</div>`:""}<span class="bub-t">${esc(m.t||"")}</span></div>`;
+  const mine = tools && m.k==="tf" && m.by;
+  return `<div class="bub ${m.k}"><span class="bub-w">${esc(who)}</span><p>${esc(m.text)}</p>${m.forClient?`<div class="bub-fc"><b>Testo per il cliente</b>${esc(m.forClient)}</div>`:""}<span class="bub-t">${esc(m.t||"")}${m.mod?" · modificato":""}</span>${mine?`<span class="bub-x"><button class="linkback" type="button" data-medit="${i}" data-perm="ticket:m">Modifica</button><button class="linkback" type="button" data-mdel="${i}" data-perm="ticket:e">Elimina</button></span>`:""}</div>`;
 }).join("") || `<p class="dim">Nessun messaggio.</p>`;
 function myThreads(){ const mine = ROLE==="op" ? myTech().ini : ""; return (S.threads||[]).filter(th=>!mine || th.tech===mine); }
 function messaggi(){
   const M = S.mf = S.mf || {q:"", tech:""}, mine = ROLE==="op";
-  $("#main").innerHTML = `<div class="top"><div><h1>Messaggi</h1><p class="sub">Le conversazioni tra i tecnici e Ticket Farm: messaggi dei clienti inoltrati dall'app, note dei tecnici e risposte dell'ufficio.</p></div></div>
+  $("#main").innerHTML = `<div class="top"><div><h1>Messaggi</h1><p class="sub">Le conversazioni tra i tecnici e l'ufficio: messaggi dei clienti inoltrati dall'app, note dei tecnici e messaggi dell'ufficio.</p></div>
+      ${mine?"":`<button class="btn primary" type="button" id="mf-new" data-perm="ticket:m">+ Nuova conversazione</button>`}</div>
     <div class="msgs">
       <aside class="msg-l panel">
         <input class="input" id="mf-q" type="search" placeholder="Cerca ticket, cliente o testo" value="${esc(M.q)}">
@@ -989,15 +1075,38 @@ function messaggi(){
     const c = cl(th.client) || {name:th.client}, t = S.tickets.find(x=>x.id===th.ticket);
     box.innerHTML = `<div class="msg-h"><div>${logo(c)}<div><b>${esc(c.name)}</b><div class="dim"><span class="mono">${esc(th.ticket)}</span>${t?" · "+esc(t.title)+" · "+esc(t.state):""} · tecnico ${esc(th.tech||"")}</div></div></div>
         <button class="btn small primary" type="button" id="mf-open">Apri ticket</button></div>
-      <div class="chatbox" id="mf-bub">${bubbles(th)}</div>
+      <div class="chatbox" id="mf-bub">${bubbles(th, true)}</div>
       <form class="msg-f" id="mf-form" data-perm="ticket:m"><textarea class="input" id="mf-text" rows="2" placeholder="Scrivi al tecnico ${esc(th.tech||"")}: lo riceve nell'app" required></textarea><button class="btn primary" type="submit">Invia</button></form>`;
     const bb = $("#mf-bub"); bb.scrollTop = bb.scrollHeight;
     $("#mf-open").onclick = ()=>ticketSheet(th.ticket);
+    const ref = i => ({ticket:th.ticket, techMail:th.techMail, id:th.msgs[i].id});
+    box.querySelectorAll("[data-medit]").forEach(b=>b.onclick=()=>{ const i = +b.dataset.medit, m = th.msgs[i];
+      openEditor(`<h2>Modifica messaggio al tecnico</h2><label class="field"><span>Testo</span><textarea class="input" id="me-text" rows="4" required>${esc(m.text)}</textarea></label>
+        <div class="actions"><button class="btn primary" type="submit">Salva</button><button class="btn" type="button" data-close>Annulla</button></div>`, ()=>{
+        const text = $("#me-text").value.trim(); if(!text) return;
+        if(LIVE) return put("/api/admin/threads/msg", {...ref(i), text}).then(r=>{ th.msgs[i] = r.msg; closeEditor(); paintList(); toast("Messaggio modificato"); }).catch(err=>toast("Non riuscito: "+err.message));
+        m.text = text; m.mod = "adesso"; closeEditor(); paintList(); toast("Messaggio modificato (prova)"); }); });
+    box.querySelectorAll("[data-mdel]").forEach(b=>b.onclick=()=>{ const i = +b.dataset.mdel;
+      if(!confirmInline(b)) return;
+      if(LIVE) return fetch("/api/admin/threads/msg", {method:"DELETE", headers:{"Content-Type":"application/json", ...H()}, body:JSON.stringify(ref(i))}).then(r=>r.ok?r.json():Promise.reject(new Error("non riuscito"))).then(()=>{ th.msgs.splice(i,1); paintList(); toast("Messaggio eliminato"); }).catch(err=>toast(err.message));
+      th.msgs.splice(i,1); paintList(); toast("Messaggio eliminato (prova)"); });
     $("#mf-form").onsubmit = e => { e.preventDefault(); const text = $("#mf-text").value.trim(); if(!text) return;
       if(LIVE) return post("/api/admin/threads/reply", {ticket:th.ticket, techMail:th.techMail, text}).then(r=>{ th.msgs.push(r.msg); paintList(); toast("Inviato a "+th.tech); }).catch(err=>toast("Non inviato: "+err.message));
-      th.msgs.push({k:"tf", t:new Date().toLocaleTimeString("it-CH",{hour:"2-digit",minute:"2-digit"}), by:(ME&&ME.nome)||"Ufficio", text}); logLocal("Messaggio al tecnico", th.ticket+" · "+th.tech, "ticket"); paintList(); toast("Inviato a "+th.tech+" (prova)"); };
+      th.msgs.push({k:"tf", t:new Date().toLocaleTimeString("it-CH",{hour:"2-digit",minute:"2-digit"}), by:(ME&&ME.nome)||"Ufficio", id:"o"+Date.now().toString(36), text}); logLocal("Messaggio al tecnico", th.ticket+" · "+th.tech, "ticket"); paintList(); toast("Inviato a "+th.tech+" (prova)"); };
   };
   $("#mf-q").oninput = e => { M.q = e.target.value; paintList(); };
+  if($("#mf-new")) $("#mf-new").onclick = ()=>openEditor(`<h2>Nuova conversazione con un tecnico</h2>
+    <div class="formgrid"><label class="field wide"><span>Ticket</span><select class="input" id="nc-t" required><option value="">Scegli il ticket…</option>${S.tickets.filter(t=>t.state!=="Chiuso").map(t=>`<option value="${esc(t.id)}">${esc(t.id)} · ${esc((cl(t.client)||{name:t.client}).name)} · ${esc(t.title)}</option>`).join("")}</select></label>
+      <label class="field wide"><span>Tecnico</span><select class="input" id="nc-tech" required>${TECHS.filter(alive).map(t=>`<option value="${esc(t.mail)}">${t.ini} · ${esc(techName(t))}</option>`).join("")}</select></label>
+      <label class="field wide"><span>Messaggio</span><textarea class="input" id="nc-text" rows="3" required placeholder="Lo riceve nell'app"></textarea></label></div>
+    <div class="actions"><button class="btn primary" type="submit">Invia</button><button class="btn" type="button" data-close>Annulla</button></div>`, ()=>{
+      const tk = $("#nc-t").value, tm = $("#nc-tech").value, text = $("#nc-text").value.trim(), t = S.tickets.find(x=>x.id===tk), tech = TECHS.find(x=>x.mail===tm);
+      if(!t || !tech || !text){ toast("Scegli ticket, tecnico e scrivi il messaggio"); return; }
+      if(LIVE) return post("/api/admin/threads", {ticket:tk, techMail:tm, text}).then(()=>{ closeEditor(); S.thSel = tk; load(); toast("Inviato a "+tech.ini); }).catch(err=>toast("Non inviato: "+err.message));
+      let th = S.threads.find(x=>x.ticket===tk && x.techMail===tm);
+      if(!th){ th = {ticket:tk, client:t.client, tech:tech.ini, techMail:tm, msgs:[]}; S.threads.unshift(th); }
+      th.msgs.push({k:"tf", t:new Date().toLocaleTimeString("it-CH",{hour:"2-digit",minute:"2-digit"}), by:(ME&&ME.nome)||"Ufficio", id:"o"+Date.now().toString(36), text});
+      S.thSel = tk; logLocal("Conversazione aperta con il tecnico", tk+" · "+tech.ini, "ticket"); closeEditor(); messaggi(); toast("Inviato a "+tech.ini+" (prova)"); });
   if($("#mf-tech")) $("#mf-tech").onchange = e => { M.tech = e.target.value; paintList(); };
   paintList();
 }
@@ -1010,24 +1119,26 @@ function clienti(){
   $("#main").innerHTML = `<div class="top"><div><h1>Clienti</h1><p class="sub">Anagrafiche da ITSM e Halo, contatti anche da Office 365. Servono a riconoscere il mittente delle mail.</p></div>
       <button class="btn primary" type="button" id="c-add" data-perm="clienti:m">+ Nuovo cliente</button></div>
     <div class="panel filters">
-      <div class="f-row"><label class="f-q"><span class="sr">Cerca</span><input class="input" id="cf-q" type="search" placeholder="Nome, città, contatto, mail, telefono o dominio" value="${esc(F.q)}"></label>
-        <button class="btn small" type="button" id="cf-x">Azzera filtri</button></div>
+      <div class="f-row"><label class="f-q"><span class="sr">Cerca</span><input class="input" id="cl-q" type="search" placeholder="Nome, città, contatto, mail, telefono o dominio" value="${esc(F.q)}"></label>
+        <button class="btn small" type="button" id="cl-x">Azzera filtri</button></div>
       <div class="f-grid">
-        <label class="field"><span>Sistema</span><select class="input" id="cf-sys"><option value="">ITSM e Halo</option><option>ITSM</option><option>Halo</option></select></label>
-        <label class="field"><span>Città</span><select class="input" id="cf-city"><option value="">Tutte le città</option>${[...new Set(CLIENTS.map(c=>c.city).filter(Boolean))].sort().map(x=>`<option>${esc(x)}</option>`).join("")}</select></label>
+        <label class="field"><span>Sistema</span><select class="input" id="cl-sys"><option value="">ITSM e Halo</option><option>ITSM</option><option>Halo</option></select></label>
+        <label class="field"><span>Città</span><select class="input" id="cl-city"><option value="">Tutte le città</option>${[...new Set(CLIENTS.map(c=>c.city).filter(Boolean))].sort().map(x=>`<option>${esc(x)}</option>`).join("")}</select></label>
       </div>
       <div class="chips">
-        ${mine?`<label class="check"><input type="checkbox" id="cf-mine" ${F.mine?"checked":""}> Solo i clienti dei miei ticket</label>`:""}
-        <label class="check"><input type="checkbox" id="cf-open" ${F.open?"checked":""}> Con ticket aperti</label>
-        <label class="check"><input type="checkbox" id="cf-wa" ${F.wa?"checked":""}> Con numero WhatsApp</label>
+        ${mine?`<label class="check"><input type="checkbox" id="cl-mine" ${F.mine?"checked":""}> Solo i clienti dei miei ticket</label>`:""}
+        <label class="check"><input type="checkbox" id="cl-open" ${F.open?"checked":""}> Con ticket aperti</label>
+        <label class="check"><input type="checkbox" id="cl-wa" ${F.wa?"checked":""}> Con numero WhatsApp</label>
+        <label class="check"><input type="checkbox" id="cl-old" ${F.old?"checked":""}> Mostra disattivati ed eliminati</label>
       </div>
     </div>
-    <p class="f-count" id="cf-n" aria-live="polite"></p>
-    <div class="tbl"><table><thead><tr><th>Cliente</th><th>Ticket in</th><th>Ticket aperti</th><th>Dominio</th><th>Contatti</th><th><span class="sr">Azioni</span></th></tr></thead><tbody id="cf-body"></tbody></table></div>`;
-  $("#cf-sys").value = F.sys; $("#cf-city").value = F.city;
+    <p class="f-count" id="cl-n" aria-live="polite"></p>
+    <div class="tbl"><table><thead><tr><th>Cliente</th><th>Ticket in</th><th>Ticket aperti</th><th>Dominio</th><th>Contatti</th><th><span class="sr">Azioni</span></th></tr></thead><tbody id="cl-body"></tbody></table></div>`;
+  $("#cl-sys").value = F.sys; $("#cl-city").value = F.city;
   const norm = x => String(x||"").toLowerCase();
   const paint = () => {
     const list = CLIENTS.filter(c=>{
+      if(!F.old && (c.eliminato || c.attivo===false)) return false;
       if(F.sys && c.sys!==F.sys) return false;
       if(F.city && c.city!==F.city) return false;
       if(F.open && !openOf(c).length) return false;
@@ -1035,24 +1146,30 @@ function clienti(){
       if(mine && F.mine && !S.tickets.some(t=>t.client===c.id && t.tech===mine)) return false;
       if(F.q){ const q = norm(F.q), qd = q.replace(/[^0-9+]/g,""); if(![c.name, c.city, c.dom, ...(c.contacts||[]).flatMap(k=>[k.n,k.mail])].some(v=>norm(v).includes(q)) && !(qd.length>2 && (c.contacts||[]).some(k=>String(k.tel||"").replace(/[^0-9+]/g,"").includes(qd)))) return false; }
       return true; }).sort((a,b)=>a.name.localeCompare(b.name));
-    $("#cf-n").textContent = list.length+" di "+CLIENTS.length+" clienti";
-    $("#cf-body").innerHTML = list.map(c=>{ const o = openOf(c); return `<tr><td><div style="display:flex;gap:10px;align-items:center">${logo(c)}<div><span class="strong">${esc(c.name)}</span><div class="dim">${esc(c.city||"")}</div></div></div></td><td>${badge(c.sys)}</td>
+    $("#cl-n").textContent = list.length+" di "+liveClients().length+" clienti";
+    $("#cl-body").innerHTML = list.map(c=>{ const o = openOf(c); return `<tr><td><div style="display:flex;gap:10px;align-items:center">${logo(c)}<div><span class="strong">${clientTag(c)}</span><div class="dim">${esc(c.city||"")}</div></div></div></td><td>${badge(c.sys)}</td>
         <td>${o.length?`<button class="tlink strong" type="button" data-tk="${esc(c.id)}">${o.length} aperti</button>${o.some(t=>t.urg)?' <span class="pill p-urg">Urgente</span>':""}`:`<span class="dim">nessuno</span>`}</td><td class="mono">${c.dom?"@"+esc(c.dom):"—"}</td>
         <td>${(c.contacts||[]).map(k=>`<div class="contact"><div>${esc(k.n)} ${badge(k.src)}<div class="dim">${esc(k.mail||"")}${k.tel?" · "+esc(k.tel):""}</div></div>${waBtn(k.tel)}</div>`).join("") || `<span class="dim">Nessun contatto</span>`}</td>
-        <td class="act" data-row="${esc(c.id)}"><button class="btn small" type="button" data-edit="${esc(c.id)}" data-perm="clienti:m">Modifica</button> <button class="btn small danger" type="button" data-ask="${esc(c.id)}" data-perm="clienti:e">Elimina</button></td></tr>`; }).join("") || `<tr><td colspan="6" class="dim">Nessun cliente con questi filtri</td></tr>`;
-    $("#cf-body").querySelectorAll("[data-tk]").forEach(b=>b.onclick=()=>{ S.view="ticket"; S.tf = Object.assign(tfReset(), {client:b.dataset.tk}); render(); });
-    $("#cf-body").querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>clientForm(cl(b.dataset.edit)));
-    $("#cf-body").querySelectorAll("[data-ask]").forEach(b=>b.onclick=()=>askDelete(b, "il cliente "+cl(b.dataset.ask).name, ()=>{
+        <td class="act" data-row="${esc(c.id)}">${c.eliminato ? `<button class="btn small" type="button" data-rest="${esc(c.id)}" data-perm="clienti:m">Ripristina</button>` : `<button class="btn small" type="button" data-edit="${esc(c.id)}" data-perm="clienti:m">Modifica</button> <button class="btn small" type="button" data-onoff="${esc(c.id)}" data-perm="clienti:m">${c.attivo===false?"Riattiva":"Disattiva"}</button> <button class="btn small danger" type="button" data-ask="${esc(c.id)}" data-perm="clienti:e">Elimina</button>`}</td></tr>`; }).join("") || `<tr><td colspan="6" class="dim">Nessun cliente con questi filtri</td></tr>`;
+    $("#cl-body").querySelectorAll("[data-tk]").forEach(b=>b.onclick=()=>{ S.view="ticket"; S.tf = Object.assign(tfReset(), {client:b.dataset.tk}); render(); });
+    $("#cl-body").querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>clientForm(cl(b.dataset.edit)));
+    $("#cl-body").querySelectorAll("[data-onoff]").forEach(b=>b.onclick=()=>{ const c = cl(b.dataset.onoff), on = c.attivo===false;
+      if(LIVE) return put("/api/admin/clients/"+encodeURIComponent(c.id), {...c, attivo:on}).then(()=>{ toast(on?"Cliente riattivato":"Cliente disattivato: i suoi ticket restano"); load(); }).catch(err=>toast("Non riuscito: "+err.message));
+      c.attivo = on; logLocal(on?"Cliente riattivato":"Cliente disattivato", c.name, "clienti"); paint(); toast((on?"Cliente riattivato":"Cliente disattivato: i suoi ticket restano")+" (prova)"); });
+    $("#cl-body").querySelectorAll("[data-rest]").forEach(b=>b.onclick=()=>{ const c = cl(b.dataset.rest);
+      if(LIVE) return put("/api/admin/clients/"+encodeURIComponent(c.id), {ripristina:true}).then(()=>{ toast("Cliente ripristinato"); load(); }).catch(err=>toast("Non riuscito: "+err.message));
+      delete c.eliminato; c.attivo = true; logLocal("Cliente ripristinato", c.name, "clienti"); paint(); toast("Cliente ripristinato (prova)"); });
+    $("#cl-body").querySelectorAll("[data-ask]").forEach(b=>b.onclick=()=>askDelete(b, "il cliente "+cl(b.dataset.ask).name, ()=>{
       const id = b.dataset.ask;
-      if(LIVE) return del("/api/admin/clients/"+encodeURIComponent(id)).then(()=>{ toast("Cliente eliminato"); load(); });
-      CLIENTS.splice(CLIENTS.findIndex(c=>c.id===id), 1); clienti(); toast("Cliente eliminato (prova)");
+      if(LIVE) return del("/api/admin/clients/"+encodeURIComponent(id)).then(()=>{ toast("Cliente eliminato: i suoi ticket restano nello storico"); load(); });
+      const c = cl(id); c.eliminato = new Date().toISOString(); c.attivo = false; logLocal("Cliente eliminato", c.name, "clienti"); clienti(); toast("Cliente eliminato: i suoi ticket restano nello storico (prova)");
     }, clienti));
   };
-  $("#cf-q").oninput = e => { F.q = e.target.value; paint(); };
-  $("#cf-sys").onchange = e => { F.sys = e.target.value; paint(); };
-  $("#cf-city").onchange = e => { F.city = e.target.value; paint(); };
-  ["open","wa","mine"].forEach(k=>{ const el = $("#cf-"+k); if(el) el.onchange = e => { F[k] = e.target.checked; paint(); }; });
-  $("#cf-x").onclick = () => { S.cf = cfReset(); clienti(); };
+  $("#cl-q").oninput = e => { F.q = e.target.value; paint(); };
+  $("#cl-sys").onchange = e => { F.sys = e.target.value; paint(); };
+  $("#cl-city").onchange = e => { F.city = e.target.value; paint(); };
+  ["open","wa","mine","old"].forEach(k=>{ const el = $("#cl-"+k); if(el) el.onchange = e => { F[k] = e.target.checked; paint(); }; });
+  $("#cl-x").onclick = () => { S.cf = cfReset(); clienti(); };
   paint();
 }
 /* conferma dentro la riga, senza finestre del browser */
@@ -1103,19 +1220,55 @@ function clientForm(c){
 /* ---------- Tecnici ---------- */
 const techName = t => t.name || t.nome || "";
 function tecnici(){
+  S.techOld = !!S.techOld;
+  const list = TECHS.filter(t=>S.techOld || !t.eliminato);
   $("#main").innerHTML = `<div class="top"><div><h1>Tecnici</h1><p class="sub">Le mail che arrivano da questi indirizzi sono messaggi dei clienti inoltrati dall'app, non richieste del tecnico.</p></div><button class="btn primary" type="button" id="t-add" data-perm="tecnici:m">+ Nuovo tecnico</button></div>
-    <div class="tbl"><table><thead><tr><th>Tecnico</th><th>Casella che invia</th><th>Zona</th><th>App</th><th>Ultimo invio</th><th>Ticket aperti</th><th><span class="sr">Azioni</span></th></tr></thead><tbody>
-      ${TECHS.map(t=>`<tr><td><span class="strong">${esc(t.ini)}</span> · ${esc(techName(t))}</td><td class="mono">${esc(t.mail)}</td><td>${esc(t.zona||"")}</td><td>${t.app?'<span class="pill p-ok">Attiva</span>':'<span class="pill p-mut">Non installata</span>'}</td><td class="mono">${esc(t.last||"—")}</td><td class="mono">${S.tickets.filter(x=>x.tech===t.ini&&x.state!=="Chiuso").length}</td>
-        <td class="act"><button class="btn small" type="button" data-edit="${esc(t.mail)}" data-perm="tecnici:m">Modifica</button> <button class="btn small danger" type="button" data-ask="${esc(t.mail)}" data-perm="tecnici:e">Elimina</button></td></tr>`).join("") || `<tr><td colspan="7" class="dim">Nessun tecnico</td></tr>`}
-    </tbody></table></div>`;
+    ${limitBanner()}
+    <label class="check"><input type="checkbox" id="t-old" ${S.techOld?"checked":""}> Mostra anche gli eliminati</label>
+    <div class="tbl"><table><thead><tr><th>Tecnico</th><th>Casella che invia</th><th>Zona e aree</th><th>Stato</th><th>App</th><th>Ticket aperti</th><th><span class="sr">Azioni</span></th></tr></thead><tbody>
+      ${list.map(t=>`<tr><td><span class="strong">${esc(t.ini)}</span> · ${esc(techName(t))}</td><td class="mono">${esc(t.mail)}</td><td>${esc(t.zona||"")}<div class="atags">${(t.aree||[]).map(areaTag).join("")}</div></td>
+        <td>${t.eliminato?'<span class="pill p-mut">Eliminato</span>':t.attivo===false?'<span class="pill p-warn">Disattivato</span>':'<span class="pill p-ok">Attivo</span>'}</td>
+        <td>${t.app?'<span class="pill p-ok">Installata</span>':'<span class="pill p-mut">Non installata</span>'}<div class="mono dim">${esc(t.last||"—")}</div></td><td class="mono">${S.tickets.filter(x=>x.tech===t.ini&&x.state!=="Chiuso").length}</td>
+        <td class="act">${t.eliminato ? `<button class="btn small" type="button" data-rest="${esc(t.mail)}" data-perm="tecnici:m">Ripristina</button>` : `<button class="btn small" type="button" data-edit="${esc(t.mail)}" data-perm="tecnici:m">Modifica</button> <button class="btn small" type="button" data-onoff="${esc(t.mail)}" data-perm="tecnici:m">${t.attivo===false?"Riattiva":"Disattiva"}</button> <button class="btn small danger" type="button" data-ask="${esc(t.mail)}" data-perm="tecnici:e">Elimina</button>`}</td></tr>`).join("") || `<tr><td colspan="7" class="dim">Nessun tecnico</td></tr>`}
+    </tbody></table></div>
+    <p class="note">Disattivato o eliminato, il tecnico non entra più nell'app; il suo nome resta sui ticket e nelle conversazioni (storico). Un eliminato si può ripristinare.</p>`;
+  $("#t-old").onchange = e => { S.techOld = e.target.checked; tecnici(); };
   $("#t-add").onclick = ()=>techForm(null);
   document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>techForm(TECHS.find(t=>t.mail===b.dataset.edit)));
+  const change = (t, body, msg) => {
+    const on = body.attivo===true || body.ripristina;
+    if(on && limitFull()){ toast(limitMsg()); return; }
+    if(LIVE) return put("/api/admin/techs/"+encodeURIComponent(t.mail), body).then(()=>{ toast(msg); load(); }).catch(err=>toast("Non riuscito: "+err.message));
+    if(body.ripristina){ delete t.eliminato; t.attivo = true; } else t.attivo = body.attivo;
+    logLocal(msg, t.mail, "tecnici"); tecnici(); toast(msg+" (prova)");
+  };
+  document.querySelectorAll("[data-onoff]").forEach(b=>b.onclick=()=>{ const t = TECHS.find(x=>x.mail===b.dataset.onoff), on = t.attivo===false;
+    change(t, {attivo:on}, on ? "Tecnico riattivato" : "Tecnico disattivato: non entra più nell'app, i suoi ticket restano"); });
+  document.querySelectorAll("[data-rest]").forEach(b=>b.onclick=()=>change(TECHS.find(x=>x.mail===b.dataset.rest), {ripristina:true}, "Tecnico ripristinato"));
   document.querySelectorAll("[data-ask]").forEach(b=>b.onclick=()=>askDelete(b, "il tecnico "+b.dataset.ask, ()=>{
     const mail = b.dataset.ask;
-    if(LIVE) return del("/api/admin/techs/"+encodeURIComponent(mail)).then(()=>{ toast("Tecnico eliminato: non può più accedere all'app"); load(); });
-    TECHS.splice(TECHS.findIndex(t=>t.mail===mail), 1); tecnici(); toast("Tecnico eliminato (prova)");
+    if(LIVE) return del("/api/admin/techs/"+encodeURIComponent(mail)).then(()=>{ toast("Tecnico eliminato: non entra più nell'app, i suoi ticket restano nello storico"); load(); });
+    const t = TECHS.find(x=>x.mail===mail); t.eliminato = new Date().toISOString(); t.attivo = false; logLocal("Tecnico eliminato", mail, "tecnici"); tecnici(); toast("Tecnico eliminato: i suoi ticket restano nello storico (prova)");
   }, tecnici));
 }
+/* limite di utenti attivi: utenti della console + tecnici dell'app */
+function limitNow(){
+  if(LIVE) return LIMITI;
+  const n = USERS_LOCAL.filter(alive).length + TECHS.filter(alive).length, max = LIMITI.max||0;
+  return {max, attivi:n, pieno: max>0 && n>=max};
+}
+const limitFull = () => limitNow().pieno;
+const limitMsg = () => { const l = limitNow(); return "Limite di utenti raggiunto ("+l.attivi+" su "+l.max+")"; };
+function limitBanner(){ const l = limitNow(); if(!l.max) return ""; return `<div class="panel limitbar ${l.pieno?"full":""}"><b>${l.attivi} utenti attivi su ${l.max}</b><span>${l.pieno?"Limite raggiunto: per aggiungerne disattiva qualcuno o alza il limite in Utenti.":"Contano gli utenti della console e i tecnici dell'app attivi."}</span></div>`; }
+/* nel modulo di creazione: se il limite è pieno il modulo si blocca */
+function lockIfFull(isNew){
+  if(!isNew || !limitFull()) return;
+  const f = $("#ed-form");
+  f.querySelectorAll("input,select,textarea,button[type=submit]").forEach(x=>x.disabled = true);
+  f.insertAdjacentHTML("afterbegin", `<div class="limitmsg" role="alert"><b>${esc(limitMsg())}</b><span>Per aggiungere un utente disattivane uno o chiedi a un amministratore di alzare il limite (Configurazione → Utenti).</span></div>`);
+}
+const areaChecks = (sel) => AREE_LIST.filter(a=>!a.eliminato).length ? `<div class="field wide"><span>Aree di lavoro</span><div class="achecks">${AREE_LIST.filter(a=>!a.eliminato).map(a=>`<label class="check"><input type="checkbox" data-area="${a.id}" ${(sel||[]).includes(a.id)?"checked":""}> <span class="atag" style="--ac:${esc(a.colore)}">${esc(a.nome)}</span></label>`).join("")}</div></div>` : `<p class="note">Nessuna area di lavoro: si creano in Configurazione → Aree di lavoro.</p>`;
+const readAreas = () => [...document.querySelectorAll("#ed-form [data-area]")].filter(x=>x.checked).map(x=>x.dataset.area);
 function showCode(t, code){
   openEditor(`<h2>Codice di accesso</h2>
     <p>Dai questo codice a <b>${esc(techName(t))}</b> (${esc(t.mail)}). Lo usa con la sua mail per entrare nell'app.</p>
@@ -1131,21 +1284,24 @@ function techForm(t){
       <label class="field"><span>Iniziali</span><input class="input" id="tf-ini" maxlength="3" value="${esc(t.ini||"")}" placeholder="es. MR"></label>
       <label class="field"><span>Zona</span><input class="input" id="tf-zona" maxlength="40" value="${esc(t.zona||"")}" placeholder="es. Sud"></label>
       <label class="field wide"><span>Mail aziendale (casella da cui partono le mail dell'app)</span><input class="input" id="tf-mail" type="email" required value="${esc(t.mail||"")}" ${isNew?"":"readonly"}></label>
+      ${areaChecks(t.aree)}
     </div>
     ${isNew ? `<p class="note">Alla creazione viene generato il codice di accesso all'app.</p>` : `<label class="check"><input type="checkbox" id="tf-code"> Genera un nuovo codice di accesso (quello vecchio smette di funzionare)</label>`}
     <div class="actions"><button class="btn primary" type="submit">${isNew ? "Crea tecnico" : "Salva"}</button><button class="btn" type="button" data-close>Annulla</button></div>`, ()=>{
       const nome = $("#tf-nome").value.trim(), mail = $("#tf-mail").value.trim().toLowerCase(), zona = $("#tf-zona").value.trim();
       const ini = ($("#tf-ini").value.trim() || nome.split(/\s+/).slice(0,2).map(w=>w[0]).join("")).toUpperCase();
-      const newCode = !isNew && $("#tf-code").checked;
+      const newCode = !isNew && $("#tf-code").checked, aree = readAreas();
       if(!nome || !mail.includes("@")){ toast("Scrivi nome e mail aziendale"); return; }
-      if(LIVE){ (isNew ? post("/api/admin/techs", {mail, nome, ini, zona}) : put("/api/admin/techs/"+encodeURIComponent(t.mail), {nome, ini, zona, newCode}))
+      if(isNew && limitFull()){ toast(limitMsg()); return; }
+      if(LIVE){ (isNew ? post("/api/admin/techs", {mail, nome, ini, zona, aree}) : put("/api/admin/techs/"+encodeURIComponent(t.mail), {nome, ini, zona, newCode, aree}))
         .then(r=>{ load(); if(r.code) showCode(r.tech, r.code); else { closeEditor(); toast("Tecnico salvato"); } }).catch(err=>toast("Non riuscito: "+err.message)); return; }
       const code = String(100000 + Math.floor(Math.random()*900000));
-      if(isNew){ if(TECHS.some(x=>x.mail===mail)){ toast("Esiste già un tecnico con questa mail"); return; } TECHS.push({mail, name:nome, nome, ini, zona, app:false, last:"—"}); }
-      else Object.assign(t, {name:nome, nome, ini, zona});
+      if(isNew){ if(TECHS.some(x=>x.mail===mail)){ toast("Esiste già un tecnico con questa mail"); return; } TECHS.push({mail, name:nome, nome, ini, zona, aree, attivo:true, app:false, last:"—"}); logLocal("Tecnico creato", mail, "tecnici"); }
+      else { Object.assign(t, {name:nome, nome, ini, zona, aree}); logLocal("Tecnico modificato", mail, "tecnici"); }
       tecnici();
       if(isNew || newCode) showCode({nome, mail}, code+" (prova)"); else { closeEditor(); toast("Tecnico salvato (prova)"); }
     });
+  lockIfFull(isNew);
 }
 
 
@@ -1196,11 +1352,12 @@ function ticketSheet(id){
   openEditor(`<div class="row-h"><h2>${esc(t.id)}</h2>${badge(t.sys)}${t.urg?'<span class="pill p-urg">Urgente</span>':""}</div>
     <p style="margin:0;color:var(--ink);font-size:16px;font-weight:600">${esc(t.title)}</p>
     <dl class="kv"><dt>Cliente</dt><dd>${esc(c.name)}${c.city?" · "+esc(c.city):""}</dd><dt>Stato</dt><dd>${esc(t.state)}</dd><dt>Intervento</dt><dd>${esc(plan)}</dd>
-      <dt>Tecnico</dt><dd>${tech?esc(tech.ini)+" · "+esc(techName(tech)):"da assegnare"}</dd><dt>Origine</dt><dd>${esc(t.origin||"")}</dd><dt>Aggiornato</dt><dd>${esc(t.upd||"")}</dd></dl>
+      <dt>Tecnico</dt><dd>${tech?techTag(tech.ini)+" · "+esc(techName(tech)):"da assegnare"}</dd><dt>Origine</dt><dd>${esc(t.origin||"")}</dd><dt>Aggiornato</dt><dd>${esc(t.upd||"")}</dd></dl>
     ${(()=>{ const th = (S.threads||[]).find(x=>x.ticket===t.id); return th ? `<div class="field"><span>Conversazione con il tecnico ${esc(th.tech||"")}</span><div class="chatbox ts-chat">${bubbles(th)}</div><button class="btn small" type="button" id="ts-chat">Apri nei Messaggi</button></div>` : ""; })()}
     ${(c.contacts||[]).length?`<div class="field"><span>Contatti</span>${c.contacts.map(k=>`<div class="contact"><div>${esc(k.n)}<div class="dim">${esc(k.mail||"")}${k.tel?" · "+esc(k.tel):""}</div></div>${waBtn(k.tel)}</div>`).join("")}</div>`:""}
-    <div class="actions"><a class="btn" href="${mapsUrl(c)}" target="_blank" rel="noopener">Naviga</a><button class="btn" type="button" id="ts-list">Tutti i ticket del cliente</button><button class="btn primary" type="button" data-close>Chiudi</button></div>`, closeEditor);
+    <div class="actions"><a class="btn" href="${mapsUrl(c)}" target="_blank" rel="noopener">Naviga</a>${ROLE!=="cliente"&&can("ticket","m")?`<button class="btn" type="button" id="ts-edit">Modifica</button>`:""}<button class="btn" type="button" id="ts-list">Tutti i ticket del cliente</button><button class="btn primary" type="button" data-close>Chiudi</button></div>`, closeEditor);
   if($("#ts-chat")) $("#ts-chat").onclick = ()=>{ closeEditor(); S.view="messaggi"; S.thSel=t.id; S.mf={q:"",tech:""}; render(); };
+  if($("#ts-edit")) $("#ts-edit").onclick = ()=>{ closeEditor(); ticketForm(t); };
   $("#ts-list").onclick = ()=>{ closeEditor(); S.view="ticket"; S.tf = Object.assign(tfReset(), {client:t.client, stato:"tutti"}); render(); };
 }
 function tecnicoHome(){
@@ -1309,78 +1466,182 @@ let USERS_LOCAL = [
   {user:"admin", nome:"Amministratore", mail:"support@efuture.it", profilo:"admin", attivo:true, ultimo:"2026-11-10T09:30:00"},
   {user:"l.bianchi", nome:"Laura Bianchi", mail:"l.bianchi@efuture.it", profilo:"resp", attivo:true, ultimo:"2026-11-10T08:02:00"},
   {user:"g.verdi", nome:"Giulia Verdi", mail:"g.verdi@efuture.it", profilo:"op", attivo:true, ultimo:"2026-11-10T08:30:00"},
+  {user:"a.neri", nome:"Andrea Neri", mail:"a.neri@efuture.it", profilo:"agent", attivo:true, aree:["a-sud","a-lab"], ultimo:"2026-11-10T07:58:00"},
+  {user:"m.rossi", nome:"Marco Rossi", mail:"m.rossi@caseificiovalle.ch", profilo:"cliente", cliente:"cas", attivo:true, ultimo:"2026-11-09T16:12:00"},
   {user:"p.neri", nome:"Paolo Neri", mail:"p.neri@efuture.it", profilo:"op", attivo:false, ultimo:"2026-10-02T11:10:00"}
 ];
 const fmtDate = iso => { if(!iso) return "—"; const d = new Date(iso); return isNaN(d) ? iso : d.toLocaleString("it-CH",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}); };
 const getJ = u => fetch(u, {headers:H()}).then(r=>r.ok ? r.json() : r.json().then(j=>Promise.reject(new Error(j.error||r.status))));
 
 /* ---------- Utenti della console ---------- */
+const PROF_PILL = {admin:"p-new", resp:"p-ok", agent:"p-ok", op:"p-mut", cliente:"p-warn"};
+/* solo un amministratore tocca un amministratore */
+const adminLocked = u => u.profilo==="admin" && ROLE!=="admin";
 function utenti(){
   const draw = list => {
-    $("#main").innerHTML = `<div class="top"><div><h1>Utenti</h1><p class="sub">Chi entra nella console e con quale profilo. I tecnici dell'app si gestiscono in Tecnici.</p></div>
+    S.userOld = !!S.userOld;
+    const l = limitNow(), shown = list.filter(u=>S.userOld || !u.eliminato);
+    $("#main").innerHTML = `<div class="top"><div><h1>Utenti</h1><p class="sub">Chi entra nella console e con quale profilo: amministratore, responsabile, agente, tecnico, cliente. I tecnici dell'app si gestiscono in Tecnici.</p></div>
         <button class="btn primary" type="button" id="u-add" data-perm="utenti:m">+ Nuovo utente</button></div>
-      <div class="tbl"><table><thead><tr><th>Utente</th><th>Profilo</th><th>Stato</th><th>Ultimo accesso</th><th><span class="sr">Azioni</span></th></tr></thead><tbody>
-        ${list.map(u=>`<tr><td><span class="strong">${esc(u.nome||u.user)}</span><div class="dim">${esc(u.user)}${u.mail?" · "+esc(u.mail):""}</div></td>
-          <td><span class="pill ${u.profilo==="admin"?"p-new":u.profilo==="resp"?"p-ok":"p-mut"}">${esc((PROFILES[u.profilo]||{}).nome||u.profilo)}</span></td>
-          <td>${u.attivo!==false?'<span class="pill p-ok">Attivo</span>':'<span class="pill p-warn">Disattivato</span>'}</td><td class="mono">${fmtDate(u.ultimo)}</td>
-          <td class="act"><button class="btn small" type="button" data-edit="${esc(u.user)}" data-perm="utenti:m">Modifica</button> <button class="btn small danger" type="button" data-ask="${esc(u.user)}" data-perm="utenti:e">Elimina</button></td></tr>`).join("")}
+      <div class="panel limitbar ${l.pieno?"full":""}"><b>Utenti attivi: ${l.attivi}${l.max?" su "+l.max:""}</b>
+        <span>${l.max ? (l.pieno ? "Limite raggiunto: non si possono creare o riattivare altri utenti." : "Restano "+(l.max-l.attivi)+" posti.") : "Nessun limite impostato."} Contano gli utenti della console e i tecnici dell'app attivi.</span>
+        ${ROLE==="admin" ? `<label class="field lim"><span>Numero massimo di utenti attivi</span><input class="input" id="u-max" type="number" min="0" step="1" value="${l.max||0}"></label><button class="btn small" type="button" id="u-maxsave">Salva limite</button><span class="lock">0 = nessun limite</span>` : ""}</div>
+      <label class="check"><input type="checkbox" id="u-old" ${S.userOld?"checked":""}> Mostra anche gli eliminati</label>
+      <div class="tbl"><table><thead><tr><th>Utente</th><th>Profilo</th><th>Aree / azienda</th><th>Stato</th><th>Ultimo accesso</th><th><span class="sr">Azioni</span></th></tr></thead><tbody>
+        ${shown.map(u=>`<tr><td><span class="strong">${esc(u.nome||u.user)}</span><div class="dim">${esc(u.user)}${u.mail?" · "+esc(u.mail):""}</div></td>
+          <td><span class="pill ${PROF_PILL[u.profilo]||"p-mut"}">${esc((PROFILES[u.profilo]||{}).nome||u.profilo)}</span></td>
+          <td>${u.profilo==="cliente" ? clientTag(cl(u.cliente)) : `<div class="atags">${(u.aree||[]).map(areaTag).join("")||'<span class="dim">—</span>'}</div>`}</td>
+          <td>${u.eliminato?'<span class="pill p-mut">Eliminato</span>':u.attivo!==false?'<span class="pill p-ok">Attivo</span>':'<span class="pill p-warn">Disattivato</span>'}</td><td class="mono">${fmtDate(u.ultimo)}</td>
+          <td class="act">${u.eliminato ? '<span class="lock">resta nello storico</span>' : adminLocked(u) ? '<span class="lock">🔒 solo un amministratore può modificarlo</span>' : `<button class="btn small" type="button" data-edit="${esc(u.user)}" data-perm="utenti:m">Modifica</button> <button class="btn small" type="button" data-onoff="${esc(u.user)}" data-perm="utenti:m">${u.attivo===false?"Riattiva":"Disattiva"}</button> <button class="btn small danger" type="button" data-ask="${esc(u.user)}" data-perm="utenti:e">Elimina</button>`}</td></tr>`).join("")}
       </tbody></table></div>
-      <p class="note">Le password non si vedono mai: un amministratore può impostarne una nuova da Modifica. Deve restare sempre almeno un amministratore attivo.</p>`;
+      <p class="note">Le password non si vedono mai: si imposta una nuova da Modifica. Deve restare sempre almeno un amministratore attivo. Disattivati ed eliminati non entrano più, ma il loro nome resta su ticket, messaggi e registro.</p>`;
+    $("#u-old").onchange = e => { S.userOld = e.target.checked; draw(list); };
     $("#u-add").onclick = ()=>userForm(null, list);
+    if($("#u-maxsave")) $("#u-maxsave").onclick = ()=>{ const n = Math.max(0, Math.floor(+$("#u-max").value||0));
+      if(LIVE) return post("/api/admin/limiti", {maxUtenti:n}).then(r=>{ LIMITI = r; toast(n?"Limite: "+n+" utenti attivi":"Nessun limite"); utenti(); }).catch(err=>toast("Non salvato: "+err.message));
+      LIMITI.max = n; logLocal("Limite di utenti cambiato", n?String(n):"nessun limite", "utenti"); toast((n?"Limite: "+n+" utenti attivi":"Nessun limite")+" (prova)"); utenti(); };
     document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>userForm(list.find(u=>u.user===b.dataset.edit), list));
+    document.querySelectorAll("[data-onoff]").forEach(b=>b.onclick=()=>{ const u = list.find(x=>x.user===b.dataset.onoff), on = u.attivo===false;
+      if(on && limitFull()){ toast(limitMsg()); return; }
+      if(!on && u.profilo==="admin" && list.filter(x=>x.profilo==="admin"&&alive(x)).length<=1){ toast("Serve almeno un amministratore attivo"); return; }
+      if(LIVE) return put("/api/admin/users/"+encodeURIComponent(u.user), {attivo:on}).then(()=>{ toast(on?"Utente riattivato":"Utente disattivato"); load(); utenti(); }).catch(err=>toast("Non riuscito: "+err.message));
+      u.attivo = on; logLocal(on?"Utente riattivato":"Utente disattivato", u.user, "utenti"); utenti(); toast((on?"Utente riattivato":"Utente disattivato")+" (prova)"); });
     document.querySelectorAll("[data-ask]").forEach(b=>b.onclick=()=>askDelete(b, "l'utente "+b.dataset.ask, ()=>{
-      if(LIVE) return del("/api/admin/users/"+encodeURIComponent(b.dataset.ask)).then(()=>{ toast("Utente eliminato"); utenti(); });
+      if(LIVE) return del("/api/admin/users/"+encodeURIComponent(b.dataset.ask)).then(()=>{ toast("Utente eliminato: il nome resta nello storico"); utenti(); });
       const u = USERS_LOCAL.find(x=>x.user===b.dataset.ask);
-      if(u.profilo==="admin" && USERS_LOCAL.filter(x=>x.profilo==="admin"&&x.attivo!==false).length<=1){ toast("Serve almeno un amministratore attivo"); utenti(); return; }
-      USERS_LOCAL = USERS_LOCAL.filter(x=>x!==u); logLocal("Utente eliminato", u.user, "utenti"); utenti(); toast("Utente eliminato (prova)");
+      if(adminLocked(u)){ toast("Solo un amministratore può eliminare un amministratore"); utenti(); return; }
+      if(u.profilo==="admin" && USERS_LOCAL.filter(x=>x.profilo==="admin"&&alive(x)).length<=1){ toast("Serve almeno un amministratore attivo"); utenti(); return; }
+      u.eliminato = new Date().toISOString(); u.attivo = false; logLocal("Utente eliminato", u.user, "utenti"); utenti(); toast("Utente eliminato: il nome resta nello storico (prova)");
     }, utenti));
     applyPerms();
   };
-  if(LIVE) getJ("/api/admin/users").then(r=>draw(r.users)).catch(err=>toast("Utenti non disponibili: "+err.message)); else draw(USERS_LOCAL);
+  if(LIVE) Promise.all([getJ("/api/admin/users"), getJ("/api/admin/limiti").catch(()=>LIMITI)]).then(([r,l])=>{ LIMITI = l; draw(r.users); }).catch(err=>toast("Utenti non disponibili: "+err.message)); else draw(USERS_LOCAL);
 }
 function userForm(u, list){
-  const isNew = !u; u = u || {user:"", nome:"", mail:"", profilo:"op", attivo:true};
+  const isNew = !u; u = u || {user:"", nome:"", mail:"", profilo:"op", attivo:true, aree:[], cliente:""};
+  if(adminLocked(u)){ toast("Solo un amministratore può modificare un amministratore"); return; }
+  const profs = Object.entries(PROFILES).filter(([k])=>k!=="admin" || ROLE==="admin");
   openEditor(`<h2>${isNew?"Nuovo utente":"Modifica utente"}</h2>
     <div class="formgrid">
       <label class="field"><span>Nome e cognome</span><input class="input" id="uf-nome" required maxlength="80" value="${esc(u.nome||"")}"></label>
       <label class="field"><span>Nome utente</span><input class="input" id="uf-user" required maxlength="60" value="${esc(u.user)}" ${isNew?"":"readonly"} placeholder="es. l.bianchi"></label>
       <label class="field wide"><span>Mail</span><input class="input" id="uf-mail" type="email" maxlength="120" value="${esc(u.mail||"")}"></label>
-      <label class="field"><span>Profilo</span><select class="input" id="uf-prof">${Object.entries(PROFILES).map(([k,p])=>`<option value="${k}" ${u.profilo===k?"selected":""}>${esc(p.nome)}</option>`).join("")}</select></label>
+      <label class="field"><span>Profilo</span><select class="input" id="uf-prof">${profs.map(([k,p])=>`<option value="${k}" ${u.profilo===k?"selected":""}>${esc(p.nome)}</option>`).join("")}</select></label>
       <label class="field"><span>${isNew?"Password":"Nuova password (facoltativa)"}</span><input class="input" id="uf-pass" type="password" autocomplete="new-password" minlength="8" ${isNew?"required":""} placeholder="almeno 8 caratteri"></label>
+      <label class="field wide" id="uf-cli-w"><span>Azienda del cliente</span><select class="input" id="uf-cli"><option value="">Scegli l'azienda…</option>${liveClients().map(c=>`<option value="${c.id}" ${u.cliente===c.id?"selected":""}>${esc(c.name)}</option>`).join("")}</select></label>
+      <div class="wide" id="uf-aree-w">${areaChecks(u.aree)}</div>
     </div>
     <p class="note" id="uf-desc">${esc((PROFILES[u.profilo]||{}).desc||"")}</p>
-    ${isNew?"":`<label class="check"><input type="checkbox" id="uf-att" ${u.attivo!==false?"checked":""}> Attivo (se lo togli non può più entrare)</label>`}
+    ${isNew?"":`<label class="check"><input type="checkbox" id="uf-att" ${u.attivo!==false?"checked":""}> Attivo (se lo togli non può più entrare; il nome resta nello storico)</label>`}
     <div class="actions"><button class="btn primary" type="submit">${isNew?"Crea utente":"Salva"}</button><button class="btn" type="button" data-close>Annulla</button></div>`, ()=>{
-      const body = {user:$("#uf-user").value.trim().toLowerCase(), nome:$("#uf-nome").value.trim(), mail:$("#uf-mail").value.trim(), profilo:$("#uf-prof").value, password:$("#uf-pass").value};
+      const body = {user:$("#uf-user").value.trim().toLowerCase(), nome:$("#uf-nome").value.trim(), mail:$("#uf-mail").value.trim(), profilo:$("#uf-prof").value, password:$("#uf-pass").value,
+        aree: $("#uf-prof").value==="cliente" ? [] : readAreas(), cliente: $("#uf-prof").value==="cliente" ? $("#uf-cli").value : ""};
       if(!isNew) body.attivo = $("#uf-att").checked;
+      if(isNew && limitFull()){ toast(limitMsg()); return; }
+      if(!isNew && body.attivo && u.attivo===false && limitFull()){ toast(limitMsg()); return; }
       if(isNew && body.password.length < 8){ toast("La password deve avere almeno 8 caratteri"); return; }
+      if(body.profilo==="cliente" && !body.cliente){ toast("Scegli l'azienda del cliente"); return; }
       if(LIVE){ (isNew ? post("/api/admin/users", body) : put("/api/admin/users/"+encodeURIComponent(u.user), body)).then(()=>{ closeEditor(); toast(isNew?"Utente creato":"Utente salvato"); utenti(); }).catch(err=>toast("Non riuscito: "+err.message)); return; }
-      if(isNew){ if(USERS_LOCAL.some(x=>x.user===body.user)){ toast("Esiste già un utente con questo nome"); return; } USERS_LOCAL.push({user:body.user, nome:body.nome, mail:body.mail, profilo:body.profilo, attivo:true, ultimo:""}); logLocal("Utente creato", body.user+" ("+body.profilo+")", "utenti"); }
-      else { Object.assign(u, {nome:body.nome, mail:body.mail, profilo:body.profilo, attivo:body.attivo}); logLocal("Utente modificato", u.user, "utenti"); }
+      if(isNew){ if(USERS_LOCAL.some(x=>x.user===body.user)){ toast("Esiste già un utente con questo nome"); return; } USERS_LOCAL.push({user:body.user, nome:body.nome, mail:body.mail, profilo:body.profilo, aree:body.aree, cliente:body.cliente, attivo:true, ultimo:""}); logLocal("Utente creato", body.user+" ("+body.profilo+")", "utenti"); }
+      else { Object.assign(u, {nome:body.nome, mail:body.mail, profilo:body.profilo, aree:body.aree, cliente:body.cliente, attivo:body.attivo}); logLocal("Utente modificato", u.user, "utenti"); }
       closeEditor(); utenti(); toast((isNew?"Utente creato":"Utente salvato")+" (prova)");
     });
-  $("#uf-prof").onchange = e => { $("#uf-desc").textContent = (PROFILES[e.target.value]||{}).desc||""; };
+  const sync = () => { const p = $("#uf-prof").value; $("#uf-desc").textContent = (PROFILES[p]||{}).desc||""; $("#uf-cli-w").hidden = p!=="cliente"; $("#uf-aree-w").hidden = !["agent","op","resp"].includes(p); };
+  $("#uf-prof").onchange = sync; sync();
+  lockIfFull(isNew);
+}
+
+/* ---------- Aree di lavoro: gruppi di clienti/zone assegnati a tecnici e agenti ---------- */
+function areeView(){
+  S.areaOld = !!S.areaOld;
+  const people = id => [...TECHS.filter(t=>!t.eliminato && (t.aree||[]).includes(id)).map(t=>({n:t.ini+" · "+techName(t), k:"Tecnico", off:t.attivo===false})),
+    ...USERS_LOCAL.concat([]).filter(u=>!LIVE && !u.eliminato && u.profilo==="agent" && (u.aree||[]).includes(id)).map(u=>({n:u.nome||u.user, k:"Agente", off:u.attivo===false}))];
+  const list = AREE_LIST.filter(a=>S.areaOld || !a.eliminato);
+  $("#main").innerHTML = `<div class="top"><div><h1>Aree di lavoro</h1><p class="sub">Zone o gruppi di clienti. Si associano a tecnici e agenti; nei Ticket si filtra per area.</p></div>
+      <button class="btn primary" type="button" id="ar-add" data-perm="aree:m">+ Nuova area</button></div>
+    <label class="check"><input type="checkbox" id="ar-old" ${S.areaOld?"checked":""}> Mostra anche le eliminate</label>
+    <div class="tbl"><table><thead><tr><th>Area</th><th>Descrizione</th><th>Tecnici e agenti</th><th>Ticket aperti</th><th>Stato</th><th><span class="sr">Azioni</span></th></tr></thead><tbody>
+      ${list.map(a=>{ const pp = people(a.id), open = S.tickets.filter(t=>t.state!=="Chiuso" && (techByIni(t.tech)||{aree:[]}).aree?.includes(a.id)).length;
+        return `<tr><td>${areaTag(a.id)}</td><td class="dim">${esc(a.desc||"")}</td><td>${pp.map(x=>`<div>${esc(x.n)} <span class="dim">· ${x.k}${x.off?" (disattivato)":""}</span></div>`).join("")||'<span class="dim">nessuno</span>'}</td>
+        <td class="mono">${open}</td><td>${a.eliminato?'<span class="pill p-mut">Eliminata</span>':a.attivo===false?'<span class="pill p-warn">Disattivata</span>':'<span class="pill p-ok">Attiva</span>'}</td>
+        <td class="act">${a.eliminato?'<span class="lock">resta nello storico</span>':`<button class="btn small" type="button" data-edit="${a.id}" data-perm="aree:m">Modifica</button> <button class="btn small danger" type="button" data-ask="${a.id}" data-perm="aree:e">Elimina</button>`}</td></tr>`; }).join("") || `<tr><td colspan="6" class="dim">Nessuna area: creane una</td></tr>`}
+    </tbody></table></div>
+    <p class="note">Un'area eliminata sparisce da elenchi e moduli, ma resta nello storico su tecnici e agenti che l'avevano.</p>`;
+  $("#ar-old").onchange = e => { S.areaOld = e.target.checked; areeView(); };
+  $("#ar-add").onclick = ()=>areaForm(null);
+  document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>areaForm(AREE_LIST.find(a=>a.id===b.dataset.edit)));
+  document.querySelectorAll("[data-ask]").forEach(b=>b.onclick=()=>askDelete(b, "l'area "+(AREE_LIST.find(a=>a.id===b.dataset.ask)||{}).nome, ()=>{
+    const id = b.dataset.ask;
+    if(LIVE) return del("/api/admin/aree/"+encodeURIComponent(id)).then(()=>{ toast("Area eliminata"); load(); });
+    const a = AREE_LIST.find(x=>x.id===id); a.eliminato = new Date().toISOString(); a.attivo = false; logLocal("Area di lavoro eliminata", a.nome, "aree"); areeView(); toast("Area eliminata (prova)");
+  }, areeView));
+}
+function areaForm(a){
+  const isNew = !a; a = a || {nome:"", desc:"", colore:"#2aa7ff", attivo:true};
+  openEditor(`<h2>${isNew?"Nuova area di lavoro":"Modifica area"}</h2>
+    <div class="formgrid">
+      <label class="field wide"><span>Nome</span><input class="input" id="ar-nome" required maxlength="50" value="${esc(a.nome)}" placeholder="es. Sottoceneri"></label>
+      <label class="field wide"><span>Descrizione</span><input class="input" id="ar-desc" maxlength="200" value="${esc(a.desc||"")}" placeholder="es. Lugano, Mendrisio, Chiasso"></label>
+      <label class="field"><span>Colore</span><input class="input" id="ar-col" type="color" value="${esc(a.colore||"#2aa7ff")}"></label>
+    </div>
+    ${isNew?"":`<label class="check"><input type="checkbox" id="ar-att" ${a.attivo!==false?"checked":""}> Attiva</label>`}
+    <p class="note">Tecnici e agenti si associano all'area dalla loro scheda (Tecnici, Utenti).</p>
+    <div class="actions"><button class="btn primary" type="submit">${isNew?"Crea area":"Salva"}</button><button class="btn" type="button" data-close>Annulla</button></div>`, ()=>{
+      const body = {nome:$("#ar-nome").value.trim(), desc:$("#ar-desc").value.trim(), colore:$("#ar-col").value};
+      if(!isNew) body.attivo = $("#ar-att").checked;
+      if(!body.nome){ toast("Dai un nome all'area"); return; }
+      if(LIVE) return (isNew ? post("/api/admin/aree", body) : put("/api/admin/aree/"+encodeURIComponent(a.id), body)).then(()=>{ closeEditor(); toast(isNew?"Area creata":"Area salvata"); load(); }).catch(err=>toast("Non riuscito: "+err.message));
+      if(isNew){ if(AREE_LIST.some(x=>!x.eliminato && x.nome.toLowerCase()===body.nome.toLowerCase())){ toast("Esiste già un'area con questo nome"); return; } AREE_LIST.push({id:"a"+Date.now().toString(36), attivo:true, ...body}); }
+      else Object.assign(a, body);
+      logLocal(isNew?"Area di lavoro creata":"Area di lavoro modificata", body.nome, "aree"); closeEditor(); areeView(); toast((isNew?"Area creata":"Area salvata")+" (prova)");
+    });
 }
 
 /* ---------- Profili e permessi ---------- */
 function profili(){
-  const edit = can("profili","m");
+  const edit = can("profili","m"), keys = Object.keys(PROFILES);
   const cell = (k,a) => { const v = PROFILES[k].perm[a]||""; const lock = k==="admin" || !edit;
     return `<span class="perm-cell">${[["v","Vede"],["m","Modifica"],["e","Elimina"]].map(([r,l])=>`<label><input type="checkbox" data-p="${k}" data-a="${a}" data-r="${r}" ${v.includes(r)?"checked":""} ${lock?"disabled":""}>${l}</label>`).join("")}</span>`; };
-  $("#main").innerHTML = `<div class="top"><div><h1>Profili e permessi</h1><p class="sub">Ogni utente ha un profilo; il profilo decide quali sezioni vede e cosa può creare, modificare o eliminare.</p></div></div>
-    <div class="grid2" style="grid-template-columns:repeat(3,minmax(0,1fr))">${Object.entries(PROFILES).map(([k,p])=>`<div class="panel"><h2>${esc(p.nome)}</h2><p class="dim" style="margin:0">${esc(p.desc)}</p>
-      <span class="dim">${AREE.filter(([a])=>(p.perm[a]||"").includes("v")).length} sezioni su ${AREE.length}</span></div>`).join("")}</div>
+  const users = LIVE ? null : USERS_LOCAL;
+  $("#main").innerHTML = `<div class="top"><div><h1>Profili e permessi</h1><p class="sub">Ogni utente ha un profilo; il profilo decide quali sezioni vede e cosa può creare, modificare o eliminare.</p></div>
+      <button class="btn primary" type="button" id="pr-add" data-perm="profili:m">+ Nuovo profilo</button></div>
+    <div class="profcards">${Object.entries(PROFILES).map(([k,p])=>`<div class="panel"><h2>${esc(p.nome)}${p.base===false?' <span class="pill p-new">personalizzato</span>':""}</h2><p class="dim" style="margin:0">${esc(p.desc)}</p>
+      <span class="dim">${AREE.filter(([a])=>(p.perm[a]||"").includes("v")).length} sezioni su ${AREE.length}${users?" · "+users.filter(u=>!u.eliminato&&u.profilo===k).length+" utenti":""}</span>
+      ${p.base===false?`<div class="actions"><button class="btn small" type="button" data-pren="${k}" data-perm="profili:m">Rinomina</button><button class="btn small danger" type="button" data-pdel="${k}" data-perm="profili:e">Elimina</button></div>`:'<span class="lock">profilo di base</span>'}</div>`).join("")}</div>
     <div class="tbl"><table class="matrix"><thead><tr><th>Sezione</th>${Object.values(PROFILES).map(p=>`<th>${esc(p.nome)}</th>`).join("")}</tr></thead><tbody>
-      ${AREE.map(([a,l])=>`<tr><td class="strong">${l}</td>${Object.keys(PROFILES).map(k=>`<td>${cell(k,a)}</td>`).join("")}</tr>`).join("")}
+      ${AREE.map(([a,l])=>`<tr><td class="strong">${l}</td>${keys.map(k=>`<td>${cell(k,a)}</td>`).join("")}</tr>`).join("")}
     </tbody></table></div>
-    <div class="actions"><button class="btn primary" type="button" id="pr-save" data-perm="profili:m">Salva permessi</button><span class="note">L'amministratore ha sempre tutti i permessi. «Modifica» o «Elimina» senza «Vede» non hanno effetto.</span></div>`;
+    <div class="actions"><button class="btn primary" type="button" id="pr-save" data-perm="profili:m">Salva permessi</button><span class="note">L'amministratore ha sempre tutti i permessi. «Modifica» o «Elimina» senza «Vede» non hanno effetto. «Ticket e messaggi» vale anche per la sezione Messaggi.</span></div>`;
   $("#pr-save").onclick = ()=>{
-    const next = {resp:{}, op:{}};
-    for(const k of ["resp","op"]) for(const [a] of AREE){ next[k][a] = ["v","m","e"].filter(r=>document.querySelector(`[data-p="${k}"][data-a="${a}"][data-r="${r}"]`).checked).join(""); if(next[k][a] && !next[k][a].includes("v")) next[k][a] = "v"+next[k][a]; }
+    const next = {};
+    for(const k of keys.filter(k=>k!=="admin")){ next[k] = {}; for(const [a] of AREE){ next[k][a] = ["v","m","e"].filter(r=>document.querySelector(`[data-p="${k}"][data-a="${a}"][data-r="${r}"]`).checked).join(""); if(next[k][a] && !next[k][a].includes("v")) next[k][a] = "v"+next[k][a]; } }
     if(LIVE){ post("/api/admin/profiles", next).then(r=>{ PROFILES = r.profiles; toast("Permessi salvati"); render(); }).catch(err=>toast("Non salvati: "+err.message)); return; }
-    for(const k of ["resp","op"]) PROFILES[k].perm = next[k];
+    for(const k of Object.keys(next)) PROFILES[k].perm = next[k];
     logLocal("Permessi dei profili aggiornati", "", "profili"); toast("Permessi salvati (prova): prova a cambiare vista in alto"); render();
   };
+  $("#pr-add").onclick = ()=>openEditor(`<h2>Nuovo profilo</h2>
+    <div class="formgrid"><label class="field wide"><span>Nome</span><input class="input" id="np-nome" required maxlength="40" placeholder="es. Magazzino"></label>
+      <label class="field wide"><span>Descrizione</span><input class="input" id="np-desc" maxlength="160"></label>
+      <label class="field wide"><span>Parti dai permessi di</span><select class="input" id="np-base">${Object.entries(PROFILES).filter(([k])=>k!=="admin").map(([k,p])=>`<option value="${k}">${esc(p.nome)}</option>`).join("")}</select></label></div>
+    <div class="actions"><button class="btn primary" type="submit">Crea profilo</button><button class="btn" type="button" data-close>Annulla</button></div>`, ()=>{
+      const body = {nome:$("#np-nome").value.trim(), desc:$("#np-desc").value.trim(), base:$("#np-base").value};
+      if(!body.nome){ toast("Dai un nome al profilo"); return; }
+      if(Object.values(PROFILES).some(p=>p.nome.toLowerCase()===body.nome.toLowerCase())){ toast("Esiste già un profilo con questo nome"); return; }
+      if(LIVE) return post("/api/admin/profiles/new", body).then(r=>{ PROFILES = r.profiles; closeEditor(); toast("Profilo creato"); profili(); }).catch(err=>toast("Non riuscito: "+err.message));
+      const k = "p_"+Date.now().toString(36); PROFILES[k] = {nome:body.nome, desc:body.desc, base:false, perm:{...PROFILES[body.base].perm}};
+      logLocal("Profilo creato", body.nome, "profili"); closeEditor(); profili(); toast("Profilo creato (prova)"); });
+  document.querySelectorAll("[data-pren]").forEach(b=>b.onclick=()=>{ const k = b.dataset.pren, p = PROFILES[k];
+    openEditor(`<h2>Rinomina profilo</h2><div class="formgrid"><label class="field wide"><span>Nome</span><input class="input" id="rp-nome" required maxlength="40" value="${esc(p.nome)}"></label><label class="field wide"><span>Descrizione</span><input class="input" id="rp-desc" maxlength="160" value="${esc(p.desc||"")}"></label></div>
+      <div class="actions"><button class="btn primary" type="submit">Salva</button><button class="btn" type="button" data-close>Annulla</button></div>`, ()=>{
+        const body = {nome:$("#rp-nome").value.trim(), desc:$("#rp-desc").value.trim()}; if(!body.nome){ toast("Dai un nome al profilo"); return; }
+        if(LIVE) return put("/api/admin/profiles/"+encodeURIComponent(k), body).then(r=>{ PROFILES = r.profiles; closeEditor(); profili(); toast("Profilo salvato"); }).catch(err=>toast("Non riuscito: "+err.message));
+        Object.assign(p, body); logLocal("Profilo modificato", body.nome, "profili"); closeEditor(); profili(); toast("Profilo salvato (prova)"); }); });
+  document.querySelectorAll("[data-pdel]").forEach(b=>b.onclick=()=>askDelete(b, "il profilo "+PROFILES[b.dataset.pdel].nome, ()=>{
+    const k = b.dataset.pdel;
+    if(LIVE) return del("/api/admin/profiles/"+encodeURIComponent(k)).then(r=>{ PROFILES = r.profiles; toast("Profilo eliminato"); profili(); });
+    if(USERS_LOCAL.some(u=>!u.eliminato && u.profilo===k)){ toast("Il profilo è assegnato ad almeno un utente: cambia prima il loro profilo"); profili(); return; }
+    delete PROFILES[k]; logLocal("Profilo eliminato", k, "profili"); profili(); toast("Profilo eliminato (prova)");
+  }, profili));
 }
 
 /* ---------- Backup e ripristino ---------- */
@@ -1456,7 +1717,7 @@ function office365(){
       <label class="check"><input type="checkbox" id="o-mail" ${g.readMail!==false?"checked":""}> Posta in arrivo (per riconoscere ticket e clienti)</label>
       <label class="check"><input type="checkbox" id="o-contacts" ${g.readContacts!==false?"checked":""}> Contatti (per completare i contatti dei clienti)</label>
       <label class="field" style="max-width:260px"><span>Ogni quanto</span><select class="input" id="o-every">${[1,5,15].map(m=>`<option value="${m}" ${Number(g.every||5)===m?"selected":""}>ogni ${m} minut${m===1?"o":"i"}</option>`).join("")}</select></label>
-      <div class="actions" data-perm="office365:m"><button class="btn primary" type="submit">Salva</button><button class="btn" type="button" id="o-test">Prova collegamento</button></div>
+      <div class="actions" data-perm="office365:m"><button class="btn primary" type="submit">Salva</button><button class="btn" type="button" id="o-test">Prova collegamento</button><button class="btn danger" type="button" id="o-off" data-perm="office365:e">Scollega Office 365</button></div>
     </form>
     <div id="o-result"></div>
     <details class="panel howto"><summary><b>Come preparare il collegamento in Microsoft (una volta sola)</b></summary>
@@ -1477,6 +1738,12 @@ function office365(){
     try{ localStorage.setItem("tf-admin-settings", JSON.stringify(SETTINGS)); }catch(e){}
     toast("Impostazioni salvate in questo browser (prova)"); office365();
   };
+  $("#o-off").onclick = e => { if(!confirmInline(e.currentTarget)) return;
+    const body = {graph:{tenant:"", clientId:"", mailbox:"", clearSecret:true}};
+    if(LIVE) return post("/api/admin/settings", body).then(r=>{ SETTINGS = r.settings; toast("Office 365 scollegato: tenant, client e segreto cancellati"); office365(); }).catch(err=>toast("Non riuscito: "+err.message));
+    SETTINGS = {support:SETTINGS.support, graph:{tenant:"", clientId:"", secretSet:false, mailbox:"", readMail:true, readContacts:true, every:5}};
+    try{ localStorage.setItem("tf-admin-settings", JSON.stringify(SETTINGS)); }catch(e){}
+    logLocal("Office 365 scollegato", "", "office365"); toast("Office 365 scollegato (prova)"); office365(); };
   $("#o-test").onclick = ()=>{
     const out = $("#o-result"); out.innerHTML = `<div class="panel"><b>Prova in corso…</b></div>`;
     const show = (r, example) => { out.innerHTML = `<div class="panel">
@@ -1518,7 +1785,7 @@ function assistente(){
         <label class="check"><input type="checkbox" id="ai-prom" ${AI.promemoria?"checked":""}> Scrive il promemoria del giorno di ogni tecnico</label>
         <label class="check"><input type="checkbox" id="ai-prio" ${AI.priorita?"checked":""}> Ordina le prossime attività e spiega il perché</label>
         <div class="tip">Cosa viene inviato a Claude: data, zona, numero e titolo dei ticket, cliente e città, stato, urgenza e orario. <b>Mai</b> telefoni, indirizzi mail o il testo dei messaggi dei clienti. Il promemoria viene chiesto una volta al giorno per tecnico e rifatto solo se cambiano i suoi ticket.</div>
-        <div class="actions" data-perm="ai:m"><button class="btn primary" type="submit">Salva</button><button class="btn" type="button" id="ai-test">Prova adesso</button></div>
+        <div class="actions" data-perm="ai:m"><button class="btn primary" type="submit">Salva</button><button class="btn" type="button" id="ai-test">Prova adesso</button>${AI.keySet?`<button class="btn danger" type="button" id="ai-clear" data-perm="ai:e">Rimuovi la chiave</button>`:""}</div>
       </form>
       <div id="ai-result"></div>`;
     $("#ai-on").onclick = e => { const b = e.currentTarget; b.setAttribute("aria-checked", String(b.getAttribute("aria-checked")!=="true")); };
@@ -1533,6 +1800,9 @@ function assistente(){
       logLocal(AI.enabled?"Assistente AI attivo":"Assistente AI spento", "modello "+AI.model, "ai");
       toast("Assistente salvato (prova)"+(body.apiKey?": nella versione online la chiave non viene usata né salvata":"")); assistente();
     };
+    if($("#ai-clear")) $("#ai-clear").onclick = e => { if(!confirmInline(e.currentTarget)) return;
+      if(LIVE) return post("/api/admin/ai", {clearKey:true}).then(r=>{ AI = r.ai; toast("Chiave rimossa: l'assistente torna alle risposte di esempio"); assistente(); }).catch(err=>toast("Non riuscito: "+err.message));
+      AI.keySet = false; logLocal("Chiave API rimossa", "", "ai"); toast("Chiave rimossa (prova)"); assistente(); };
     $("#ai-test").onclick = ()=>{
       const out = $("#ai-result"); out.innerHTML = `<div class="panel"><b>Chiedo a ${AI_MODELS[AI.model].nome}…</b></div>`;
       const sh = r => { out.innerHTML = `<div class="panel"><h2>Promemoria di prova per ${esc(myTech().ini)} · Zona ${esc(myTech().zona||"")} ${r.source==="simulazione"?'<span class="pill p-warn">esempio</span>':r.source==="claude"?'<span class="pill p-ok">Claude</span>':""}</h2>
@@ -1568,7 +1838,31 @@ function regole(){
     <ol class="rules">${S.rules.map((r,i)=>`<li><div><b>${esc(r.t)}</b><small>${esc(r.d)}</small></div><button class="switch" role="switch" aria-checked="${r.on}" aria-label="${esc(r.t)}" data-r="${i}" ${can("regole","m")?"":"disabled"}></button></li>`).join("")}</ol>
     <div class="panel"><h2>Indirizzo e intestazioni</h2>
       <dl class="kv"><dt>Indirizzo di raccolta</dt><dd class="mono">${SUPPORT}</dd><dt>Cliente dall'app</dt><dd class="mono">X-TicketFarm-Cliente</dd><dt>Ora del messaggio</dt><dd class="mono">X-TicketFarm-Ora-Messaggio</dd><dt>Origine</dt><dd class="mono">X-TicketFarm-Origine</dd></dl>
-      <p class="note">Se nessuna regola trova il cliente, la mail resta in Posta in arrivo come «Da verificare».</p></div>`;
+      <p class="note">Se nessuna regola trova il cliente, la mail resta in Posta in arrivo come «Da verificare».</p></div>
+    <div class="panel"><div class="row-h"><h2>Regole aggiunte dall'ufficio</h2><button class="btn small primary" type="button" id="cr-add" data-perm="regole:m">+ Nuova regola</button></div>
+      <p class="dim" style="margin:0">Valgono dopo quelle sopra: un dominio o una parola nell'oggetto portano a un cliente.</p>
+      <div class="tbl"><table><thead><tr><th>Tipo</th><th>Valore</th><th>Cliente</th><th>Attiva</th><th><span class="sr">Azioni</span></th></tr></thead><tbody>
+        ${(S.customRules||[]).map(r=>`<tr><td>${r.tipo==="parola"?"Parola nell'oggetto":"Dominio del mittente"}</td><td class="mono">${r.tipo==="dominio"?"@":""}${esc(r.valore)}</td><td>${clientTag(cl(r.cliente))||'<span class="dim">—</span>'}</td><td>${r.on!==false?'<span class="pill p-ok">Sì</span>':'<span class="pill p-mut">No</span>'}</td>
+          <td class="act" data-crrow="${r.id}"><button class="btn small" type="button" data-cred="${r.id}" data-perm="regole:m">Modifica</button> <button class="btn small danger" type="button" data-crdel="${r.id}" data-perm="regole:e">Elimina</button></td></tr>`).join("") || `<tr><td colspan="5" class="dim">Nessuna regola aggiunta</td></tr>`}
+      </tbody></table></div></div>`;
+  const crForm = r => { const isNew = !r; r = r || {tipo:"dominio", valore:"", cliente:"", on:true};
+    openEditor(`<h2>${isNew?"Nuova regola":"Modifica regola"}</h2><div class="formgrid">
+      <label class="field"><span>Tipo</span><select class="input" id="cr-tipo"><option value="dominio" ${r.tipo==="dominio"?"selected":""}>Dominio del mittente</option><option value="parola" ${r.tipo==="parola"?"selected":""}>Parola nell'oggetto</option></select></label>
+      <label class="field"><span>Valore</span><input class="input" id="cr-val" required maxlength="80" value="${esc(r.valore)}" placeholder="es. nuovolab.ch oppure centrifughe"></label>
+      <label class="field wide"><span>Porta al cliente</span><select class="input" id="cr-cli" required><option value="">Scegli il cliente…</option>${liveClients().map(c=>`<option value="${c.id}" ${r.cliente===c.id?"selected":""}>${esc(c.name)}</option>`).join("")}</select></label></div>
+      <label class="check"><input type="checkbox" id="cr-on" ${r.on!==false?"checked":""}> Attiva</label>
+      <div class="actions"><button class="btn primary" type="submit">${isNew?"Aggiungi regola":"Salva"}</button><button class="btn" type="button" data-close>Annulla</button></div>`, ()=>{
+        const body = {tipo:$("#cr-tipo").value, valore:$("#cr-val").value.trim().toLowerCase().replace(/^@/,""), cliente:$("#cr-cli").value, on:$("#cr-on").checked};
+        if(!body.valore || !body.cliente){ toast("Scrivi il valore e scegli il cliente"); return; }
+        if(LIVE) return (isNew ? post("/api/admin/rules/custom", body) : put("/api/admin/rules/custom/"+r.id, body)).then(x=>{ S.customRules = x.customRules; closeEditor(); regole(); toast(isNew?"Regola aggiunta":"Regola salvata"); }).catch(err=>toast("Non riuscito: "+err.message));
+        if(isNew) (S.customRules = S.customRules||[]).push({id:"r"+Date.now().toString(36), ...body}); else Object.assign(r, body);
+        logLocal(isNew?"Regola aggiunta":"Regola modificata", body.tipo+" "+body.valore, "regole"); closeEditor(); regole(); toast((isNew?"Regola aggiunta":"Regola salvata")+" (prova)"); }); };
+  $("#cr-add").onclick = ()=>crForm(null);
+  document.querySelectorAll("[data-cred]").forEach(b=>b.onclick=()=>crForm(S.customRules.find(r=>r.id===b.dataset.cred)));
+  document.querySelectorAll("[data-crdel]").forEach(b=>b.onclick=()=>askDelete(b, "questa regola", ()=>{
+    const id = b.dataset.crdel;
+    if(LIVE) return del("/api/admin/rules/custom/"+id).then(x=>{ S.customRules = x.customRules; regole(); toast("Regola eliminata"); });
+    S.customRules = S.customRules.filter(r=>r.id!==id); logLocal("Regola eliminata", id, "regole"); regole(); toast("Regola eliminata (prova)"); }, regole));
   document.querySelectorAll("[data-r]").forEach(b=>b.onclick=()=>{ const r=S.rules[+b.dataset.r]; r.on=!r.on; b.setAttribute("aria-checked",r.on); if(LIVE) post("/api/admin/rules", {k:r.k, on:r.on}).catch(()=>{}); toast((r.on?"Attivata: ":"Disattivata: ")+r.t); });
 }
 
@@ -1576,7 +1870,7 @@ function load(){
   return fetch("/api/admin/state", {headers:H()}).then(r=>{ if(r.status===401) throw {auth:true}; return r.ok ? r.json() : Promise.reject(new Error("errore "+r.status)); }).then(d=>{
     LIVE = true; CONN = d.connections; ME = d.me || ME; paintMe();
     CLIENTS.splice(0, CLIENTS.length, ...d.clients); TECHS.splice(0, TECHS.length, ...d.techs);
-    S.mails = d.mails; S.tickets = d.tickets; S.threads = d.threads || []; S.rules = d.rules; SETTINGS = d.settings || SETTINGS; O365 = d.o365 || null;
+    S.mails = d.mails; S.tickets = d.tickets; S.threads = d.threads || []; S.customRules = d.customRules || []; if(d.aree) AREE_LIST = d.aree; if(d.limiti) LIMITI = d.limiti; S.rules = d.rules; SETTINGS = d.settings || SETTINGS; O365 = d.o365 || null;
     if(d.ai) AI = d.ai;
     if(d.profiles) PROFILES = d.profiles; REAL_ROLE = (d.me && d.me.profilo) || "admin"; if(REAL_ROLE !== "admin") ROLE = REAL_ROLE;
     if(!BOOTED){ BOOTED = true; landing(); }
@@ -1754,7 +2048,7 @@ $("#me-edit").onclick = ()=>{
   const real = REAL_ROLE, vista = (ME && ME.vista) || "op";
   $("#pf-vista-f").hidden = real !== "admin";
   $("#pf-vista").innerHTML = Object.entries(PROFILES).map(([k,p])=>`<option value="${k}" ${k===vista?"selected":""}>${esc(p.nome)}</option>`).join("");
-  const homes = v => GROUPS.flatMap(([,items])=>items).filter(([k])=>((PROFILES[v]||{perm:{}}).perm[k]||"").includes("v"));
+  const homes = v => GROUPS.flatMap(([,items])=>items).filter(([k])=>((PROFILES[v]||{perm:{}}).perm[k==="messaggi"?"ticket":k]||"").includes("v"));
   const fillHome = () => { const v = real==="admin" ? $("#pf-vista").value : real; const cur = (ME && ME.home) || "cruscotto";
     $("#pf-home").innerHTML = homes(v).map(([k,l])=>`<option value="${k}" ${k===cur?"selected":""}>${esc(l)}</option>`).join(""); };
   $("#pf-vista").onchange = fillHome; fillHome();

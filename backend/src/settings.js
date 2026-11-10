@@ -53,27 +53,89 @@ function update(body) {
   return { ok: true, settings: publicView() };
 }
 /* profili e permessi: per ogni area, v = vedere, m = creare/modificare, e = eliminare */
-const AREE = ["cruscotto", "posta", "ticket", "clienti", "utenti", "profili", "tecnici", "office365", "ai", "collegamenti", "regole", "backup", "audit", "tutorial"];
+const AREE = ["cruscotto", "posta", "ticket", "clienti", "utenti", "profili", "tecnici", "aree", "office365", "ai", "collegamenti", "regole", "backup", "audit", "tutorial"];
+const P = o => Object.fromEntries(AREE.map(a => [a, o[a] || ""]));
 const DEFAULT_PROFILES = {
-  admin: { nome: "Amministratore", desc: "Tutto, compresa la configurazione", perm: Object.fromEntries(AREE.map(a => [a, "vme"])) },
-  resp: { nome: "Responsabile service", desc: "Lavoro quotidiano, tecnici e regole; vede utenti e registro", perm: {
-    cruscotto: "v", posta: "vm", ticket: "vme", clienti: "vme", utenti: "v", profili: "v", tecnici: "vme", office365: "", ai: "", collegamenti: "v", regole: "vm", backup: "", audit: "v", tutorial: "v" } },
-  op: { nome: "Tecnico", desc: "I suoi interventi, posta, ticket e clienti; nessuna configurazione", perm: {
-    cruscotto: "v", posta: "", ticket: "vm", clienti: "v", utenti: "", profili: "", tecnici: "", office365: "", ai: "", collegamenti: "", regole: "", backup: "", audit: "", tutorial: "v" } },
+  admin: { nome: "Amministratore", desc: "Tutto, compresa la configurazione", base: true, perm: Object.fromEntries(AREE.map(a => [a, "vme"])) },
+  resp: { nome: "Responsabile service", desc: "Lavoro quotidiano, tecnici, aree e regole; vede utenti e registro", base: true, perm: P({
+    cruscotto: "v", posta: "vm", ticket: "vme", clienti: "vme", utenti: "v", profili: "v", tecnici: "vme", aree: "vme", collegamenti: "v", regole: "vm", audit: "v", tutorial: "v" }) },
+  agent: { nome: "Agente", desc: "Ufficio: ticket, messaggi, clienti e posta in arrivo delle sue aree di lavoro", base: true, perm: P({
+    cruscotto: "v", posta: "vm", ticket: "vm", clienti: "vm", tecnici: "v", aree: "v", tutorial: "v" }) },
+  op: { nome: "Tecnico", desc: "I suoi interventi, messaggi, ticket e clienti; nessuna configurazione", base: true, perm: P({
+    cruscotto: "v", ticket: "vm", clienti: "v", tutorial: "v" }) },
+  cliente: { nome: "Cliente", desc: "Solo i ticket della propria azienda: li vede e ne apre di nuovi", base: true, perm: P({ cruscotto: "v", ticket: "vm" }) },
 };
+const cleanPerm = v => { v = String(v || "").replace(/[^vme]/g, ""); if (v && !v.includes("v")) v = "v" + v; return [...new Set(v)].join(""); };
 function profiles() {
   const saved = load().profiles || {};
   const out = JSON.parse(JSON.stringify(DEFAULT_PROFILES));
-  for (const k of ["resp", "op"]) if (saved[k]) for (const a of AREE) if (typeof saved[k][a] === "string") out[k].perm[a] = saved[k][a].replace(/[^vme]/g, "");
+  for (const [k, p] of Object.entries(saved.custom || {})) out[k] = { nome: p.nome, desc: p.desc || "", base: false, perm: P(p.perm || {}) };
+  for (const k of Object.keys(out)) if (k !== "admin" && saved[k]) for (const a of AREE) if (typeof saved[k][a] === "string") out[k].perm[a] = saved[k][a].replace(/[^vme]/g, "");
   return out;                                   /* l'amministratore ha sempre tutto */
 }
 function updateProfiles(body) {
   const s = load(); s.profiles = s.profiles || {};
-  for (const k of ["resp", "op"]) if (body[k]) {
+  for (const k of Object.keys(profiles())) if (k !== "admin" && body[k]) {
     s.profiles[k] = {};
-    for (const a of AREE) { let v = String(body[k][a] || "").replace(/[^vme]/g, ""); if (v && !v.includes("v")) v = "v" + v; s.profiles[k][a] = v; }
+    for (const a of AREE) s.profiles[k][a] = cleanPerm(body[k][a]);
   }
   save(s); return profiles();
+}
+/* profili creati dall'ufficio: si partono da uno esistente, si rinominano, si eliminano se nessuno li usa */
+function addProfile({ nome, desc, base }) {
+  nome = String(nome || "").trim().slice(0, 40);
+  if (!nome) return { error: "dai un nome al profilo" };
+  const all = profiles();
+  if (Object.values(all).some(p => p.nome.toLowerCase() === nome.toLowerCase())) return { error: "esiste già un profilo con questo nome" };
+  const key = "p_" + nome.toLowerCase().normalize("NFD").replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 20) + "_" + Date.now().toString(36).slice(-4);
+  const from = all[base] && base !== "admin" ? all[base].perm : all.op.perm;
+  const s = load(); s.profiles = s.profiles || {}; s.profiles.custom = s.profiles.custom || {};
+  s.profiles.custom[key] = { nome, desc: String(desc || "").slice(0, 160), perm: { ...from } };
+  save(s); return { ok: true, key, profiles: profiles() };
+}
+function editProfile(key, { nome, desc }) {
+  const s = load(), c = ((s.profiles || {}).custom || {})[key];
+  if (!c) return { error: DEFAULT_PROFILES[key] ? "i profili di base non si rinominano" : "profilo non trovato" };
+  if (nome !== undefined) { nome = String(nome).trim().slice(0, 40); if (!nome) return { error: "dai un nome al profilo" }; c.nome = nome; }
+  if (desc !== undefined) c.desc = String(desc).slice(0, 160);
+  save(s); return { ok: true, profiles: profiles() };
+}
+function removeProfile(key, inUse) {
+  const s = load(), custom = (s.profiles || {}).custom || {};
+  if (!custom[key]) return { error: DEFAULT_PROFILES[key] ? "i profili di base non si eliminano" : "profilo non trovato" };
+  if (inUse) return { error: "il profilo è assegnato ad almeno un utente: cambia prima il loro profilo" };
+  delete custom[key]; delete s.profiles[key]; save(s); return { ok: true, profiles: profiles() };
+}
+/* aree di lavoro: si associano a tecnici e agenti; eliminate restano nello storico */
+function aree() { return (load().aree || []).map(a => ({ attivo: true, ...a })); }
+function addArea({ nome, desc, colore }) {
+  nome = String(nome || "").trim().slice(0, 50);
+  if (!nome) return { error: "dai un nome all'area" };
+  const s = load(); s.aree = s.aree || [];
+  if (s.aree.some(a => !a.eliminato && a.nome.toLowerCase() === nome.toLowerCase())) return { error: "esiste già un'area con questo nome" };
+  const a = { id: "a" + Date.now().toString(36), nome, desc: String(desc || "").slice(0, 200), colore: /^#[0-9a-f]{6}$/i.test(colore || "") ? colore : "#2aa7ff", attivo: true };
+  s.aree.push(a); save(s); return { ok: true, area: a };
+}
+function editArea(id, { nome, desc, colore, attivo }) {
+  const s = load(), a = (s.aree || []).find(x => x.id === id && !x.eliminato);
+  if (!a) return { error: "area non trovata" };
+  if (nome !== undefined) { nome = String(nome).trim().slice(0, 50); if (!nome) return { error: "dai un nome all'area" }; a.nome = nome; }
+  if (desc !== undefined) a.desc = String(desc).slice(0, 200);
+  if (colore !== undefined && /^#[0-9a-f]{6}$/i.test(colore)) a.colore = colore;
+  if (attivo !== undefined) a.attivo = !!attivo;
+  save(s); return { ok: true, area: a };
+}
+function removeArea(id) {
+  const s = load(), a = (s.aree || []).find(x => x.id === id && !x.eliminato);
+  if (!a) return { error: "area non trovata" };
+  a.eliminato = new Date().toISOString(); a.attivo = false; save(s); return { ok: true };
+}
+/* limite di utenti attivi (console + tecnici dell'app); 0 = nessun limite */
+function limiti() { const l = load().limiti || {}; return { maxUtenti: Number(l.maxUtenti) > 0 ? Math.floor(Number(l.maxUtenti)) : 0 }; }
+function updateLimiti({ maxUtenti }) {
+  const n = Math.floor(Number(maxUtenti));
+  if (!(n >= 0) || n > 100000) return { error: "numero non valido" };
+  const s = load(); s.limiti = { maxUtenti: n }; save(s); return { ok: true, limiti: limiti() };
 }
 const can = (profilo, area, right) => ((profiles()[profilo] || { perm: {} }).perm[area] || "").includes(right);
 /* copia di sicurezza: tutto data/ tranne il segreto di Office 365 e i loghi */
@@ -94,4 +156,4 @@ function restoreData(b) {
   }
   return { ok: true, created: b.created };
 }
-module.exports = { ai, aiPublic, updateAi, support, graph, publicView, update, AREE, profiles, updateProfiles, can, backupData, restoreData };
+module.exports = { ai, aiPublic, updateAi, support, graph, publicView, update, AREE, profiles, updateProfiles, addProfile, editProfile, removeProfile, aree, addArea, editArea, removeArea, limiti, updateLimiti, can, backupData, restoreData };

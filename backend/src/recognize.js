@@ -37,6 +37,12 @@ function recognize(mail, ctx) {
     const c = d && clients.find(c => c.dom === d);
     if (c) { client = c.id; how.push("dom"); }
   }
+  /* regole aggiunte dall'ufficio: dominio → cliente, parola nell'oggetto → cliente */
+  if (!client) for (const r of (ctx.custom || []).filter(x => x.on !== false && !x.eliminato)) {
+    const hit = r.tipo === "dominio" ? domainOf(mail.from) === String(r.valore).toLowerCase().replace(/^@/, "")
+      : String(mail.subject || "").toLowerCase().includes(String(r.valore).toLowerCase());
+    if (hit && clients.some(c => c.id === r.cliente)) { client = r.cliente; how.push("custom"); break; }
+  }
   const state = ticket ? "ok" : client ? "new" : "warn";
   return { state, ticket, client, how };
 }

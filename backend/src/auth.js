@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const cfg = require("./config");
+const settings = require("./settings");
 
 const TECH_FILE = path.join(cfg.dataDir, "tecnici.json");
 const DEMO_TECHS = [
@@ -21,7 +22,7 @@ function findTech(mail) { return techs().find(t => t.mail.toLowerCase() === Stri
 
 function login(mail, code) {
   const t = findTech(mail);
-  if (!t) return null;
+  if (!t || t.attivo === false || t.eliminato) return null;
   const a = Buffer.from(hashCode(t.mail, code), "hex"), b = Buffer.from(t.hash, "hex");
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
   return sign({ mail: t.mail, exp: Date.now() + 1000 * 60 * 60 * 24 * 90 });
@@ -37,7 +38,8 @@ function verify(token) {
   if (sig.length !== good.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(good))) return null;
   const obj = JSON.parse(Buffer.from(body, "base64url").toString());
   if (obj.exp < Date.now()) return null;
-  return findTech(obj.mail) || null;
+  const t = findTech(obj.mail);
+  return t && t.attivo !== false && !t.eliminato ? t : null;   /* disattivato o eliminato: fuori subito */
 }
 /* middleware per le API dell'app */
 function requireTech(req, res, next) {
@@ -45,13 +47,22 @@ function requireTech(req, res, next) {
   if (!t) return res.status(401).json({ error: "accesso richiesto" });
   req.tech = t; next();
 }
-/* ---- console dell'ufficio: utenti con profilo (admin, resp, op) in data/users.json ----
+/* ---- console dell'ufficio: utenti con profilo (admin, resp, agent, op, cliente o personalizzato) in data/users.json ----
    Finché il file non esiste: l'utente di .env (ADMIN_USER/ADMIN_PASSWORD) o, in prova, admin/admin123
    più due utenti di esempio (responsabile e operatore, stessa password di prova). */
 const USERS_FILE = path.join(cfg.dataDir, "users.json");
 const OLD_ADMIN_FILE = path.join(cfg.dataDir, "admin.json");
 const DEMO_ADMIN = { user: "admin", password: "admin123" };
-const PROFILI = ["admin", "resp", "op"];
+const PROFILI = ["admin", "resp", "agent", "op", "cliente"];
+const validProfile = k => Object.prototype.hasOwnProperty.call(settings.profiles(), k);
+/* limite di utenti attivi: utenti della console + tecnici dell'app, esclusi disattivati ed eliminati */
+function activeCount() { return users().filter(u => u.attivo !== false && !u.eliminato).length + techs().filter(t => t.attivo !== false && !t.eliminato).length; }
+function limitInfo() { const max = settings.limiti().maxUtenti; const n = activeCount(); return { max, attivi: n, pieno: max > 0 && n >= max }; }
+const LIMIT_ERR = () => { const l = limitInfo(); return { error: "Limite di utenti raggiunto (" + l.attivi + " su " + l.max + "): disattiva qualcuno o alza il limite in Configurazione → Utenti", limite: true }; };
+const cleanAree = a => Array.isArray(a) ? [...new Set(a.map(String))].filter(id => settings.aree().some(x => x.id === id)).slice(0, 20) : [];
+/* nessuno tranne un amministratore modifica, disattiva o elimina un amministratore */
+const adminGuard = (target, who, profilo) => who && who.profilo !== "admin" && (target.profilo === "admin" || profilo === "admin")
+  ? { error: "Solo un amministratore può modificare o eliminare un amministratore", vietato: true } : null;
 function users() {
   if (fs.existsSync(USERS_FILE)) return JSON.parse(fs.readFileSync(USERS_FILE, "utf8"));
   const list = [];
@@ -61,6 +72,8 @@ function users() {
   if (cfg.mode === "demo" && !cfg.adminPassword) {
     list.push({ user: "l.bianchi", nome: "Laura Bianchi", mail: "l.bianchi@efuture.it", profilo: "resp", attivo: true, hash: hashCode("l.bianchi", DEMO_ADMIN.password) });
     list.push({ user: "g.verdi", nome: "Giulia Verdi", mail: "g.verdi@efuture.it", profilo: "op", attivo: true, hash: hashCode("g.verdi", DEMO_ADMIN.password) });
+    list.push({ user: "a.neri", nome: "Andrea Neri", mail: "a.neri@efuture.it", profilo: "agent", attivo: true, hash: hashCode("a.neri", DEMO_ADMIN.password) });
+    list.push({ user: "m.rossi", nome: "Marco Rossi", mail: "m.rossi@caseificiovalle.ch", profilo: "cliente", cliente: "cas", attivo: true, hash: hashCode("m.rossi", DEMO_ADMIN.password) });
   }
   return list;
 }
@@ -151,13 +164,13 @@ function verifyAdmin(token) {
   return acc;
 }
 /* il proprio profilo: nome, mail e (se data) la password; la password attuale è sempre richiesta */
-const HOMES = ["cruscotto", "ticket", "clienti", "posta", "utenti", "profili", "tecnici", "office365", "ai", "regole", "collegamenti", "backup", "audit", "tutorial"];
+const HOMES = ["cruscotto", "ticket", "messaggi", "clienti", "aree", "posta", "utenti", "profili", "tecnici", "office365", "ai", "regole", "collegamenti", "backup", "audit", "tutorial"];
 function updateAdmin({ nome, mail, attuale, nuova, home, vista }, who) {
   const list = users(), acc = list.find(x => x.user === (who || {}).user);
   if (!acc) return { error: "utente non trovato" };
   /* schermata iniziale e vista: preferenze personali, non serve la password */
   if (home !== undefined && HOMES.includes(home)) acc.home = home;
-  if (vista !== undefined && PROFILI.includes(vista)) acc.vista = vista;
+  if (vista !== undefined && validProfile(vista)) acc.vista = vista;
   if (!nuova && nome === undefined && mail === undefined) { saveUsers(list); return { ok: true, me: publicAdmin(acc) }; }
   if (!checkPassword(acc, attuale)) return { error: "password attuale non corretta" };
   if (nuova && String(nuova).length < 8) return { error: "la nuova password deve avere almeno 8 caratteri" };
@@ -166,7 +179,7 @@ function updateAdmin({ nome, mail, attuale, nuova, home, vista }, who) {
   saveUsers(list);
   return { ok: true, me: publicAdmin(acc) };
 }
-const publicAdmin = a => a ? { user: a.user, nome: a.nome || "", mail: a.mail || "", profilo: a.profilo || "admin", attivo: a.attivo !== false, ultimo: a.ultimo || "", home: a.home || "cruscotto", vista: a.vista || "op",
+const publicAdmin = a => a ? { user: a.user, nome: a.nome || "", mail: a.mail || "", profilo: a.profilo || "admin", attivo: a.attivo !== false, ultimo: a.ultimo || "", aree: a.aree || [], cliente: a.cliente || "", eliminato: a.eliminato || "", home: a.home || "cruscotto", vista: a.vista || "op",
   twofa: !!a.totp, recoveryLeft: (a.recovery || []).length, passkeys: (a.passkeys || []).map(p => ({ id: p.id, nome: p.nome, creato: p.creato, usato: p.usato || "" })) } : null;
 /* passkey: credenziali salvate sull'utente */
 function addPasskey(who, cred) { const list = users(), acc = list.find(x => x.user === who.user); acc.passkeys = acc.passkeys || []; acc.passkeys.push(cred); delete acc.pkChallenge; saveUsers(list); }
@@ -175,36 +188,50 @@ function findByPasskey(id) { return users().find(u => (u.passkeys || []).some(p 
 function touchPasskey(user, id, counter) { const list = users(), acc = list.find(x => x.user === user), p = acc.passkeys.find(x => x.id === id); p.counter = counter; p.usato = new Date().toISOString(); saveUsers(list); }
 function removePasskey(who, id) { const list = users(), acc = list.find(x => x.user === who.user); const n = (acc.passkeys || []).length; acc.passkeys = (acc.passkeys || []).filter(p => p.id !== id); saveUsers(list); return n !== acc.passkeys.length; }
 /* gestione utenti dalla console */
-function addUser({ user, nome, mail, profilo, password }) {
+function addUser({ user, nome, mail, profilo, password, aree, cliente }, who) {
   user = String(user || "").trim().toLowerCase();
   if (!/^[a-z0-9._@-]{3,60}$/.test(user)) return { error: "nome utente non valido (lettere, numeri, punto, trattino)" };
-  if (!PROFILI.includes(profilo)) return { error: "profilo non valido" };
+  if (!validProfile(profilo)) return { error: "profilo non valido" };
+  const g = adminGuard({}, who, profilo); if (g) return g;
   if (String(password || "").length < 8) return { error: "la password deve avere almeno 8 caratteri" };
+  if (profilo === "cliente" && !cliente) return { error: "scegli l'azienda del cliente" };
   const list = users();
-  if (list.some(x => x.user === user)) return { error: "esiste già un utente con questo nome" };
-  const u = { user, nome: String(nome || user).slice(0, 80), mail: String(mail || "").slice(0, 120), profilo, attivo: true, hash: hashCode(user, password) };
+  const old = list.find(x => x.user === user);
+  if (old) return { error: old.eliminato ? "nome usato da un utente eliminato (resta nello storico): scegline un altro" : "esiste già un utente con questo nome" };
+  if (limitInfo().pieno) return LIMIT_ERR();
+  const u = { user, nome: String(nome || user).slice(0, 80), mail: String(mail || "").slice(0, 120), profilo, attivo: true, aree: cleanAree(aree), cliente: profilo === "cliente" ? String(cliente).slice(0, 40) : "", hash: hashCode(user, password) };
   list.push(u); saveUsers(list); return { ok: true, user: publicAdmin(u) };
 }
-function editUser(user, { nome, mail, profilo, attivo, password }, who) {
-  const list = users(), u = list.find(x => x.user === user);
+function editUser(user, { nome, mail, profilo, attivo, password, aree, cliente }, who) {
+  const list = users(), u = list.find(x => x.user === user && !x.eliminato);
   if (!u) return { error: "utente non trovato" };
-  const admins = list.filter(x => x.profilo === "admin" && x.attivo !== false);
+  const g = adminGuard(u, who, profilo); if (g) return g;
+  const admins = list.filter(x => x.profilo === "admin" && x.attivo !== false && !x.eliminato);
   const losesAdmin = (profilo && profilo !== "admin") || attivo === false;
   if (u.profilo === "admin" && losesAdmin && admins.length <= 1) return { error: "serve almeno un amministratore attivo" };
   if (who && who.user === user && attivo === false) return { error: "non puoi disattivare te stesso" };
+  if (attivo === true && u.attivo === false && limitInfo().pieno) return LIMIT_ERR();
+  if (profilo !== undefined && !validProfile(profilo)) return { error: "profilo non valido" };
+  const prof = profilo !== undefined ? profilo : u.profilo;
+  if (prof === "cliente" && !(cliente !== undefined ? cliente : u.cliente)) return { error: "scegli l'azienda del cliente" };
+  if (password) { if (String(password).length < 8) return { error: "la password deve avere almeno 8 caratteri" }; u.hash = hashCode(u.user, password); }
   if (nome !== undefined) u.nome = String(nome).slice(0, 80);
   if (mail !== undefined) u.mail = String(mail).slice(0, 120);
-  if (profilo !== undefined) { if (!PROFILI.includes(profilo)) return { error: "profilo non valido" }; u.profilo = profilo; }
+  if (profilo !== undefined) u.profilo = profilo;
   if (attivo !== undefined) u.attivo = !!attivo;
-  if (password) { if (String(password).length < 8) return { error: "la password deve avere almeno 8 caratteri" }; u.hash = hashCode(u.user, password); }
+  if (aree !== undefined) u.aree = cleanAree(aree);
+  if (cliente !== undefined || profilo !== undefined) u.cliente = u.profilo === "cliente" ? String(cliente !== undefined ? cliente : u.cliente || "").slice(0, 40) : "";
   saveUsers(list); return { ok: true, user: publicAdmin(u) };
 }
+/* eliminare non cancella: l'utente non entra più e sparisce dagli elenchi, ma il suo nome resta su ticket, messaggi e registro */
 function removeUser(user, who) {
-  const list = users(), i = list.findIndex(x => x.user === user);
-  if (i < 0) return { error: "utente non trovato" };
+  const list = users(), u = list.find(x => x.user === user && !x.eliminato);
+  if (!u) return { error: "utente non trovato" };
+  const g = adminGuard(u, who); if (g) return g;
   if (who && who.user === user) return { error: "non puoi eliminare te stesso" };
-  if (list[i].profilo === "admin" && list.filter(x => x.profilo === "admin" && x.attivo !== false).length <= 1) return { error: "serve almeno un amministratore attivo" };
-  list.splice(i, 1); saveUsers(list); return { ok: true };
+  if (u.profilo === "admin" && list.filter(x => x.profilo === "admin" && x.attivo !== false && !x.eliminato).length <= 1) return { error: "serve almeno un amministratore attivo" };
+  u.eliminato = new Date().toISOString(); u.attivo = false; delete u.passkeys; delete u.totp; delete u.recovery;
+  saveUsers(list); return { ok: true };
 }
 function requireAdmin(req, res, next) {
   const acc = verifyAdmin((req.headers.authorization || "").replace(/^Bearer\s+/i, ""));
@@ -214,30 +241,40 @@ function requireAdmin(req, res, next) {
 /* ---- gestione dei tecnici dalla console: data/tecnici.json (in prova parte dai tecnici di esempio) ---- */
 function saveTechs(list) { fs.mkdirSync(cfg.dataDir, { recursive: true }); fs.writeFileSync(TECH_FILE, JSON.stringify(list.map(({ codice, ...t }) => t), null, 2)); }
 const newCode = () => String(crypto.randomInt(100000, 1000000));
-function addTech({ mail, nome, ini, zona }) {
+const techPublic = t => ({ mail: t.mail, nome: t.nome, ini: t.ini, zona: t.zona, attivo: t.attivo !== false && !t.eliminato, aree: t.aree || [], eliminato: t.eliminato || "" });
+function addTech({ mail, nome, ini, zona, aree }) {
   mail = String(mail || "").trim().toLowerCase();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail) || !nome) return { error: "nome e mail aziendale obbligatori" };
   const list = techs();
-  if (list.some(t => t.mail.toLowerCase() === mail)) return { error: "esiste già un tecnico con questa mail" };
-  const code = newCode(), t = { mail, nome: String(nome).slice(0, 80), ini: String(ini || "").slice(0, 3).toUpperCase(), zona: String(zona || "").slice(0, 40), hash: hashCode(mail, code) };
+  const old = list.find(t => t.mail.toLowerCase() === mail);
+  if (old) return { error: old.eliminato ? "questa mail è di un tecnico eliminato (resta nello storico): riattivalo da Tecnici → Mostra eliminati" : "esiste già un tecnico con questa mail" };
+  if (limitInfo().pieno) return LIMIT_ERR();
+  const code = newCode(), t = { mail, nome: String(nome).slice(0, 80), ini: String(ini || "").slice(0, 3).toUpperCase(), zona: String(zona || "").slice(0, 40), attivo: true, aree: cleanAree(aree), hash: hashCode(mail, code) };
   list.push(t); saveTechs(list);
-  return { tech: { mail, nome: t.nome, ini: t.ini, zona: t.zona }, code };
+  return { tech: techPublic(t), code };
 }
-function editTech(mail, { nome, ini, zona, newCode: regen }) {
+function editTech(mail, { nome, ini, zona, newCode: regen, attivo, aree, ripristina }) {
   const list = techs(), t = list.find(x => x.mail.toLowerCase() === String(mail).toLowerCase());
   if (!t) return { error: "tecnico non trovato" };
+  const riattiva = (attivo === true && t.attivo === false) || (ripristina && t.eliminato);
+  if (riattiva && limitInfo().pieno) return LIMIT_ERR();
+  if (ripristina) { delete t.eliminato; t.attivo = true; }
+  if (t.eliminato) return { error: "tecnico eliminato: prima ripristinalo" };
   if (nome) t.nome = String(nome).slice(0, 80);
   if (ini !== undefined) t.ini = String(ini).slice(0, 3).toUpperCase();
   if (zona !== undefined) t.zona = String(zona).slice(0, 40);
+  if (attivo !== undefined) t.attivo = !!attivo;
+  if (aree !== undefined) t.aree = cleanAree(aree);
   let code;
   if (regen) { code = newCode(); t.hash = hashCode(t.mail, code); }
   saveTechs(list);
-  return { tech: { mail: t.mail, nome: t.nome, ini: t.ini, zona: t.zona }, code };
+  return { tech: techPublic(t), code };
 }
+/* eliminare un tecnico: non entra più nell'app, ma le iniziali e il nome restano sui ticket e nelle conversazioni */
 function removeTech(mail) {
-  const list = techs(), i = list.findIndex(x => x.mail.toLowerCase() === String(mail).toLowerCase());
-  if (i < 0) return false;
-  list.splice(i, 1); saveTechs(list); return true;
+  const list = techs(), t = list.find(x => x.mail.toLowerCase() === String(mail).toLowerCase() && !x.eliminato);
+  if (!t) return false;
+  t.eliminato = new Date().toISOString(); t.attivo = false; saveTechs(list); return true;
 }
 /* solo in prova, senza tecnici veri: credenziali da suggerire nella schermata di accesso */
 function demoHint() {
@@ -245,4 +282,4 @@ function demoHint() {
   const t = findTech(DEMO_TECHS[0].mail);
   return t && t.hash === hashCode(DEMO_TECHS[0].mail, DEMO_TECHS[0].codice) ? { mail: DEMO_TECHS[0].mail, code: DEMO_TECHS[0].codice } : null;
 }
-module.exports = { sessionFor, readSigned, adminLogin2fa, setup2fa, enable2fa, disable2fa, forgot, resetPassword, addPasskey, setPkChallenge, findByPasskey, touchPasskey, removePasskey, users, saveUsers, findUser, addUser, editUser, removeUser, PROFILI, USERS_FILE, addTech, editTech, removeTech, adminLogin, adminDemoHint, adminAccount, updateAdmin, publicAdmin, demoHint, hashCode, techs, findTech, login, verify, requireTech, requireAdmin, TECH_FILE };
+module.exports = { validProfile, limitInfo, activeCount, techPublic, sessionFor, readSigned, adminLogin2fa, setup2fa, enable2fa, disable2fa, forgot, resetPassword, addPasskey, setPkChallenge, findByPasskey, touchPasskey, removePasskey, users, saveUsers, findUser, addUser, editUser, removeUser, PROFILI, USERS_FILE, addTech, editTech, removeTech, adminLogin, adminDemoHint, adminAccount, updateAdmin, publicAdmin, demoHint, hashCode, techs, findTech, login, verify, requireTech, requireAdmin, TECH_FILE };

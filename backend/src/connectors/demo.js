@@ -59,7 +59,18 @@ module.exports = {
   },
   createClient(c) { const id = "c" + Date.now().toString(36); CLIENTS.push({ id, ...c }); return id; },
   updateClient(id, c) { const x = CLIENTS.find(y => y.id === id); if (!x) return false; Object.assign(x, c); return true; },
-  deleteClient(id) { const i = CLIENTS.findIndex(y => y.id === id); if (i < 0) return false; CLIENTS.splice(i, 1); return true; },
+  /* eliminato: sparisce dagli elenchi ma resta sui ticket (storico) */
+  deleteClient(id) { const x = CLIENTS.find(y => y.id === id && !y.eliminato); if (!x) return false; x.eliminato = new Date().toISOString(); x.attivo = false; return true; },
+  restoreClient(id) { const x = CLIENTS.find(y => y.id === id); if (!x) return false; delete x.eliminato; x.attivo = true; return true; },
+  updateTicket(id, b) {
+    const t = TICKETS.find(x => x.id === id); if (!t) return null;
+    if (b.title !== undefined) t.title = String(b.title).slice(0, 120);
+    if (b.state !== undefined && ["Aperto", "In lavorazione", "Pianificato", "In attesa cliente", "In attesa ricambio", "Chiuso"].includes(b.state)) t.state = b.state;
+    if (b.tech !== undefined) t.tech = String(b.tech).slice(0, 3);
+    if (b.urg !== undefined) t.urg = !!b.urg;
+    if (b.plan !== undefined) t.plan = b.plan && /^\d{2}:\d{2}$/.test(b.plan.time || "") ? { day: Math.max(0, Math.min(60, Number(b.plan.day) || 0)), time: b.plan.time } : null;
+    t.upd = "adesso"; return t;
+  },
   deleteTicket(id) {
     const i = TICKETS.findIndex(t => t.id === id);
     if (i < 0) return false;

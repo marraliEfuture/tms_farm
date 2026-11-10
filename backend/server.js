@@ -45,7 +45,7 @@ function clientMailOf(th, st, tech) {
   return inbound ? mailAddr(inbound.from) : "";
 }
 const now = () => new Date().toLocaleTimeString("it-CH", { hour: "2-digit", minute: "2-digit" });
-const techsPublic = () => { const st = store.load(); return auth.techs().map(({ hash, codice, ...t }) => ({ ...t, app: !!st.threads[t.mail], last: (st.mails.find(m => m.from === t.mail) || {}).at || "—" })); };
+const techsPublic = () => { const st = store.load(); return auth.techs().map(({ hash, codice, ...t }) => ({ ...t, attivo: t.attivo !== false && !t.eliminato, aree: t.aree || [], eliminato: t.eliminato || "", app: !!st.threads[t.mail], last: (st.mails.find(m => m.from === t.mail) || {}).at || "—" })); };
 
 /* clienti con contatti, numeri salvati dall'app e ticket aperti */
 async function clientsWithOpen() {
@@ -61,7 +61,9 @@ async function appData(tech) {
   const st = store.load();
   if (!st.threads[tech.mail]) { st.threads[tech.mail] = JSON.parse(JSON.stringify((cfg.mode === "demo" && sources.demo.seedThreads[tech.mail]) || [])); store.save(); }
   return { me: { mail: tech.mail, ini: tech.ini, zona: tech.zona, nome: tech.nome }, support: settings.support(), mode: cfg.mode,
-    clients: await clientsWithOpen(), threads: st.threads[tech.mail] };
+    clients: await clientsWithOpen(), threads: st.threads[tech.mail],
+    /* i suoi ticket, anche chiusi, per la schermata Ticket dell'app */
+    tickets: (await sources.data()).tickets.filter(t => t.tech === tech.ini).map(({ msgIds, ...t }) => t) };
 }
 /* registra la mail nel registro della console, con il riconoscimento che ne farebbe il backend */
 async function logMail(msg, sent) {
@@ -71,7 +73,7 @@ async function logMail(msg, sent) {
   if (msg.inReplyTo) hdr.unshift(["In-Reply-To", msg.inReplyTo], ["References", msg.inReplyTo]);
   const entry = { id: "m" + Date.now(), at: now(), from: msg.from.address, fromName: msg.from.name, subj: msg.subject, hdr, body: msg.text,
     sent: { real: sent.real, messageId: sent.messageId, file: sent.file ? path.basename(sent.file) : "" } };
-  const r = recognize({ from: entry.from, subject: entry.subj, headers: hdr }, { techs: auth.techs(), clients, tickets, rules: st.rules });
+  const r = recognize({ from: entry.from, subject: entry.subj, headers: hdr }, { techs: auth.techs(), clients, tickets, rules: st.rules, custom: st.customRules || [] });
   entry.res = { ...r, act: sent.real ? "Mail spedita a " + settings.support() + "." : "Modalità prova: mail salvata in outbox/" + path.basename(sent.file || "") + ", non spedita." };
   st.mails.unshift(entry); st.mails = st.mails.slice(0, 500); store.save();
   return entry;
@@ -295,12 +297,12 @@ app.get("/api/admin/state", async (req, res, next) => {
         if (!inboxCache.at || Date.now() - inboxCache.at > settings.graph().every * 60000) { inboxCache.list = await graph.inbox(25); inboxCache.at = Date.now(); inboxCache.err = ""; }
       } catch (e) { inboxCache.err = e.message; inboxCache.at = Date.now(); }
       o365 = { mailbox: settings.graph().mailbox, error: inboxCache.err, count: (inboxCache.list || []).length };
-      const read = (inboxCache.list || []).map(m => ({ ...m, res: { ...recognize({ from: m.from, subject: m.subj, headers: m.hdr }, { techs: auth.techs(), clients, tickets, rules: st.rules }), act: "Letta dalla casella " + settings.graph().mailbox + " (Office 365)." } }));
+      const read = (inboxCache.list || []).map(m => ({ ...m, res: { ...recognize({ from: m.from, subject: m.subj, headers: m.hdr }, { techs: auth.techs(), clients, tickets, rules: st.rules, custom: st.customRules || [] }), act: "Letta dalla casella " + settings.graph().mailbox + " (Office 365)." } }));
       mails = [...read, ...st.mails.filter(x => !read.some(r => r.subj === x.subj && r.from === x.from))];
     }
     if (cfg.mode === "demo") {
       const extra = sources.demo.inbound.filter(m => !st.mails.some(x => x.id === m.id)).map(m => ({ ...m,
-        res: { ...recognize({ from: m.from, subject: m.subj, headers: m.hdr }, { techs: auth.techs(), clients, tickets, rules: st.rules }), act: "Esempio di mail arrivata direttamente da un cliente." } }));
+        res: { ...recognize({ from: m.from, subject: m.subj, headers: m.hdr }, { techs: auth.techs(), clients, tickets, rules: st.rules, custom: st.customRules || [] }), act: "Esempio di mail arrivata direttamente da un cliente." } }));
       mails = [...st.mails, ...extra];
     }
     /* conversazioni dei tecnici con Ticket Farm, ticket per ticket (in prova anche quelle di esempio non ancora aperte dall'app) */
@@ -308,7 +310,13 @@ app.get("/api/admin/state", async (req, res, next) => {
     const tl = auth.techs(), op = (req.admin.profilo || "admin") === "op";
     const threads = Object.entries(st.threads).flatMap(([m, list]) => { const t = tl.find(x => x.mail === m); return (list || []).map(th => ({ ...th, tech: t ? t.ini : "", techMail: m })); })
       .filter(th => !op || th.techMail === req.admin.mail);
-    res.json({ threads, ai: settings.aiPublic(), profiles: settings.profiles(), o365, settings: settings.can(req.admin.profilo || "admin", "office365", "v") ? settings.publicView() : null, me: auth.publicAdmin(req.admin), mode: cfg.mode, support: settings.support(), appUrl: cfg.appUrl, clients, tickets, techs: techsPublic(), mails, rules: st.rules, connections: await sources.status() });
+    /* profilo Cliente: solo i ticket e l'anagrafica della propria azienda, niente posta né conversazioni interne */
+    const mine = (req.admin.profilo || "admin") === "cliente" ? req.admin.cliente || "-" : "";
+    const hidden = new Set(st.hiddenMails || []);
+    mails = mails.filter(m => !hidden.has(m.id));
+    if (mine) return res.json({ threads: [], ai: { enabled: false }, profiles: settings.profiles(), o365: null, settings: null, me: auth.publicAdmin(req.admin), mode: cfg.mode, support: "", appUrl: cfg.appUrl,
+      clients: clients.filter(c => c.id === mine), tickets: tickets.filter(t => t.client === mine), techs: techsPublic().map(({ mail, ...t }) => ({ ...t, mail: "" })), mails: [], rules: [], customRules: [], aree: [], limiti: auth.limitInfo(), connections: [] });
+    res.json({ customRules: st.customRules || [], aree: settings.aree(), limiti: auth.limitInfo(), threads, ai: settings.aiPublic(), profiles: settings.profiles(), o365, settings: settings.can(req.admin.profilo || "admin", "office365", "v") ? settings.publicView() : null, me: auth.publicAdmin(req.admin), mode: cfg.mode, support: settings.support(), appUrl: cfg.appUrl, clients, tickets, techs: techsPublic(), mails, rules: st.rules, connections: await sources.status() });
   } catch (e) { next(e); }
 });
 /* l'ufficio scrive nella conversazione del tecnico: il messaggio arriva nell'app come «Ticket Farm» */
@@ -316,7 +324,7 @@ app.post("/api/admin/threads/reply", need("ticket", "m"), (req, res) => {
   const st = store.load(), text = String(req.body.text || "").trim().slice(0, 2000), m = String(req.body.techMail || "");
   const th = (st.threads[m] || []).find(t => t.ticket === req.body.ticket);
   if (!th || !text) return res.status(400).json({ error: "conversazione o testo mancante" });
-  const msg = { k: "tf", t: now(), text: text, by: req.admin.nome || req.admin.user || "Ufficio" };
+  const msg = { k: "tf", t: now(), text: text, by: req.admin.nome || req.admin.user || "Ufficio", id: "o" + Date.now().toString(36) };
   if (req.body.forClient) msg.forClient = String(req.body.forClient).slice(0, 2000);
   th.msgs.push(msg); th.unread = true; store.save();
   log(req, "Messaggio al tecnico", th.ticket + " · " + m, "ticket");
@@ -341,13 +349,27 @@ app.post("/api/admin/mails/:id/resolve", need("posta", "m"), async (req, res, ne
 app.post("/api/admin/tickets", need("ticket", "m"), async (req, res, next) => {
   try {
     const { clients } = await sources.data();
-    const c = clients.find(x => x.id === req.body.client), title = String(req.body.title || "").trim().slice(0, 120);
+    const own = req.admin.profilo === "cliente" ? req.admin.cliente : "";
+    const c = clients.find(x => x.id === (own || req.body.client) && !x.eliminato), title = String(req.body.title || "").trim().slice(0, 120);
     if (!c || !title) return res.status(400).json({ error: "cliente o richiesta mancanti" });
+    if (own) req.body.tech = "";
+    if (req.body.tech && !auth.techs().some(t => t.ini === req.body.tech && t.attivo !== false && !t.eliminato)) return res.status(400).json({ error: "tecnico non attivo: scegline un altro" });
     if (cfg.mode !== "demo") return res.status(501).json({ error: "dal vivo il ticket va aperto in " + c.sys + ": collegamento non ancora disponibile" });
     const id = sources.demo.createTicket(c, title, String(req.body.tech || ""), { urg: !!req.body.urg, origin: "Console" });
     log(req, "Ticket creato", id + " · " + c.name + " · " + title, "ticket");
     res.json({ ticket: { id, sys: c.sys, client: c.id, title } });
   } catch (e) { next(e); }
+});
+/* modificare un ticket: stato, tecnico, urgenza, data dell'intervento, richiesta */
+app.put("/api/admin/tickets/:id", need("ticket", "m"), (req, res) => {
+  if (req.admin.profilo === "cliente") return res.status(403).json({ error: "il cliente apre ticket ma non li modifica" });
+  if (cfg.mode !== "demo") return res.status(501).json({ error: "dal vivo il ticket si modifica in ITSM o Halo: collegamento non ancora disponibile" });
+  const b = req.body || {};
+  if (b.tech && !auth.techs().some(t => t.ini === b.tech && t.attivo !== false && !t.eliminato)) return res.status(400).json({ error: "tecnico non attivo: scegline un altro" });
+  const t = sources.demo.updateTicket(req.params.id, b);
+  if (!t) return res.status(404).json({ error: "ticket non trovato" });
+  log(req, "Ticket modificato", t.id + " · " + t.state + (t.tech ? " · " + t.tech : ""), "ticket");
+  res.json({ ticket: t });
 });
 app.delete("/api/admin/tickets/:id", need("ticket", "e"), (req, res) => {
   if (cfg.mode !== "demo") return res.status(501).json({ error: "dal vivo i ticket si chiudono in ITSM o Halo, non si eliminano da qui" });
@@ -368,9 +390,11 @@ app.post("/api/admin/clients", need("clienti", "m"), (req, res) => {
 });
 app.put("/api/admin/clients/:id", need("clienti", "m"), (req, res) => {
   if (cfg.mode !== "demo") return liveOnly(res, "i clienti");
+  if (req.body && req.body.ripristina) { if (!sources.demo.restoreClient(req.params.id)) return res.status(404).json({ error: "cliente non trovato" }); log(req, "Cliente ripristinato", req.params.id, "clienti"); return res.json({ ok: true }); }
   const c = cleanClient(req.body || {}); if (!c.name) return res.status(400).json({ error: "ragione sociale mancante" });
+  if (req.body.attivo !== undefined) c.attivo = !!req.body.attivo;
   if (!sources.demo.updateClient(req.params.id, c)) return res.status(404).json({ error: "cliente non trovato" });
-  log(req, "Cliente modificato", c.name, "clienti");
+  log(req, "Cliente modificato", c.name + (c.attivo === false ? " · disattivato" : ""), "clienti");
   res.json({ ok: true });
 });
 app.delete("/api/admin/clients/:id", need("clienti", "e"), (req, res) => {
@@ -380,8 +404,9 @@ app.delete("/api/admin/clients/:id", need("clienti", "e"), (req, res) => {
   res.json({ ok: true });
 });
 /* tecnici: account dell'app, gestiti qui (data/tecnici.json) anche dal vivo */
-app.post("/api/admin/techs", need("tecnici", "m"), (req, res) => { const r = auth.addTech(req.body || {}); if (r.error) return res.status(400).json(r); log(req, "Tecnico creato", r.tech.mail, "tecnici"); res.json(r); });
-app.put("/api/admin/techs/:mail", need("tecnici", "m"), (req, res) => { const r = auth.editTech(req.params.mail, req.body || {}); if (r.error) return res.status(404).json(r); log(req, r.code ? "Nuovo codice al tecnico" : "Tecnico modificato", r.tech.mail, "tecnici"); res.json(r); });
+const errCode = r => r.limite ? 409 : r.vietato ? 403 : 400;
+app.post("/api/admin/techs", need("tecnici", "m"), (req, res) => { const r = auth.addTech(req.body || {}); if (r.error) return res.status(errCode(r)).json(r); log(req, "Tecnico creato", r.tech.mail, "tecnici"); res.json(r); });
+app.put("/api/admin/techs/:mail", need("tecnici", "m"), (req, res) => { const r = auth.editTech(req.params.mail, req.body || {}); if (r.error) return res.status(r.limite ? 409 : 400).json(r); log(req, r.code ? "Nuovo codice al tecnico" : req.body.ripristina ? "Tecnico ripristinato" : req.body.attivo === false ? "Tecnico disattivato" : req.body.attivo === true ? "Tecnico riattivato" : "Tecnico modificato", r.tech.mail, "tecnici"); res.json(r); });
 app.delete("/api/admin/techs/:mail", need("tecnici", "e"), (req, res) => { if (!auth.removeTech(req.params.mail)) return res.status(404).json({ error: "tecnico non trovato" }); log(req, "Tecnico eliminato", req.params.mail, "tecnici"); res.json({ ok: true }); });
 /* impostazioni: casella di raccolta e Office 365 */
 const inboxCache = { at: 0, list: [], err: "" };
@@ -425,9 +450,9 @@ app.post("/api/admin/ai", need("ai", "m"), (req, res) => {
 app.post("/api/admin/ai/test", need("ai", "m"), async (req, res, next) => { try { const r = await aiAgenda(String(req.body.tech || "MB"), true); log(req, "Prova dell'assistente AI", r.source, "ai"); res.json(r); } catch (e) { next(e); } });
 /* utenti della console */
 app.get("/api/admin/users", need("utenti", "v"), (req, res) => res.json({ users: auth.users().map(auth.publicAdmin) }));
-app.post("/api/admin/users", need("utenti", "m"), (req, res) => { const r = auth.addUser(req.body || {}); if (r.error) return res.status(400).json(r); log(req, "Utente creato", r.user.user + " (" + r.user.profilo + ")", "utenti"); res.json(r); });
-app.put("/api/admin/users/:user", need("utenti", "m"), (req, res) => { const r = auth.editUser(req.params.user, req.body || {}, req.admin); if (r.error) return res.status(400).json(r); log(req, "Utente modificato", r.user.user + (req.body.password ? " · nuova password" : "") + (req.body.attivo === false ? " · disattivato" : ""), "utenti"); res.json(r); });
-app.delete("/api/admin/users/:user", need("utenti", "e"), (req, res) => { const r = auth.removeUser(req.params.user, req.admin); if (r.error) return res.status(400).json(r); log(req, "Utente eliminato", req.params.user, "utenti"); res.json(r); });
+app.post("/api/admin/users", need("utenti", "m"), (req, res) => { const r = auth.addUser(req.body || {}, req.admin); if (r.error) return res.status(errCode(r)).json(r); log(req, "Utente creato", r.user.user + " (" + r.user.profilo + ")", "utenti"); res.json(r); });
+app.put("/api/admin/users/:user", need("utenti", "m"), (req, res) => { const r = auth.editUser(req.params.user, req.body || {}, req.admin); if (r.error) return res.status(errCode(r)).json(r); log(req, "Utente modificato", r.user.user + (req.body.password ? " · nuova password" : "") + (req.body.attivo === false ? " · disattivato" : ""), "utenti"); res.json(r); });
+app.delete("/api/admin/users/:user", need("utenti", "e"), (req, res) => { const r = auth.removeUser(req.params.user, req.admin); if (r.error) return res.status(errCode(r)).json(r); log(req, "Utente eliminato", req.params.user, "utenti"); res.json(r); });
 /* profili e permessi */
 app.post("/api/admin/profiles", need("profili", "m"), (req, res) => { const p = settings.updateProfiles(req.body || {}); log(req, "Permessi dei profili aggiornati", "", "profili"); res.json({ profiles: p }); });
 /* registro attività */
@@ -441,10 +466,76 @@ app.post("/api/admin/restore", need("backup", "m"), (req, res) => {
   const r = settings.restoreData(req.body); if (r.error) return res.status(400).json(r);
   sources.invalidate(); log(req, "Backup ripristinato", "del " + r.created, "backup"); res.json(r);
 });
+app.post("/api/admin/profiles/new", need("profili", "m"), (req, res) => { const r = settings.addProfile(req.body || {}); if (r.error) return res.status(400).json(r); log(req, "Profilo creato", req.body.nome, "profili"); res.json(r); });
+app.put("/api/admin/profiles/:key", need("profili", "m"), (req, res) => { const r = settings.editProfile(req.params.key, req.body || {}); if (r.error) return res.status(400).json(r); log(req, "Profilo modificato", req.params.key, "profili"); res.json(r); });
+app.delete("/api/admin/profiles/:key", need("profili", "e"), (req, res) => {
+  const r = settings.removeProfile(req.params.key, auth.users().some(u => !u.eliminato && u.profilo === req.params.key));
+  if (r.error) return res.status(400).json(r); log(req, "Profilo eliminato", req.params.key, "profili"); res.json(r);
+});
+/* aree di lavoro */
+app.get("/api/admin/aree", need("aree", "v"), (req, res) => res.json({ aree: settings.aree() }));
+app.post("/api/admin/aree", need("aree", "m"), (req, res) => { const r = settings.addArea(req.body || {}); if (r.error) return res.status(400).json(r); log(req, "Area di lavoro creata", r.area.nome, "aree"); res.json(r); });
+app.put("/api/admin/aree/:id", need("aree", "m"), (req, res) => { const r = settings.editArea(req.params.id, req.body || {}); if (r.error) return res.status(400).json(r); log(req, "Area di lavoro modificata", r.area.nome, "aree"); res.json(r); });
+app.delete("/api/admin/aree/:id", need("aree", "e"), (req, res) => { const r = settings.removeArea(req.params.id); if (r.error) return res.status(404).json(r); log(req, "Area di lavoro eliminata", req.params.id, "aree"); res.json(r); });
+/* limite di utenti attivi: lo vede chi gestisce gli utenti, lo cambia solo un amministratore */
+app.get("/api/admin/limiti", need("utenti", "v"), (req, res) => res.json(auth.limitInfo()));
+app.post("/api/admin/limiti", (req, res) => {
+  if (req.admin.profilo !== "admin") return res.status(403).json({ error: "solo un amministratore cambia il limite di utenti" });
+  const r = settings.updateLimiti(req.body || {}); if (r.error) return res.status(400).json(r);
+  log(req, "Limite di utenti cambiato", r.limiti.maxUtenti ? String(r.limiti.maxUtenti) : "nessun limite", "utenti"); res.json(auth.limitInfo());
+});
+/* posta in arrivo: archiviare una mail (non si cancella dal server di posta, sparisce dall'elenco) */
+app.delete("/api/admin/mails/:id", need("posta", "e"), (req, res) => {
+  const st = store.load(); st.hiddenMails = st.hiddenMails || [];
+  if (!st.hiddenMails.includes(req.params.id)) st.hiddenMails.push(req.params.id);
+  store.save(); log(req, "Mail archiviata", req.params.id, "posta"); res.json({ ok: true });
+});
+/* conversazioni: l'ufficio ne apre una nuova con un tecnico, modifica o elimina i propri messaggi */
+app.post("/api/admin/threads", need("ticket", "m"), async (req, res, next) => {
+  try {
+    const st = store.load(), m = String(req.body.techMail || ""), text = String(req.body.text || "").trim().slice(0, 2000);
+    const tech = auth.techs().find(t => t.mail === m && t.attivo !== false && !t.eliminato);
+    const { tickets } = await sources.data(); const t = tickets.find(x => x.id === req.body.ticket);
+    if (!tech || !t || !text) return res.status(400).json({ error: "scegli ticket, tecnico attivo e scrivi il messaggio" });
+    const list = st.threads[m] = st.threads[m] || [];
+    let th = list.find(x => x.ticket === t.id);
+    if (!th) { th = { ticket: t.id, client: t.client, unread: true, msgs: [] }; list.unshift(th); }
+    const msg = { k: "tf", t: now(), text, by: req.admin.nome || req.admin.user, id: "o" + Date.now().toString(36) };
+    th.msgs.push(msg); th.unread = true; store.save(); log(req, "Conversazione aperta con il tecnico", t.id + " · " + m, "ticket");
+    res.json({ ok: true, msg });
+  } catch (e) { next(e); }
+});
+const officeMsg = (st, b) => { const th = (st.threads[String(b.techMail || "")] || []).find(t => t.ticket === b.ticket); const m = th && th.msgs.find(x => x.id && x.id === b.id && x.k === "tf" && x.by); return { th, m }; };
+app.put("/api/admin/threads/msg", need("ticket", "m"), (req, res) => {
+  const st = store.load(), { m } = officeMsg(st, req.body || {}), text = String(req.body.text || "").trim().slice(0, 2000);
+  if (!m || !text) return res.status(400).json({ error: "si modificano solo i messaggi dell'ufficio" });
+  m.text = text; m.mod = now(); store.save(); log(req, "Messaggio al tecnico modificato", req.body.ticket, "ticket"); res.json({ ok: true, msg: m });
+});
+app.delete("/api/admin/threads/msg", need("ticket", "e"), (req, res) => {
+  const st = store.load(), { th, m } = officeMsg(st, req.body || {});
+  if (!m) return res.status(400).json({ error: "si eliminano solo i messaggi dell'ufficio" });
+  th.msgs.splice(th.msgs.indexOf(m), 1); store.save(); log(req, "Messaggio al tecnico eliminato", req.body.ticket, "ticket"); res.json({ ok: true });
+});
+/* regole di riconoscimento aggiunte dall'ufficio */
+const cleanRule = b => ({ tipo: b.tipo === "parola" ? "parola" : "dominio", valore: String(b.valore || "").trim().toLowerCase().replace(/^@/, "").slice(0, 80), cliente: String(b.cliente || ""), on: b.on !== false });
+app.post("/api/admin/rules/custom", need("regole", "m"), (req, res) => {
+  const st = store.load(), r = cleanRule(req.body || {}); if (!r.valore || !r.cliente) return res.status(400).json({ error: "scrivi il valore e scegli il cliente" });
+  st.customRules = st.customRules || []; r.id = "r" + Date.now().toString(36); st.customRules.push(r); store.save();
+  log(req, "Regola aggiunta", r.tipo + " " + r.valore, "regole"); res.json({ customRules: st.customRules });
+});
+app.put("/api/admin/rules/custom/:id", need("regole", "m"), (req, res) => {
+  const st = store.load(), x = (st.customRules || []).find(y => y.id === req.params.id); if (!x) return res.status(404).json({ error: "regola non trovata" });
+  const r = cleanRule({ ...x, ...req.body }); if (!r.valore || !r.cliente) return res.status(400).json({ error: "scrivi il valore e scegli il cliente" });
+  Object.assign(x, r); store.save(); log(req, "Regola modificata", x.tipo + " " + x.valore, "regole"); res.json({ customRules: st.customRules });
+});
+app.delete("/api/admin/rules/custom/:id", need("regole", "e"), (req, res) => {
+  const st = store.load(), i = (st.customRules || []).findIndex(y => y.id === req.params.id); if (i < 0) return res.status(404).json({ error: "regola non trovata" });
+  const [x] = st.customRules.splice(i, 1); store.save(); log(req, "Regola eliminata", x.tipo + " " + x.valore, "regole"); res.json({ customRules: st.customRules });
+});
 app.post("/api/admin/rules", need("regole", "m"), (req, res) => {
   const st = store.load(); const r = st.rules.find(x => x.k === req.body.k);
   if (r) { r.on = !!req.body.on; store.save(); log(req, r.on ? "Regola attivata" : "Regola disattivata", r.t, "regole"); }
-  res.json({ rules: st.rules });
+  res.json({ rules: st.rules, custom: st.customRules || [] });
 });
 
 app.use((err, req, res, next) => { console.error(err); res.status(500).json({ error: err.message || "errore del server" }); });
