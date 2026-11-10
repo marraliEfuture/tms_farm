@@ -897,20 +897,22 @@ function renderRiepilogo(){
     openChat(i);
   });
   $("#r-tog").onclick = ()=>{ const c = !remClosed(); try{ localStorage.setItem("tf-rem-closed", c?"1":""); }catch(e){} $("#r-rem").classList.toggle("closed", c); $("#r-tog").setAttribute("aria-expanded", String(!c)); $("#r-tog .r-chev").textContent = c?"Mostra":"Riduci"; };
-  const show = (r, model) => {
+  const show = (r, model, opt) => {
     if(!$("#r-text")) return;
-    $("#r-rem").hidden = false;
+    opt = opt || {};
+    if(opt.promemoria !== false) $("#r-rem").hidden = false;
+    if(opt.priorita === false) r = Object.assign({}, r, {order:[]});
     $("#r-text").textContent = r.text || "Oggi non hai attività aperte.";
     $("#r-foot").textContent = r.source==="claude" ? "Scritto da "+(AIM[r.model]||r.model)+" con i tuoi ticket." : r.source==="simulazione" ? "Assistente AI · "+(AIM[model]||"Claude")+" · risposta di esempio" : r.source==="regole" ? "Promemoria scritto dalle regole (l'assistente non ha risposto)." : "Promemoria scritto dai tuoi ticket.";
     const ol = $("#r-acts"); (r.order||[]).forEach(x=>{ const li = ol.querySelector(`[data-tid="${CSS.escape(x.ticket)}"]`); if(!li) return; ol.appendChild(li); const s2 = li.querySelector(".why"); s2.hidden = false; s2.textContent = "✦ "+x.perche; });
   };
   /* il promemoria compare solo se l'assistente AI è stato acceso a mano in Configurazione */
   if(API) api("/api/app/ai").then(cfg=>{
-      if(!cfg.enabled) return;
-      return api("/api/app/ai/agenda").then(r=>{ if(r.source!=="spento") show(r, cfg.model); });
+      if(!cfg.enabled || (cfg.promemoria === false && cfg.priorita === false)) return;
+      return api("/api/app/ai/agenda").then(r=>{ if(r.source!=="spento") show(r, cfg.model, cfg); });
     }).catch(()=>{});
   else { let ai = null; try{ ai = JSON.parse(localStorage.getItem("tf-admin-ai")||"null"); }catch(e){}
-    if(ai && ai.enabled) setTimeout(()=>show(simulateAgenda(w), ai.model||"claude-opus-5-5"), 800); }
+    if(ai && ai.enabled === true && !(ai.promemoria === false && ai.priorita === false)) setTimeout(()=>show(simulateAgenda(w), ai.model||"claude-opus-5-5", ai), 800); }
 }
 
 /* ---------- navigazione ---------- */
@@ -976,7 +978,9 @@ function renderLogin(){
     <div id="l-hint"></div>
     <label class="field"><span>Mail</span><input class="input" id="l-mail" type="email" autocomplete="username" placeholder="nome@efuture.it"></label>
     <label class="field"><span>Codice</span><input class="input" id="l-code" type="password" inputmode="numeric" autocomplete="current-password"></label>
-    <button class="btn primary block" id="l-go" type="button">Accedi</button>`;
+    <button class="btn primary block" id="l-go" type="button">Accedi</button>
+    <button class="linkbtn" id="l-forgot" type="button" style="align-self:center">Codice dimenticato?</button>
+    <div id="l-fmsg"></div>`;
   /* in modalità prova il backend suggerisce le credenziali di esempio */
   api("/api/app/info").then(i=>{
     if(!i.demo) return;
@@ -987,6 +991,16 @@ function renderLogin(){
     $("#l-fill").onclick = ()=>{ $("#l-mail").value = i.demo.mail; $("#l-code").value = i.demo.code; $("#l-go").click(); };
   }).catch(()=>{});
   $("#l-brand").onclick = replayIntro;
+  /* nuovo codice alla mail aziendale del tecnico: quello vecchio smette di funzionare */
+  $("#l-forgot").onclick = ()=>{
+    const mail = $("#l-mail").value.trim();
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)){ toast("Scrivi prima la tua mail aziendale"); $("#l-mail").focus(); return; }
+    const b = $("#l-forgot"); b.disabled = true;
+    api("/api/app/forgot", {mail}).then(r=>{
+      $("#l-fmsg").innerHTML = `<div class="banner">${esc(r.message||"Ti abbiamo mandato un nuovo codice.")}${r.demoCode?`<br>Modalità prova: il nuovo codice è <b>${esc(r.demoCode)}</b>`:""}</div>`;
+      if(r.demoCode) $("#l-code").value = r.demoCode; else $("#l-code").focus();
+    }).catch(e=>toast("Richiesta non riuscita: "+e.message)).finally(()=>{ b.disabled = false; });
+  };
   $("#l-go").onclick = ()=>{
     const mail = $("#l-mail").value.trim(), code = $("#l-code").value.trim();
     if(!mail || !code){ toast("Scrivi mail e codice"); return; }
