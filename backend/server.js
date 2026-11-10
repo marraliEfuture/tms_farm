@@ -371,6 +371,16 @@ async function aiAgenda(techIni, fresh) {
   try { return await ai.agenda(input, { fresh }); }
   catch (e) { const r = ai.simulate(input); return { source: "regole", error: e.message, order: r.order }; }
 }
+app.get("/api/admin/ai/team", need("cruscotto", "v"), async (req, res, next) => {
+  try {
+    if (!settings.ai().enabled) return res.json({ source: "spento" });
+    const { clients, tickets } = await sources.data(), st = store.load();
+    const input = { tickets: tickets.filter(t => t.state !== "Chiuso"), clients, techs: auth.techs(), date: new Date().toLocaleDateString("it-CH", { weekday: "long", day: "numeric", month: "long" }),
+      toCheck: st.mails.filter(m => m.res && m.res.state === "warn").length + (cfg.mode === "demo" ? 1 : 0) };
+    if (!ai.configured()) return res.json(cfg.mode === "demo" ? ai.simulateTeam(input) : { source: "spento", error: "manca la chiave API" });
+    try { res.json(await ai.team(input, { fresh: req.query.fresh === "1" })); } catch (e) { res.json({ ...ai.simulateTeam(input), source: "regole", error: e.message }); }
+  } catch (e) { next(e); }
+});
 app.get("/api/admin/ai/agenda", need("cruscotto", "v"), async (req, res, next) => { try { res.json(await aiAgenda(String(req.query.tech || "MB"), req.query.fresh === "1")); } catch (e) { next(e); } });
 app.get("/api/admin/ai", need("ai", "v"), (req, res) => res.json({ ai: settings.aiPublic(), models: ai.MODELS, techs: auth.techs().length,
   stime: Object.fromEntries(Object.keys(ai.MODELS).map(m => [m, ai.monthlyCost(m, Math.max(1, auth.techs().length), 22)])) }));

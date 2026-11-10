@@ -34,3 +34,12 @@ test("stima del costo mensile", () => {
   assert.ok(ai.monthlyCost("claude-opus-5-5", 10, 22) > ai.monthlyCost("claude-haiku-5-5", 10, 22));
   assert.equal(ai.monthlyCost("claude-opus-5-5", 1, 1).toFixed(4), ((1800 * 4 + 700 * 20) / 1e6).toFixed(4));
 });
+
+test("suggerimenti per il responsabile: urgenza, ticket senza tecnico, posta", async () => {
+  const clients = await demo.clients(), tickets = (await demo.tickets()).filter(t => t.state !== "Chiuso");
+  const r = ai.simulateTeam({ tickets, clients, techs: [{ ini: "MB", zona: "Sud" }, { ini: "LC", zona: "Centro" }], toCheck: 2 });
+  assert.equal(r.tips[0].ticket, "Tck #714139");
+  assert.ok(r.tips.some(x => /Assegna HALO-4812 a LC/.test(x.titolo)));
+  assert.ok(r.tips.some(x => /Verifica 2 mail/.test(x.titolo)));
+  assert.match(ai.teamText({ tickets, clients, techs: [{ ini: "MB" }], toCheck: 2, date: "oggi" }), /tecnico: nessuno/);
+});

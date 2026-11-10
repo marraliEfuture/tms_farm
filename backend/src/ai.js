@@ -92,4 +92,52 @@ function simulate({ tech, tickets, clients }) {
   const why = t => urg.includes(t) ? "Urgente e senza data: va pianificato per primo." : today.includes(t) ? "È in agenda oggi alle " + t.plan.time + "." : later.includes(t) ? "Già pianificato: basta prepararsi." : wait.includes(t) ? "Dipende dal ricambio: solo un controllo veloce." : "Da pianificare quando hai tempo.";
   return { source: "simulazione", model: settings.ai().model, text: f.join(" ") || "Oggi non hai attività aperte.", order: [...urg, ...today, ...wait, ...later, ...rest].map(t => ({ ticket: t.id, perche: why(t) })) };
 }
-module.exports = { MODELS, monthlyCost, configured, agenda, simulate, contextText, setClientFactory, SYSTEM };
+/* ---- suggerimenti per chi coordina (responsabile, amministratore) ---- */
+const Team = z.object({
+  riepilogo: z.string().describe("2-3 frasi in italiano sulla situazione di oggi"),
+  suggerimenti: z.array(z.object({ titolo: z.string().describe("azione concreta, max 10 parole"), perche: z.string().describe("motivo in una frase"),
+    ticket: z.string().describe("numero del ticket interessato, oppure stringa vuota") })),
+});
+const SYSTEM_TEAM = [
+  "Sei l'assistente di Ticket Farm per il responsabile del service, che coordina i tecnici sul campo.",
+  "Scrivi un riepilogo di 2-3 frasi in italiano sulla situazione di oggi, poi da 3 a 5 suggerimenti concreti, in ordine di importanza.",
+  "Guarda: urgenze senza data o senza tecnico, ticket senza tecnico (proponi il tecnico più libero, della zona giusta se si capisce), carico di lavoro sbilanciato, ticket fermi in attesa (ricambi), mail da verificare.",
+  "Ogni suggerimento è un'azione che il responsabile può fare subito, con il motivo. Usa solo i dati ricevuti, non inventare nulla.",
+].join("\n");
+function teamText({ tickets, clients, techs, toCheck, date }) {
+  const name = id => (clients.find(c => c.id === id) || { name: id }).name;
+  const load = techs.map(t => t.ini + " (" + (t.nome || "") + ", zona " + (t.zona || "?") + "): " + tickets.filter(x => x.tech === t.ini).length + " ticket aperti").join("\n");
+  const lines = tickets.map(t => "- " + [t.id, name(t.client), t.title, "stato: " + t.state, t.urg ? "URGENTE" : "", "tecnico: " + (t.tech || "nessuno"),
+    t.plan ? (t.plan.day === 0 ? "oggi" : t.plan.day === 1 ? "domani" : "tra " + t.plan.day + " giorni") + " alle " + t.plan.time : "non pianificato"].filter(Boolean).join(" · "));
+  return "Data: " + date + "\nTecnici e carico:\n" + load + "\nMail da verificare in posta: " + (toCheck || 0) + "\nTicket aperti:\n" + (lines.join("\n") || "(nessuno)");
+}
+async function team(input, opts) {
+  const a = settings.ai(), key = a.apiKey || process.env.ANTHROPIC_API_KEY, ctx = teamText(input), ck = "team|" + a.model + "|" + ctx;
+  if (!(opts && opts.fresh) && cache.has(ck)) return { ...cache.get(ck), cached: true };
+  const resp = await makeClient(key).beta.messages.parse({
+    model: a.model, max_tokens: 4000, betas: ["server-side-fallback-2026-07-01"], fallbacks: "default",
+    output_config: { effort: "low", format: zodOutputFormat(Team) }, system: SYSTEM_TEAM, messages: [{ role: "user", content: ctx }],
+  });
+  if (resp.stop_reason === "refusal") throw new Error("Claude ha rifiutato la richiesta");
+  if (!resp.parsed_output) throw new Error("risposta di Claude non leggibile");
+  const ids = new Set(input.tickets.map(t => t.id));
+  const r = { source: "claude", model: resp.model, text: resp.parsed_output.riepilogo.trim(),
+    tips: resp.parsed_output.suggerimenti.map(x => ({ titolo: x.titolo, perche: x.perche, ticket: ids.has(x.ticket) ? x.ticket : "" })) };
+  cache.set(ck, r); return r;
+}
+function simulateTeam({ tickets, clients, techs, toCheck }) {
+  const name = id => (clients.find(c => c.id === id) || { name: id }).name;
+  const load = t => tickets.filter(x => x.tech === t.ini).length;
+  const freest = techs.slice().sort((x, y) => load(x) - load(y))[0], busiest = techs.slice().sort((x, y) => load(y) - load(x))[0];
+  const tips = [];
+  for (const t of tickets.filter(x => x.urg && !x.plan)) tips.push({ titolo: "Pianifica l'urgenza di " + name(t.client), perche: t.title + ": è urgente ma senza data" + (t.tech ? ", assegnato a " + t.tech + "." : " e senza tecnico."), ticket: t.id });
+  for (const t of tickets.filter(x => !x.tech)) tips.push({ titolo: "Assegna " + t.id + " a " + (freest ? freest.ini : "un tecnico"), perche: "Nessun tecnico per «" + t.title + "» di " + name(t.client) + (freest ? "; " + freest.ini + " ha " + load(freest) + " ticket aperti." : "."), ticket: t.id });
+  if (busiest && freest && load(busiest) - load(freest) >= 3) tips.push({ titolo: "Alleggerisci " + busiest.ini, perche: busiest.ini + " ha " + load(busiest) + " ticket aperti, " + freest.ini + " solo " + load(freest) + ": sposta un intervento non urgente.", ticket: "" });
+  for (const t of tickets.filter(x => /attesa/i.test(x.state))) tips.push({ titolo: "Sollecita il ricambio per " + name(t.client), perche: t.id + " è fermo in «" + t.state.toLowerCase() + "».", ticket: t.id });
+  if (toCheck) tips.push({ titolo: "Verifica " + toCheck + " mail in Posta in arrivo", perche: "Non hanno ticket né cliente riconosciuto: finché restano lì nessuno le segue.", ticket: "" });
+  const urg = tickets.filter(x => x.urg).length, unas = tickets.filter(x => !x.tech).length;
+  const text = "Oggi ci sono " + tickets.length + " ticket aperti" + (urg ? ", " + urg + " urgent" + (urg === 1 ? "e" : "i") : "") + (unas ? " e " + unas + " senza tecnico" : "") + ". " +
+    (busiest ? "Il più carico è " + busiest.ini + " con " + load(busiest) + " ticket" + (freest && freest !== busiest ? ", il più libero " + freest.ini + " con " + load(freest) + "." : ".") : "");
+  return { source: "simulazione", model: settings.ai().model, text, tips: tips.slice(0, 5) };
+}
+module.exports = { team, simulateTeam, teamText, MODELS, monthlyCost, configured, agenda, simulate, contextText, setClientFactory, SYSTEM };

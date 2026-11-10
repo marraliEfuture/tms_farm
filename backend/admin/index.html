@@ -274,7 +274,17 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
 @media (max-width:640px){.glance{grid-template-columns:repeat(2,minmax(0,1fr))}.act-i{grid-template-columns:minmax(0,1fr)}.acts{grid-template-columns:minmax(0,1fr)}}
 .remind.ai{border-left-color:#7c5cff;background:linear-gradient(180deg,rgba(124,92,255,.07),transparent 60%),var(--surface)}
 .remind.ai .rem-h{color:#7c5cff}.remind.ai .rem-i{background:rgba(124,92,255,.14);color:#7c5cff}
-.rem-h .linkback{margin-left:auto}.rem-h .linkback + .linkback{margin-left:12px}
+.rem-h .linkback{margin-left:auto}
+.tips{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.tips:empty{display:none}
+.tips li{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:10px;align-items:center;background:var(--surface-2);border-radius:12px;padding:10px 12px}
+.tips .tn{width:26px;height:26px;border-radius:50%;background:rgba(124,92,255,.15);color:#6d4fe6;font-weight:700;display:grid;place-items:center;font-size:13px}
+.tips b{color:var(--ink);display:block;font-size:14.5px}.tips .dim{font-size:13px}
+.ld{display:flex;flex-direction:column;gap:5px;padding:8px 0;border-top:1px solid var(--line)}
+.ld:first-of-type{border-top:0}
+.ld-h{display:flex;align-items:baseline;gap:8px}.ld-h b{color:var(--ink);font-size:15px}.ld-h .dim{font-size:12.5px}
+.ld-n{margin-left:auto;font-weight:700;color:var(--ink);font-size:18px;font-variant-numeric:tabular-nums}
+.ld-bar{height:8px;border-radius:4px;background:var(--surface-2);overflow:hidden}.ld-bar i{display:block;height:100%;background:var(--grad);border-radius:4px}.rem-h .linkback + .linkback{margin-left:12px}
 .remind.closed .rem-b{display:none}
 .rem-b{display:flex;flex-direction:column;gap:8px}
 .row-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -685,26 +695,79 @@ function tutorial(){
 /* ---------- Cruscotto ---------- */
 function cruscotto(){
   if(ROLE==="op") return tecnicoHome();
+  return respHome();
+}
+/* ---------- Riepilogo di chi coordina: suggerimenti dell'AI, cosa seguire, carico dei tecnici ---------- */
+function respHome(){
   const open = S.tickets.filter(t=>t.state!=="Chiuso");
-  const auto = S.mails.filter(m=>m.res.state!=="warn").length;
-  const byTech = TECHS.map(t=>[t.ini+" · "+t.zona, open.filter(x=>x.tech===t.ini).length]);
-  const max = Math.max(1,...byTech.map(x=>x[1]));
-  const fromApp = S.mails.filter(m=>TECHS.some(t=>t.mail===m.from)).length;
-  $("#main").innerHTML = `<div class="top"><div><h1>Riepilogo</h1><p class="sub">Oggi, lunedì 9 novembre. Dati letti da ITSM, Halo e Office 365, posta da ${SUPPORT}.</p></div></div>
-    <div class="kpis">
-      <div class="kpi"><b>${S.mails.length}</b><span>mail arrivate a ${SUPPORT}</span></div>
-      <div class="kpi"><b class="gold">${Math.round(auto/S.mails.length*100)}%</b><span>riconosciute da sole</span></div>
-      <div class="kpi"><b>${toCheck()}</b><span>da verificare</span></div>
-      <div class="kpi"><b>${open.length}</b><span>ticket aperti</span></div>
-    </div>
-    <div class="grid2">
-      <div class="panel"><div style="display:flex;justify-content:space-between;align-items:center"><h2>Da verificare</h2><button class="btn" type="button" id="go-posta">Apri la posta</button></div>
-        ${toCheck() ? S.mails.filter(m=>m.res.state==="warn").map(m=>`<div><span class="strong">${esc(m.subj)}</span><div class="dim">${esc(m.fromName)} · ${esc(m.at)}</div></div>`).join("") : `<p class="dim">Niente da verificare: tutte le mail sono state riconosciute.</p>`}
+  const urg = open.filter(t=>t.urg), unas = open.filter(t=>!t.tech), wait = open.filter(t=>/attesa/i.test(t.state)), today = open.filter(t=>t.plan && t.plan.day===0);
+  const name = t => (cl(t.client)||{name:t.client}).name;
+  const follow = [...open.filter(t=>t.urg && !t.plan), ...unas.filter(t=>!t.urg), ...wait].filter((t,i,arr)=>arr.indexOf(t)===i);
+  const loads = TECHS.map(t=>({t, n:open.filter(x=>x.tech===t.ini).length, u:open.filter(x=>x.tech===t.ini && x.urg).length, oggi:open.filter(x=>x.tech===t.ini && x.plan && x.plan.day===0).length}));
+  const max = Math.max(1, ...loads.map(x=>x.n));
+  const why = t => t.urg && !t.plan ? ["Da pianificare","urg"] : !t.tech ? ["Senza tecnico","new"] : ["In attesa","wait"];
+  $("#main").innerHTML = `<div class="top"><div><h1>Riepilogo</h1><p class="sub">${giorno(0).replace(/^./,x=>x.toUpperCase())} · ${open.length} ticket aperti tra ITSM e Halo</p></div></div>
+    <div class="riep">
+      <div class="riep-main">
+        <section class="remind${remClosed()?" closed":""}" id="rem"><div class="rem-h"><span class="rem-i" aria-hidden="true">☀</span><b id="rem-title">Situazione di oggi</b><button class="linkback" type="button" id="rem-again" hidden>Riscrivi</button><button class="linkback" type="button" id="rem-tog">${remClosed()?"Mostra":"Riduci"}</button></div>
+          <div class="rem-b"><p id="rem-text">Oggi ci sono ${open.length} ticket aperti${urg.length?", "+urg.length+" urgent"+(urg.length===1?"e":"i"):""}${unas.length?" e "+unas.length+" senza tecnico":""}.</p>
+          <ol class="tips" id="tips"></ol><span class="dim" id="rem-foot">Scritto in automatico dai ticket.</span></div></section>
+        <section><h2 class="h2s">Da seguire <span class="dim">· ${follow.length}</span></h2>
+          <ol class="acts">${follow.map(t=>{ const [w,cls] = why(t); const tech = TECHS.find(x=>x.ini===t.tech); return `<li class="act-i ${cls==="urg"?"urg":cls==="wait"?"wait":""}" data-tid="${esc(t.id)}"><span class="act-t">${w}</span>
+            <div class="act-b"><div class="act-h">${logo(cl(t.client)||{name:t.client})}<b>${esc(name(t))}</b>${t.urg?'<span class="pill p-urg">Urgente</span>':""}</div>
+              <span class="dim">${esc(t.id)} · ${esc(t.title)}</span><span class="dim">Tecnico: <b style="color:var(--ink)">${tech?esc(tech.ini)+" · "+esc(techName(tech)):"nessuno"}</b>${t.plan?" · "+(t.plan.day===0?"oggi":t.plan.day===1?"domani":giorno(t.plan.day))+" "+t.plan.time:""}</span>
+              <div class="act-x"><button class="btn small primary" type="button" data-open="${esc(t.id)}">Apri</button></div></div></li>`; }).join("") || `<li class="dim">Niente da seguire: tutto assegnato e pianificato.</li>`}</ol></section>
       </div>
-      <div class="panel" data-perm="tecnici:v"><h2>Ticket aperti per tecnico</h2><div class="bars">${byTech.map(([n,v])=>`<div class="bar"><span>${n}</span><span><i style="width:${v/max*100}%"></i></span><u>${v}</u></div>`).join("")}</div>
-        <p class="note">${fromApp} mail di oggi arrivano dall'app dei tecnici (messaggi WhatsApp o mail dei clienti inoltrati).</p></div>
+      <aside class="riep-side">
+        <div class="glance">
+          <button class="gl ${urg.length?"hot":""}" type="button" data-go="ticket"><b>${urg.length}</b><span>urgenti</span></button>
+          <button class="gl ${unas.length?"warm":""}" type="button" data-go="ticket"><b>${unas.length}</b><span>senza tecnico</span></button>
+          <button class="gl" type="button" data-go="ticket"><b>${today.length}</b><span>interventi oggi</span></button>
+          <button class="gl" type="button" data-go="posta" data-perm="posta:v"><b>${toCheck()}</b><span>mail da verificare</span></button>
+        </div>
+        <section class="panel" data-perm="tecnici:v"><h2>Carico dei tecnici</h2>
+          ${loads.map(x=>`<div class="ld"><div class="ld-h"><b>${esc(x.t.ini)}</b><span class="dim">${esc(techName(x.t))} · ${esc(x.t.zona||"")}</span><span class="ld-n">${x.n}</span></div>
+            <div class="ld-bar"><i style="width:${x.n/max*100}%"></i></div><span class="dim">${x.u?x.u+" urgent"+(x.u===1?"e":"i")+" · ":""}${x.oggi} oggi</span></div>`).join("")}
+        </section>
+      </aside>
     </div>`;
-  $("#go-posta").onclick = ()=>{ S.view="posta"; render(); };
+  document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{ S.view=b.dataset.go; if(b.dataset.go==="posta") S.filt="warn"; render(); });
+  document.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>ticketSheet(b.dataset.open));
+  $("#rem-tog").onclick = ()=>{ const c = !remClosed(); try{ localStorage.setItem("tf-rem-closed", c?"1":""); }catch(e){} $("#rem").classList.toggle("closed", c); $("#rem-tog").textContent = c?"Mostra":"Riduci"; };
+  fillTeamAI(false);
+}
+function simulateTeamLocal(){
+  const open = S.tickets.filter(t=>t.state!=="Chiuso"), name = t => (cl(t.client)||{name:t.client}).name;
+  const load = t => open.filter(x=>x.tech===t.ini).length, freest = TECHS.slice().sort((a,b)=>load(a)-load(b))[0], busiest = TECHS.slice().sort((a,b)=>load(b)-load(a))[0];
+  const tips = [];
+  open.filter(x=>x.urg && !x.plan).forEach(t=>tips.push({titolo:"Pianifica l'urgenza di "+name(t), perche:t.title+": è urgente ma senza data"+(t.tech?", assegnato a "+t.tech+".":" e senza tecnico."), ticket:t.id}));
+  open.filter(x=>!x.tech).forEach(t=>tips.push({titolo:"Assegna "+t.id+" a "+(freest?freest.ini:"un tecnico"), perche:"Nessun tecnico per «"+t.title+"» di "+name(t)+(freest?"; "+freest.ini+" ha "+load(freest)+" ticket aperti.":"."), ticket:t.id}));
+  if(busiest && freest && load(busiest)-load(freest)>=3) tips.push({titolo:"Alleggerisci "+busiest.ini, perche:busiest.ini+" ha "+load(busiest)+" ticket aperti, "+freest.ini+" solo "+load(freest)+": sposta un intervento non urgente.", ticket:""});
+  open.filter(x=>/attesa/i.test(x.state)).forEach(t=>tips.push({titolo:"Sollecita il ricambio per "+name(t), perche:t.id+" è fermo in «"+t.state.toLowerCase()+"».", ticket:t.id}));
+  if(toCheck() && can("posta","v")) tips.push({titolo:"Verifica "+toCheck()+" mail in Posta in arrivo", perche:"Non hanno ticket né cliente riconosciuto: finché restano lì nessuno le segue.", ticket:"", view:"posta"});
+  const u = open.filter(x=>x.urg).length, n = open.filter(x=>!x.tech).length;
+  return {source:"simulazione", model:AI.model, text:"Oggi ci sono "+open.length+" ticket aperti"+(u?", "+u+" urgent"+(u===1?"e":"i"):"")+(n?" e "+n+" senza tecnico":"")+". "+(busiest?"Il più carico è "+busiest.ini+" con "+load(busiest)+" ticket"+(freest&&freest!==busiest?", il più libero "+freest.ini+" con "+load(freest)+".":"."):""), tips:tips.slice(0,5)};
+}
+function fillTeamAI(fresh){
+  if(!AI.enabled || !$("#rem")) return;
+  const m = (AI_MODELS[AI.model]||{}).nome || AI.model;
+  $("#rem").classList.add("ai"); $("#rem-title").textContent = "Situazione di oggi · Assistente AI"; $(".rem-i").textContent = "✦";
+  $("#rem-foot").textContent = "Sto preparando i suggerimenti con "+m+"…";
+  const show = r => {
+    if(!$("#rem")) return;
+    if(r.text) $("#rem-text").textContent = r.text;
+    $("#tips").innerHTML = (r.tips||[]).map((x,i)=>`<li><span class="tn">${i+1}</span><div><b>${esc(x.titolo)}</b><span class="dim">${esc(x.perche)}</span></div>${x.ticket?`<button class="btn small" type="button" data-open="${esc(x.ticket)}">Apri</button>`:x.view||/mail/i.test(x.titolo)?`<button class="btn small" type="button" data-go="posta" data-perm="posta:v">Posta</button>`:""}</li>`).join("");
+    $("#tips").querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>ticketSheet(b.dataset.open));
+    $("#tips").querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{ S.view="posta"; S.filt="warn"; render(); });
+    applyPerms($("#tips"));
+    $("#rem-foot").textContent = r.source==="claude" ? "Suggerimenti di "+((AI_MODELS[r.model]||{}).nome||r.model)+" (Anthropic) sui ticket di oggi."
+      : r.source==="simulazione" ? "Assistente AI attivo · "+m+" · risposta di esempio: quella vera arriva con la chiave API in Configurazione → Assistente AI."
+      : r.source==="regole" ? "L'assistente non ha risposto ("+(r.error||"errore")+"): suggerimenti scritti dalle regole." : "Scritto in automatico dai ticket.";
+    $("#rem-again").hidden = r.source!=="claude";
+  };
+  $("#rem-again").onclick = ()=>fillTeamAI(true);
+  if(LIVE) getJ("/api/admin/ai/team"+(fresh?"?fresh=1":"")).then(r=>{ if(r.source==="spento") return; show(r); }).catch(err=>show({...simulateTeamLocal(), source:"regole", error:err.message}));
+  else setTimeout(()=>show(simulateTeamLocal()), 900);
 }
 
 /* ---------- Posta in arrivo ---------- */
