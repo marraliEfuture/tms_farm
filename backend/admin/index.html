@@ -245,18 +245,18 @@ td.act{white-space:nowrap;text-align:right}
 .perm-cell label{display:inline-flex;flex-direction:column;align-items:center;font-size:10.5px;color:var(--muted);gap:2px}
 .drop{border:2px dashed var(--line);border-radius:14px;padding:22px;text-align:center;color:var(--muted)}
 .audit-f{display:flex;gap:8px;flex-wrap:wrap}.audit-f .input{max-width:260px}
-.remind{background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--gold);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:8px;max-width:900px}
+.remind{background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--gold);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
 .remind p{margin:0;color:var(--ink);font-size:16px;line-height:1.6}
 .rem-h{display:flex;align-items:center;gap:10px;color:var(--gold)}.rem-h b{color:var(--ink);font-size:15px}
 .rem-i{width:30px;height:30px;border-radius:50%;background:var(--gold-soft);display:grid;place-items:center;font-size:16px}
-.glance{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;max-width:900px}
+.glance{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .gl{display:flex;align-items:baseline;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;cursor:pointer;text-align:left;color:var(--text)}
 .gl b{font-size:28px;color:var(--ink);font-variant-numeric:tabular-nums}.gl span{font-size:13.5px}
 .gl.hot{border-color:var(--red);background:var(--red-soft)}.gl.hot b{color:var(--red)}
 .gl.warm{border-color:var(--gold);background:var(--gold-soft)}
 .h2s{font-size:16px;color:var(--ink);margin:4px 0 10px}
-.acts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;max-width:900px}
-.act-i{display:grid;grid-template-columns:130px minmax(0,1fr);gap:14px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:12px;padding:12px 14px}
+.acts{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:10px}
+.act-i{display:grid;grid-template-columns:110px minmax(0,1fr);gap:14px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:12px;padding:12px 14px}
 .act-i.urg{border-left-color:var(--red)}.act-i.wait{border-left-color:var(--gold)}
 .act-t{font-weight:700;color:var(--ink);font-size:13.5px;padding-top:4px}
 .act-i.urg .act-t{color:var(--red)}.act-i.wait .act-t{color:var(--gold)}
@@ -264,7 +264,26 @@ td.act{white-space:nowrap;text-align:right}
 .act-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.act-h .lav{width:28px;height:28px;font-size:11px}.act-h b{color:var(--ink)}
 .act-x{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
 a.btn{text-decoration:none;display:inline-flex;align-items:center}
-@media (max-width:640px){.glance{grid-template-columns:minmax(0,1fr)}.act-i{grid-template-columns:minmax(0,1fr)}}
+.riep{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:18px;align-items:start}
+.riep-main{display:flex;flex-direction:column;gap:18px;min-width:0}
+.riep-side{display:flex;flex-direction:column;gap:14px;position:sticky;top:16px}
+.qc{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--line)}
+.qc:first-of-type{border-top:0}.qc b{color:var(--ink);font-size:14px;display:block}.qc .dim{font-size:12.5px}
+.qc .wa span{display:none}
+@media (max-width:1100px){.riep{grid-template-columns:minmax(0,1fr)}.riep-side{position:static}.glance{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (max-width:640px){.glance{grid-template-columns:repeat(2,minmax(0,1fr))}.act-i{grid-template-columns:minmax(0,1fr)}.acts{grid-template-columns:minmax(0,1fr)}}
+.remind.ai{border-left-color:#7c5cff;background:linear-gradient(180deg,rgba(124,92,255,.07),transparent 60%),var(--surface)}
+.remind.ai .rem-h{color:#7c5cff}.remind.ai .rem-i{background:rgba(124,92,255,.14);color:#7c5cff}
+.rem-h .linkback{margin-left:auto}
+.why{font-size:13px;color:#6d4fe6;font-weight:600}
+.models{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.model{display:flex;flex-direction:column;gap:3px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;background:var(--surface-2)}
+.model input{position:absolute;opacity:0;pointer-events:none}
+.model.on{border-color:var(--accent);background:var(--accent-soft)}
+.model b{color:var(--ink)}.model .price{color:var(--ink);font-weight:700;margin-top:4px}
+.check.big{font-size:15px;font-weight:600;color:var(--ink);gap:12px}
+.o365state.warn{border-left-color:var(--gold)}
+@media (max-width:760px){.models{grid-template-columns:minmax(0,1fr)}}
 .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,10px);background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:12px;font-size:13.5px;font-weight:500;opacity:0;transition:.25s;pointer-events:none;z-index:50;max-width:calc(100% - 32px)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 .note{font-size:12.5px;color:var(--muted)}
@@ -336,7 +355,11 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
       <label class="field"><span>Nuova password</span><input class="input" id="pf-new" type="password" autocomplete="new-password" minlength="8"></label>
       <label class="field"><span>Ripeti la nuova password</span><input class="input" id="pf-new2" type="password" autocomplete="new-password"></label>
     </fieldset>
-    <label class="field"><span>Password attuale (per salvare)</span><input class="input" id="pf-cur" type="password" autocomplete="current-password"></label>
+    <fieldset class="pw"><legend>Dopo l'accesso</legend>
+      <label class="field" id="pf-vista-f"><span>Vedi la console come</span><select class="input" id="pf-vista"></select></label>
+      <label class="field"><span>Schermata iniziale</span><select class="input" id="pf-home"></select></label>
+    </fieldset>
+    <label class="field"><span>Password attuale (solo per cambiare nome, mail o password)</span><input class="input" id="pf-cur" type="password" autocomplete="current-password"></label>
     <p class="note" id="pf-note"></p>
     <div class="actions"><button class="btn primary" type="submit">Salva</button><button class="btn" type="button" id="pf-x">Annulla</button></div>
   </form>
@@ -449,18 +472,18 @@ const toCheck = () => S.mails.filter(m=>m.res.state==="warn").length;
 
 /* menu diviso: il lavoro di ogni giorno, la configurazione, i tutorial */
 const GROUPS = [
-  ["Operativo", [["cruscotto","Cruscotto"],["ticket","Ticket"],["clienti","Clienti"]]],
-  ["Configurazione", [["utenti","Utenti"],["profili","Profili e permessi"],["tecnici","Tecnici"],["office365","Office 365"],["posta","Posta in arrivo"],["regole","Riconoscimento"],["collegamenti","Collegamenti"],["backup","Backup e ripristino"],["audit","Registro attività"]]],
+  ["Operativo", [["cruscotto","Riepilogo"],["ticket","Ticket"],["clienti","Clienti"]]],
+  ["Configurazione", [["utenti","Utenti"],["profili","Profili e permessi"],["tecnici","Tecnici"],["office365","Office 365"],["ai","Assistente AI"],["posta","Posta in arrivo"],["regole","Riconoscimento"],["collegamenti","Collegamenti"],["backup","Backup e ripristino"],["audit","Registro attività"]]],
   ["Tutorial", [["tutorial","Casi d'uso"]]]
 ];
 /* profili: v vedere, m creare/modificare, e eliminare (in uso reale arrivano dal backend) */
-const AREE = [["cruscotto","Cruscotto"],["ticket","Ticket"],["clienti","Clienti"],["utenti","Utenti"],["profili","Profili e permessi"],["tecnici","Tecnici"],["office365","Office 365"],["posta","Posta in arrivo"],["regole","Riconoscimento"],["collegamenti","Collegamenti"],["backup","Backup e ripristino"],["audit","Registro attività"],["tutorial","Tutorial"]];
+const AREE = [["cruscotto","Riepilogo"],["ticket","Ticket"],["clienti","Clienti"],["utenti","Utenti"],["profili","Profili e permessi"],["tecnici","Tecnici"],["office365","Office 365"],["ai","Assistente AI"],["posta","Posta in arrivo"],["regole","Riconoscimento"],["collegamenti","Collegamenti"],["backup","Backup e ripristino"],["audit","Registro attività"],["tutorial","Tutorial"]];
 let PROFILES = {
   admin:{nome:"Amministratore", desc:"Tutto, compresa la configurazione", perm:Object.fromEntries(AREE.map(([a])=>[a,"vme"]))},
-  resp:{nome:"Responsabile service", desc:"Lavoro quotidiano, tecnici e regole; vede utenti e registro", perm:{cruscotto:"v",posta:"vm",ticket:"vme",clienti:"vme",utenti:"v",profili:"v",tecnici:"vme",office365:"",collegamenti:"v",regole:"vm",backup:"",audit:"v",tutorial:"v"}},
-  op:{nome:"Tecnico", desc:"I suoi interventi, ticket e clienti; nessuna configurazione", perm:{cruscotto:"v",posta:"",ticket:"vm",clienti:"v",utenti:"",profili:"",tecnici:"",office365:"",collegamenti:"",regole:"",backup:"",audit:"",tutorial:"v"}}
+  resp:{nome:"Responsabile service", desc:"Lavoro quotidiano, tecnici e regole; vede utenti e registro", perm:{cruscotto:"v",posta:"vm",ticket:"vme",clienti:"vme",utenti:"v",profili:"v",tecnici:"vme",office365:"",ai:"",collegamenti:"v",regole:"vm",backup:"",audit:"v",tutorial:"v"}},
+  op:{nome:"Tecnico", desc:"I suoi interventi, ticket e clienti; nessuna configurazione", perm:{cruscotto:"v",posta:"",ticket:"vm",clienti:"v",utenti:"",profili:"",tecnici:"",office365:"",ai:"",collegamenti:"",regole:"",backup:"",audit:"",tutorial:"v"}}
 };
-let ROLE = "op", REAL_ROLE = "admin";   /* all'ingresso si vede la console come Tecnico, sul cruscotto */
+let ROLE = "op", REAL_ROLE = "admin", BOOTED = false;   /* all'ingresso si vede la console come Tecnico, sul cruscotto */
 const can = (area, right) => ((PROFILES[ROLE]||{perm:{}}).perm[area]||"").includes(right||"v");
 /* nasconde i pulsanti che il profilo non può usare (attributo data-perm="area:diritto") */
 function applyPerms(root){ (root||document).querySelectorAll("[data-perm]").forEach(el=>{ const [a,r] = el.dataset.perm.split(":"); el.hidden = !can(a,r); }); }
@@ -469,7 +492,7 @@ function nav(){
   $("#nav").innerHTML = GROUPS.map(([g,items])=>[g, items.filter(([k])=>can(k,"v"))]).filter(([,items])=>items.length).map(([g,items])=>`<span class="grp">${g}</span>`+items.map(([k,l])=>`<button type="button" data-v="${k}" ${S.view===k?'aria-current="page"':""}>${l}${k==="posta"&&toCheck()?`<span class="n">${toCheck()}</span>`:""}${k==="tutorial"?`<span class="n">${TUTORIALS.filter(x=>x.for.includes(ROLE)).length}</span>`:""}</button>`).join("")).join("");
   $("#nav").querySelectorAll("button").forEach(b=>b.onclick=()=>{ S.view=b.dataset.v; S.sel=null; S.tut=null; render(); window.scrollTo(0,0); });
 }
-function render(){ nav(); ({cruscotto,posta,ticket,clienti,utenti,profili,tecnici,office365,collegamenti,regole,backup,audit,tutorial})[S.view](); applyPerms(); paintRole(); }
+function render(){ nav(); ({cruscotto,posta,ticket,clienti,utenti,profili,tecnici,office365,ai:assistente,collegamenti,regole,backup,audit,tutorial})[S.view](); applyPerms(); paintRole(); }
 new MutationObserver(()=>applyPerms($("#main"))).observe(document.getElementById("main"), {childList:true, subtree:true});
 
 /* ---------- Tutorial: 5 casi d'uso operativi, ognuno con video e procedura ---------- */
@@ -561,7 +584,7 @@ const TUTORIALS = [
   { id:"verifica", for:["admin","resp"], n:9, group:"day", title:"Sistemare le mail da verificare", where:"Console", time:"1 minuto",
     intro:"Una mail senza ticket e senza cliente riconosciuto resta «Da verificare». Basta indicare il cliente e aprire il ticket.",
     steps:[
-      {who:"Console", t:"Guarda il cruscotto", d:"Il riquadro <b>Da verificare</b> o il numero oro accanto a <b>Posta in arrivo</b>."},
+      {who:"Console", t:"Guarda il Riepilogo", d:"Il riquadro <b>Da verificare</b> o il numero oro accanto a <b>Posta in arrivo</b>."},
       {who:"Console", t:"Filtra Da verificare", d:"In <b>Posta in arrivo</b> tocca il filtro <b>Da verificare</b>."},
       {who:"Console", t:"Apri la mail", d:"A destra: mittente, intestazioni, testo e i passaggi del riconoscimento."},
       {who:"Console", t:"Scegli il cliente", d:"Lascia attivo <b>Ricorda il mittente</b>: la prossima volta sarà riconosciuto da solo."},
@@ -645,7 +668,7 @@ function cruscotto(){
   const byTech = TECHS.map(t=>[t.ini+" · "+t.zona, open.filter(x=>x.tech===t.ini).length]);
   const max = Math.max(1,...byTech.map(x=>x[1]));
   const fromApp = S.mails.filter(m=>TECHS.some(t=>t.mail===m.from)).length;
-  $("#main").innerHTML = `<div class="top"><div><h1>Cruscotto</h1><p class="sub">Oggi, lunedì 9 novembre. Dati letti da ITSM, Halo e Office 365, posta da ${SUPPORT}.</p></div></div>
+  $("#main").innerHTML = `<div class="top"><div><h1>Riepilogo</h1><p class="sub">Oggi, lunedì 9 novembre. Dati letti da ITSM, Halo e Office 365, posta da ${SUPPORT}.</p></div></div>
     <div class="kpis">
       <div class="kpi"><b>${S.mails.length}</b><span>mail arrivate a ${SUPPORT}</span></div>
       <div class="kpi"><b class="gold">${Math.round(auto/S.mails.length*100)}%</b><span>riconosciute da sole</span></div>
@@ -904,9 +927,9 @@ function reminderText(a){
 }
 function actRow(t, when, tone){
   const c = cl(t.client) || {name:t.client, contacts:[]}; const tel = ((c.contacts||[]).find(k=>k.tel)||{}).tel;
-  return `<li class="act-i ${tone||""}"><span class="act-t">${when}</span>
+  return `<li class="act-i ${tone||""}" data-tid="${esc(t.id)}"><span class="act-t">${when}</span>
     <div class="act-b"><div class="act-h">${logo(c)}<b>${esc(c.name)}</b>${t.urg?'<span class="pill p-urg">Urgente</span>':""}</div>
-      <span class="dim">${esc(t.id)} · ${esc(t.title)}</span>
+      <span class="dim">${esc(t.id)} · ${esc(t.title)}</span><span class="why" hidden></span>
       <div class="act-x"><a class="btn small" href="${mapsUrl(c)}" target="_blank" rel="noopener">Naviga</a>${waBtn(tel)}<button class="btn small" type="button" data-open="${esc(t.id)}">Ticket</button></div></div></li>`;
 }
 function tecnicoHome(){
@@ -918,18 +941,68 @@ function tecnicoHome(){
     ...a.waiting.map(t=>actRow(t, "In attesa", "wait")),
     ...a.todo.map(t=>actRow(t, "Da fare"))
   ];
-  $("#main").innerHTML = `<div class="top"><div><h1>La tua giornata</h1><p class="sub">${giorno(0).replace(/^./,x=>x.toUpperCase())} · Zona ${esc(a.me.zona||"")}</p></div></div>
-    <section class="remind"><div class="rem-h"><span class="rem-i" aria-hidden="true">☀</span><b>Promemoria di oggi</b></div><p>${esc(reminderText(a))}</p>
-      <span class="dim">Scritto in automatico dai tuoi ticket. L'assistente AI si attiverà in Configurazione.</span></section>
-    <div class="glance">
-      <button class="gl ${a.urgent.length?"hot":""}" type="button" data-go="ticket"><b>${a.urgent.length}</b><span>urgenze da pianificare</span></button>
-      <button class="gl" type="button" data-go="ticket"><b>${a.today.length}</b><span>interventi oggi</span></button>
-      <button class="gl" type="button" data-go="ticket"><b>${a.later.length}</b><span>interventi nei prossimi giorni</span></button>
-    </div>
-    <section><h2 class="h2s">Prossime attività</h2>
-      <ol class="acts">${rows.join("") || `<li class="dim">Nessuna attività aperta: ottimo lavoro.</li>`}</ol></section>`;
+  /* contatti rapidi: i clienti delle attività, una volta sola, con telefono */
+  const seen = new Set(), contacts = [...a.urgent, ...a.today, ...a.later, ...a.waiting, ...a.todo].map(t=>cl(t.client)).filter(c=>c && !seen.has(c.id) && seen.add(c.id));
+  $("#main").innerHTML = `<div class="top"><div><h1>Riepilogo</h1><p class="sub">${giorno(0).replace(/^./,x=>x.toUpperCase())} · ${esc(a.me.ini||"")} · Zona ${esc(a.me.zona||"")}</p></div></div>
+    <div class="riep">
+      <div class="riep-main">
+        <section class="remind" id="rem"><div class="rem-h"><span class="rem-i" aria-hidden="true">☀</span><b id="rem-title">Promemoria di oggi</b><button class="linkback" type="button" id="rem-again" hidden>Riscrivi</button></div><p id="rem-text">${esc(reminderText(a))}</p>
+          <span class="dim" id="rem-foot">Scritto in automatico dai tuoi ticket.</span></section>
+        <section><h2 class="h2s">Prossime attività <span class="dim">· ${rows.length}</span></h2>
+          <ol class="acts">${rows.join("") || `<li class="dim">Nessuna attività aperta: ottimo lavoro.</li>`}</ol></section>
+      </div>
+      <aside class="riep-side">
+        <div class="glance">
+          <button class="gl ${a.urgent.length?"hot":""}" type="button" data-go="ticket"><b>${a.urgent.length}</b><span>urgenze da pianificare</span></button>
+          <button class="gl" type="button" data-go="ticket"><b>${a.today.length}</b><span>interventi oggi</span></button>
+          <button class="gl" type="button" data-go="ticket"><b>${a.later.length}</b><span>nei prossimi giorni</span></button>
+          <button class="gl ${a.waiting.length?"warm":""}" type="button" data-go="ticket"><b>${a.waiting.length}</b><span>in attesa di ricambi</span></button>
+        </div>
+        <section class="panel"><h2>Contatti rapidi</h2>
+          ${contacts.map(c=>{ const k = (c.contacts||[]).find(x=>x.tel) || (c.contacts||[])[0] || {}; return `<div class="qc">${logo(c)}<div><b>${esc(c.name)}</b><span class="dim">${esc(k.n||"")}${k.tel?" · "+esc(k.tel):""}</span></div>${waBtn(k.tel)}</div>`; }).join("") || `<span class="dim">Nessun cliente da contattare.</span>`}
+        </section>
+      </aside>
+    </div>`;
   document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{ S.view=b.dataset.go; render(); });
   document.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{ S.view="ticket"; S.tfilt="aperti"; render(); });
+  fillAI(a, false);
+}
+/* ---------- assistente AI nel cruscotto del Tecnico ---------- */
+const AI_MODELS = {"claude-opus-5-5":{nome:"Claude Opus 5.5", nota:"il più capace (consigliato)", in:4, out:20}, "claude-sonnet-5-5":{nome:"Claude Sonnet 5.5", nota:"veloce, buon equilibrio", in:2, out:10}, "claude-haiku-5-5":{nome:"Claude Haiku 5.5", nota:"il più economico", in:0.1, out:0.5}};
+let AI = {enabled:true, keySet:false, envKey:false, model:"claude-opus-5-5", promemoria:true, priorita:true};
+try{ const x = JSON.parse(localStorage.getItem("tf-admin-ai")||"null"); if(x) AI = Object.assign(AI, x); }catch(e){}
+const aiCost = (m, techs) => { const x = AI_MODELS[m]; return (1800*x.in + 700*x.out)/1e6 * Math.max(1,techs) * 22; };
+/* risposta di esempio quando l'assistente è acceso senza chiave (versione di prova) */
+function aiSimulate(a){
+  const name = t => (cl(t.client)||{name:t.client}).name;
+  const f = [];
+  if(a.urgent[0]) f.push("La priorità di oggi è "+name(a.urgent[0])+": l'"+a.urgent[0].title.split(":")[0].toLowerCase()+" dà "+(a.urgent[0].title.split(":")[1]||"problemi").trim()+" ed è urgente ma non ancora pianificato, quindi chiama il cliente in mattinata e fissa l'intervento.");
+  if(a.today[0]) f.push("Alle "+a.today[0].plan.time+" sei da "+name(a.today[0])+" per la "+a.today[0].title.split(":").slice(-1)[0].trim()+": porta il kit di taratura.");
+  if(a.later[0]) f.push((a.later[0].plan.day===1?"Domani":"Tra "+a.later[0].plan.day+" giorni")+" alle "+a.later[0].plan.time+" ti aspetta "+name(a.later[0])+(/lampada/i.test(a.later[0].title)?": verifica di avere una lampada di ricambio.":"."));
+  if(a.waiting[0]) f.push("Per "+name(a.waiting[0])+" ("+a.waiting[0].id+") controlla se il ricambio è arrivato e, se sì, proponi una data.");
+  const why = t => a.urgent.includes(t) ? "Urgente e senza data: va pianificato per primo." : a.today.includes(t) ? "È in agenda oggi alle "+t.plan.time+"." : a.later.includes(t) ? "Già pianificato: basta prepararsi." : a.waiting.includes(t) ? "Dipende dal ricambio: solo un controllo veloce." : "Da pianificare quando hai tempo.";
+  return {source:"simulazione", model:AI.model, text:f.join(" ") || "Oggi non hai attività aperte.", order:[...a.urgent, ...a.today, ...a.waiting, ...a.later, ...a.todo].map(t=>({ticket:t.id, perche:why(t)}))};
+}
+function fillAI(a, fresh){
+  if(!AI.enabled || !$("#rem")) return;
+  const m = (AI_MODELS[AI.model]||{}).nome || AI.model;
+  $("#rem").classList.add("ai"); $("#rem-title").textContent = "Promemoria di oggi · Assistente AI";
+  $(".rem-i").textContent = "✦"; $("#rem-foot").textContent = "Sto preparando il promemoria con "+m+"…"; $("#rem-again").hidden = true;
+  const show = r => {
+    if(!$("#rem")) return;
+    if(r.text && AI.promemoria) $("#rem-text").textContent = r.text;
+    $("#rem-foot").textContent = r.source==="claude" ? "Scritto da "+((AI_MODELS[r.model]||{}).nome||r.model)+" (Anthropic) con i tuoi ticket."+(r.cached?" Aggiornato oggi.":"")
+      : r.source==="simulazione" ? "Assistente AI attivo · "+m+" · risposta di esempio: quella vera arriva con la chiave API in Configurazione → Assistente AI."
+      : r.source==="regole" ? "L'assistente non ha risposto ("+(r.error||"errore")+"): promemoria scritto dalle regole." : "Scritto in automatico dai tuoi ticket.";
+    $("#rem-again").hidden = r.source!=="claude";
+    if(AI.priorita && r.order && r.order.length){
+      const ol = $(".acts"); if(!ol) return;
+      r.order.forEach(x=>{ const li = ol.querySelector(`[data-tid="${CSS.escape(x.ticket)}"]`); if(!li) return; ol.appendChild(li); const w = li.querySelector(".why"); w.hidden = false; w.textContent = "✦ "+x.perche; });
+    }
+  };
+  $("#rem-again").onclick = ()=>fillAI(a, true);
+  if(LIVE) getJ("/api/admin/ai/agenda?tech="+encodeURIComponent(a.me.ini||"")+(fresh?"&fresh=1":"")).then(show).catch(err=>show({source:"regole", error:err.message}));
+  else setTimeout(()=>show(aiSimulate(a)), 900);
 }
 
 /* ---------- profili: cambio vista e default per profilo ---------- */
@@ -1154,6 +1227,54 @@ function office365(){
   };
 }
 
+
+/* ---------- Configurazione → Assistente AI ---------- */
+function assistente(){
+  const draw = (techs)=>{
+    const keyOk = AI.keySet || AI.envKey;
+    $("#main").innerHTML = `<div class="top"><div><h1>Assistente AI</h1><p class="sub">Claude, di Anthropic, scrive ogni mattina il promemoria di ogni tecnico e gli ordina le attività spiegando il perché.</p></div></div>
+      <div class="panel o365state ${AI.enabled?(keyOk?"good":"warn"):"bad"}"><b>${AI.enabled ? "Attivo" : "Spento"}</b><span>${AI.enabled ? (keyOk ? "Risponde "+AI_MODELS[AI.model].nome+" con la vostra chiave API." : "Senza chiave API l'assistente mostra una risposta di esempio. Inserisci la chiave per le risposte vere.") : "Il promemoria è scritto dalle regole fisse, gratis."}</span></div>
+      <form class="panel" id="ai-form">
+        <label class="check big"><button class="switch" type="button" role="switch" id="ai-on" aria-checked="${AI.enabled}" aria-label="Assistente AI attivo"></button> Assistente AI attivo</label>
+        <h2>Modello</h2>
+        <div class="models">${Object.entries(AI_MODELS).map(([k,x])=>`<label class="model ${AI.model===k?"on":""}"><input type="radio" name="ai-model" value="${k}" ${AI.model===k?"checked":""}><b>${x.nome}</b><span class="dim">${x.nota}</span>
+          <span class="price">circa ${aiCost(k,techs).toLocaleString("it-CH",{style:"currency",currency:"USD",minimumFractionDigits:2,maximumFractionDigits:2})} al mese</span><span class="dim">per ${techs} tecnic${techs===1?"o":"i"}, 22 giorni</span></label>`).join("")}</div>
+        <h2>Chiave API di Anthropic</h2>
+        <label class="field"><span>Chiave (inizia con sk-ant-)</span><input class="input mono" id="ai-key" type="password" autocomplete="new-password" placeholder="${AI.keySet ? "•••••••• salvata: lascia vuoto per non cambiarla" : AI.envKey ? "usata quella del server (ANTHROPIC_API_KEY)" : "incolla la chiave"}"></label>
+        <p class="note">La chiave si crea su <b>console.anthropic.com</b> → API Keys. Resta solo sul server, non torna mai nella pagina e non finisce nei backup.</p>
+        <h2>Cosa fa</h2>
+        <label class="check"><input type="checkbox" id="ai-prom" ${AI.promemoria?"checked":""}> Scrive il promemoria del giorno di ogni tecnico</label>
+        <label class="check"><input type="checkbox" id="ai-prio" ${AI.priorita?"checked":""}> Ordina le prossime attività e spiega il perché</label>
+        <div class="tip">Cosa viene inviato a Claude: data, zona, numero e titolo dei ticket, cliente e città, stato, urgenza e orario. <b>Mai</b> telefoni, indirizzi mail o il testo dei messaggi dei clienti. Il promemoria viene chiesto una volta al giorno per tecnico e rifatto solo se cambiano i suoi ticket.</div>
+        <div class="actions" data-perm="ai:m"><button class="btn primary" type="submit">Salva</button><button class="btn" type="button" id="ai-test">Prova adesso</button></div>
+      </form>
+      <div id="ai-result"></div>`;
+    $("#ai-on").onclick = e => { const b = e.currentTarget; b.setAttribute("aria-checked", String(b.getAttribute("aria-checked")!=="true")); };
+    document.querySelectorAll("[name=ai-model]").forEach(r=>r.onchange=()=>document.querySelectorAll(".model").forEach(l=>l.classList.toggle("on", l.querySelector("input").checked)));
+    $("#ai-form").onsubmit = e => {
+      e.preventDefault();
+      const body = {enabled:$("#ai-on").getAttribute("aria-checked")==="true", model:document.querySelector("[name=ai-model]:checked").value, apiKey:$("#ai-key").value.trim(), promemoria:$("#ai-prom").checked, priorita:$("#ai-prio").checked};
+      if(LIVE){ post("/api/admin/ai", body).then(r=>{ AI = r.ai; toast("Assistente salvato"); assistente(); }).catch(err=>toast("Non salvato: "+err.message)); return; }
+      if(body.apiKey && !/^sk-ant-/.test(body.apiKey)){ toast("La chiave API di Anthropic inizia con sk-ant-"); return; }
+      AI = Object.assign(AI, {enabled:body.enabled, model:body.model, promemoria:body.promemoria, priorita:body.priorita, keySet: AI.keySet || !!body.apiKey});
+      try{ localStorage.setItem("tf-admin-ai", JSON.stringify({enabled:AI.enabled, model:AI.model, promemoria:AI.promemoria, priorita:AI.priorita})); }catch(e){}
+      logLocal(AI.enabled?"Assistente AI attivo":"Assistente AI spento", "modello "+AI.model, "ai");
+      toast("Assistente salvato (prova)"+(body.apiKey?": nella versione online la chiave non viene usata né salvata":"")); assistente();
+    };
+    $("#ai-test").onclick = ()=>{
+      const out = $("#ai-result"); out.innerHTML = `<div class="panel"><b>Chiedo a ${AI_MODELS[AI.model].nome}…</b></div>`;
+      const sh = r => { out.innerHTML = `<div class="panel"><h2>Promemoria di prova per ${esc(myTech().ini)} · Zona ${esc(myTech().zona||"")} ${r.source==="simulazione"?'<span class="pill p-warn">esempio</span>':r.source==="claude"?'<span class="pill p-ok">Claude</span>':""}</h2>
+        ${r.error?`<p class="rolebar">${esc(r.error)}</p>`:""}<p style="margin:0;color:var(--ink);font-size:15.5px;line-height:1.6">${esc(r.text||"")}</p>
+        ${(r.order||[]).length?`<ol class="proc">${r.order.map(x=>`<li><span><b>${esc(x.ticket)}</b> · ${esc(x.perche)}</span></li>`).join("")}</ol>`:""}
+        ${r.usage?`<p class="note">Token: ${r.usage.in} in ingresso, ${r.usage.out} in uscita.</p>`:""}</div>`; };
+      if(LIVE){ post("/api/admin/ai/test", {tech:myTech().ini}).then(sh).catch(err=>sh({error:err.message})); return; }
+      setTimeout(()=>sh(aiSimulate(agenda())), 900);
+    };
+  };
+  if(LIVE) getJ("/api/admin/ai").then(r=>{ AI = r.ai; draw(r.techs); }).catch(err=>{ toast("Non disponibile: "+err.message); draw(TECHS.length); });
+  else draw(TECHS.length);
+}
+
 /* ---------- Collegamenti ---------- */
 function collegamenti(){
   const C = (LIVE && CONN) ? CONN : [
@@ -1184,7 +1305,9 @@ function load(){
     LIVE = true; CONN = d.connections; ME = d.me || ME; paintMe();
     CLIENTS.splice(0, CLIENTS.length, ...d.clients); TECHS.splice(0, TECHS.length, ...d.techs);
     S.mails = d.mails; S.tickets = d.tickets; S.rules = d.rules; SETTINGS = d.settings || SETTINGS; O365 = d.o365 || null;
+    if(d.ai) AI = d.ai;
     if(d.profiles) PROFILES = d.profiles; REAL_ROLE = (d.me && d.me.profilo) || "admin"; if(REAL_ROLE !== "admin") ROLE = REAL_ROLE;
+    if(!BOOTED){ BOOTED = true; landing(); }
     $("#foot-mode").textContent = d.mode==="live" ? "Collegato a ITSM, Halo e Office 365" : "Backend in modalità prova: mail salvate in outbox, non spedite";
     if(d.appUrl){ const a=$("#app-link"); a.href=d.appUrl; a.hidden=false; }
     render();
@@ -1192,13 +1315,20 @@ function load(){
 }
 /* senza backend (file aperto o GitHub Pages): dati di prova, accesso e profilo solo in questo browser */
 const OFF_USER = {user:"admin", password:"admin123"};
-function offProfile(){ let p = null; try{ p = JSON.parse(localStorage.getItem("tf-admin-profile")||"null"); }catch(e){} return Object.assign({user:"admin", nome:"Amministratore", mail:"support@efuture.it"}, p||{}); }
+function offProfile(){ let p = null; try{ p = JSON.parse(localStorage.getItem("tf-admin-profile")||"null"); }catch(e){} return Object.assign({user:"admin", nome:"Amministratore", mail:"support@efuture.it", home:"cruscotto", vista:"op"}, p||{}); }
 function startOffline(){
   if(location.hostname.endsWith("github.io")){ $("#foot-mode").textContent = "Console di prova: dati di esempio, non collegata a un backend"; const a=$("#app-link"); a.href="../"; a.hidden=false; }
-  ME = offProfile(); paintMe(); render();
+  ME = offProfile(); if(!BOOTED){ BOOTED = true; landing(); } paintMe(); render();
 }
 
 /* ---------- accesso, menu utente, profilo ---------- */
+const homeLabel = k => (GROUPS.flatMap(([,i])=>i).find(([x])=>x===k)||[k,k])[1];
+function landing(){
+  const real = REAL_ROLE, v = real==="admin" ? ((ME && ME.vista) || "op") : real;
+  ROLE = PROFILES[v] ? v : "op";
+  const h = (ME && ME.home) || "cruscotto";
+  S.view = can(h,"v") ? h : "cruscotto";
+}
 function initials(n){ return String(n||"?").trim().split(/\s+/).slice(0,2).map(w=>w[0]).join("").toUpperCase() || "AD"; }
 function paintMe(){ if(!ME) return; $("#me").textContent = initials(ME.nome || ME.user); $("#me-name").textContent = ME.nome || ME.user; $("#me-mail").textContent = (ME.user ? ME.user+" · " : "")+(ME.mail||""); }
 function showLogin(hint){
@@ -1212,14 +1342,14 @@ $("#login-form").onsubmit = e => {
   e.preventDefault();
   const user = $("#lg-user").value.trim(), password = $("#lg-pass").value;
   if(!BACKEND){
-    if(user === OFF_USER.user && password === OFF_USER.password){ try{ localStorage.setItem("tf-admin-in","1"); }catch(e){} $("#login").hidden = true; $("#lg-pass").value=""; ROLE = "op"; S.view = "cruscotto"; startOffline(); }
+    if(user === OFF_USER.user && password === OFF_USER.password){ try{ localStorage.setItem("tf-admin-in","1"); }catch(e){} $("#login").hidden = true; $("#lg-pass").value=""; ME = offProfile(); landing(); startOffline(); }
     else toast("Utente o password non corretti");
     return;
   }
   $("#lg-go").disabled = true;
   fetch("/api/admin/login", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({user, password})})
     .then(r=>r.json().then(j=>r.ok ? j : Promise.reject(new Error(j.error||r.status))))
-    .then(j=>{ TOKEN = j.token; ME = j.me; try{ localStorage.setItem("tf-admin-token", TOKEN); }catch(e){} $("#login").hidden = true; $("#lg-pass").value=""; ROLE = "op"; S.view = "cruscotto"; paintMe(); load(); })
+    .then(j=>{ TOKEN = j.token; ME = j.me; REAL_ROLE = (ME && ME.profilo) || "admin"; try{ localStorage.setItem("tf-admin-token", TOKEN); }catch(e){} $("#login").hidden = true; $("#lg-pass").value=""; landing(); paintMe(); load(); })
     .catch(err=>toast("Accesso non riuscito: "+err.message)).finally(()=>{ $("#lg-go").disabled = false; });
 };
 function logout(){
@@ -1236,7 +1366,15 @@ $("#me-edit").onclick = ()=>{
   $("#pf-nome").value = ME && ME.nome || ""; $("#pf-mail").value = ME && ME.mail || "";
   ["#pf-new","#pf-new2","#pf-cur"].forEach(x=>$(x).value="");
   $("#pf-pw").disabled = !BACKEND; $("#pf-cur").closest(".field").hidden = !BACKEND;
-  $("#pf-note").textContent = BACKEND ? "Utente: "+(ME && ME.user || "") : "Versione di prova online: nome e mail restano solo in questo browser, la password non si cambia.";
+  $("#pf-note").textContent = BACKEND ? "Utente: "+(ME && ME.user || "") : "Versione di prova online: le scelte restano solo in questo browser, la password non si cambia.";
+  /* vista: solo un amministratore può scegliere; schermata: tra quelle che la vista può aprire */
+  const real = REAL_ROLE, vista = (ME && ME.vista) || "op";
+  $("#pf-vista-f").hidden = real !== "admin";
+  $("#pf-vista").innerHTML = Object.entries(PROFILES).map(([k,p])=>`<option value="${k}" ${k===vista?"selected":""}>${esc(p.nome)}</option>`).join("");
+  const homes = v => GROUPS.flatMap(([,items])=>items).filter(([k])=>((PROFILES[v]||{perm:{}}).perm[k]||"").includes("v"));
+  const fillHome = () => { const v = real==="admin" ? $("#pf-vista").value : real; const cur = (ME && ME.home) || "cruscotto";
+    $("#pf-home").innerHTML = homes(v).map(([k,l])=>`<option value="${k}" ${k===cur?"selected":""}>${esc(l)}</option>`).join(""); };
+  $("#pf-vista").onchange = fillHome; fillHome();
   $("#pf-nome").focus();
 };
 $("#pf-x").onclick = ()=>{ $("#profile").hidden = true; };
@@ -1246,10 +1384,13 @@ $("#profile").onclick = e => { if(e.target.id==="profile") $("#profile").hidden 
 $("#pf-form").onsubmit = e => {
   e.preventDefault();
   const nome = $("#pf-nome").value.trim(), mail = $("#pf-mail").value.trim(), nuova = $("#pf-new").value, nuova2 = $("#pf-new2").value, attuale = $("#pf-cur").value;
-  if(!BACKEND){ ME = Object.assign(offProfile(), {nome, mail}); try{ localStorage.setItem("tf-admin-profile", JSON.stringify({nome, mail})); }catch(e){} paintMe(); $("#profile").hidden = true; toast("Profilo salvato"); return; }
+  const home = $("#pf-home").value, vista = REAL_ROLE==="admin" ? $("#pf-vista").value : REAL_ROLE;
+  if(!BACKEND){ ME = Object.assign(offProfile(), {nome, mail, home, vista}); try{ localStorage.setItem("tf-admin-profile", JSON.stringify({nome, mail, home, vista})); }catch(e){} paintMe(); $("#profile").hidden = true; toast("Profilo salvato: al prossimo accesso apri "+homeLabel(home)); return; }
   if(nuova && nuova !== nuova2){ toast("Le due nuove password non sono uguali"); return; }
-  if(!attuale){ toast("Scrivi la password attuale per salvare"); $("#pf-cur").focus(); return; }
-  post("/api/admin/profile", {nome, mail, attuale, nuova}).then(r=>{ ME = r.me; paintMe(); $("#profile").hidden = true; toast(nuova ? "Profilo e password salvati" : "Profilo salvato"); })
+  const changed = nome !== (ME.nome||"") || mail !== (ME.mail||"") || !!nuova;
+  if(changed && !attuale){ toast("Per cambiare nome, mail o password scrivi la password attuale"); $("#pf-cur").focus(); return; }
+  const body = {home, vista}; if(changed) Object.assign(body, {nome, mail, attuale, nuova});
+  post("/api/admin/profile", body).then(r=>{ ME = r.me; paintMe(); $("#profile").hidden = true; toast(nuova ? "Profilo e password salvati" : "Profilo salvato: al prossimo accesso apri "+homeLabel(home)); })
     .catch(err=>toast("Non salvato: "+err.message));
 };
 function boot(){

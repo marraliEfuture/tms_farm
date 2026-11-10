@@ -17,6 +17,22 @@ function graph() {
     readMail: g.readMail !== false, readContacts: g.readContacts !== false, every: Number(g.every || 5),
   };
 }
+/* assistente AI: in prova è acceso di base (senza chiave risponde con un esempio); dal vivo si accende dalla console */
+function ai() {
+  const a = load().ai || {};
+  return { enabled: a.enabled !== undefined ? !!a.enabled : cfg.mode === "demo", apiKey: a.apiKey || "", model: a.model || "claude-opus-5-5",
+    promemoria: a.promemoria !== false, priorita: a.priorita !== false };
+}
+function aiPublic() { const a = ai(); return { enabled: a.enabled, keySet: !!a.apiKey, envKey: !!process.env.ANTHROPIC_API_KEY, model: a.model, promemoria: a.promemoria, priorita: a.priorita }; }
+function updateAi(b) {
+  const s = load(), a = s.ai || {};
+  if (b.enabled !== undefined) a.enabled = !!b.enabled;
+  if (b.apiKey) { if (!/^sk-ant-[\w-]{10,}$/.test(String(b.apiKey).trim())) return { error: "la chiave API di Anthropic inizia con sk-ant-" }; a.apiKey = String(b.apiKey).trim(); }
+  if (b.clearKey) delete a.apiKey;
+  if (b.model !== undefined) { if (!["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"].includes(b.model)) return { error: "modello non valido" }; a.model = b.model; }
+  for (const k of ["promemoria", "priorita"]) if (b[k] !== undefined) a[k] = !!b[k];
+  s.ai = a; save(s); return { ok: true, ai: aiPublic() };
+}
 /* quello che vede la console: il segreto non torna mai indietro, si sa solo se c'è */
 function publicView() {
   const g = graph();
@@ -37,13 +53,13 @@ function update(body) {
   return { ok: true, settings: publicView() };
 }
 /* profili e permessi: per ogni area, v = vedere, m = creare/modificare, e = eliminare */
-const AREE = ["cruscotto", "posta", "ticket", "clienti", "utenti", "profili", "tecnici", "office365", "collegamenti", "regole", "backup", "audit", "tutorial"];
+const AREE = ["cruscotto", "posta", "ticket", "clienti", "utenti", "profili", "tecnici", "office365", "ai", "collegamenti", "regole", "backup", "audit", "tutorial"];
 const DEFAULT_PROFILES = {
   admin: { nome: "Amministratore", desc: "Tutto, compresa la configurazione", perm: Object.fromEntries(AREE.map(a => [a, "vme"])) },
   resp: { nome: "Responsabile service", desc: "Lavoro quotidiano, tecnici e regole; vede utenti e registro", perm: {
-    cruscotto: "v", posta: "vm", ticket: "vme", clienti: "vme", utenti: "v", profili: "v", tecnici: "vme", office365: "", collegamenti: "v", regole: "vm", backup: "", audit: "v", tutorial: "v" } },
+    cruscotto: "v", posta: "vm", ticket: "vme", clienti: "vme", utenti: "v", profili: "v", tecnici: "vme", office365: "", ai: "", collegamenti: "v", regole: "vm", backup: "", audit: "v", tutorial: "v" } },
   op: { nome: "Tecnico", desc: "I suoi interventi, posta, ticket e clienti; nessuna configurazione", perm: {
-    cruscotto: "v", posta: "", ticket: "vm", clienti: "v", utenti: "", profili: "", tecnici: "", office365: "", collegamenti: "", regole: "", backup: "", audit: "", tutorial: "v" } },
+    cruscotto: "v", posta: "", ticket: "vm", clienti: "v", utenti: "", profili: "", tecnici: "", office365: "", ai: "", collegamenti: "", regole: "", backup: "", audit: "", tutorial: "v" } },
 };
 function profiles() {
   const saved = load().profiles || {};
@@ -63,7 +79,7 @@ const can = (profilo, area, right) => ((profiles()[profilo] || { perm: {} }).per
 /* copia di sicurezza: tutto data/ tranne il segreto di Office 365 e i loghi */
 function backupData() {
   const read = f => { try { return JSON.parse(fs.readFileSync(path.join(cfg.dataDir, f), "utf8")); } catch (e) { return null; } };
-  const st = load(); if (st.graph) { st.graph = { ...st.graph }; delete st.graph.clientSecret; }
+  const st = load(); if (st.graph) { st.graph = { ...st.graph }; delete st.graph.clientSecret; } if (st.ai) { st.ai = { ...st.ai }; delete st.ai.apiKey; }
   return { app: "Ticket Farm", version: 1, created: new Date().toISOString(), files: { "settings.json": st, "users.json": read("users.json"), "tecnici.json": read("tecnici.json"), "state.json": read("state.json") } };
 }
 function restoreData(b) {
@@ -73,8 +89,9 @@ function restoreData(b) {
   for (const f of ["settings.json", "users.json", "tecnici.json", "state.json"]) {
     let v = b.files[f]; if (v == null) continue;
     if (f === "settings.json" && keep.graph && keep.graph.clientSecret) { v.graph = v.graph || {}; v.graph.clientSecret = keep.graph.clientSecret; }
+    if (f === "settings.json" && keep.ai && keep.ai.apiKey) { v.ai = v.ai || {}; v.ai.apiKey = keep.ai.apiKey; }
     fs.writeFileSync(path.join(cfg.dataDir, f), JSON.stringify(v, null, 2));
   }
   return { ok: true, created: b.created };
 }
-module.exports = { support, graph, publicView, update, AREE, profiles, updateProfiles, can, backupData, restoreData };
+module.exports = { ai, aiPublic, updateAi, support, graph, publicView, update, AREE, profiles, updateProfiles, can, backupData, restoreData };

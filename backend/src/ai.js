@@ -1,0 +1,95 @@
+/* Assistente AI di Ticket Farm (Claude, API di Anthropic).
+   Scrive il promemoria del giorno del tecnico e l'ordine consigliato delle sue attività, con il motivo.
+   - con la chiave API (Configurazione → Assistente AI, oppure ANTHROPIC_API_KEY): risposta vera di Claude
+   - senza chiave, in prova: risposta di esempio («simulazione»), segnalata come tale
+   - se Claude non risponde: il promemoria scritto dalle regole («regole»)
+   A Claude vanno solo: data, zona, numero e titolo dei ticket, cliente e città, stato, urgenza, orario.
+   Niente telefoni, mail o testo dei messaggi dei clienti. */
+const AnthropicMod = require("@anthropic-ai/sdk");
+const Anthropic = AnthropicMod.default || AnthropicMod;
+const { z } = require("zod");
+const { zodOutputFormat } = require("@anthropic-ai/sdk/helpers/zod");
+const settings = require("./settings");
+
+/* prezzi in dollari per milione di token (listino Anthropic) e stima dei token di una richiesta */
+const MODELS = {
+  "claude-opus-5-5": { nome: "Claude Opus 5.5", nota: "il più capace (consigliato)", in: 4, out: 20 },
+  "claude-sonnet-5-5": { nome: "Claude Sonnet 5.5", nota: "veloce, buon equilibrio", in: 2, out: 10 },
+  "claude-haiku-5-5": { nome: "Claude Haiku 5.5", nota: "il più economico", in: 0.1, out: 0.5 },
+};
+const TOKENS_IN = 1800, TOKENS_OUT = 700;          /* stima per tecnico al giorno, ragionamento compreso */
+function monthlyCost(model, techs, days) {
+  const m = MODELS[model] || MODELS["claude-opus-5-5"];
+  return (TOKENS_IN * m.in + TOKENS_OUT * m.out) / 1e6 * (techs || 1) * (days || 22);
+}
+
+const Agenda = z.object({
+  promemoria: z.string().describe("3-5 frasi in italiano per il tecnico"),
+  attivita: z.array(z.object({ ticket: z.string().describe("numero del ticket, uguale ai dati"), perche: z.string().describe("motivo in una frase breve") })),
+});
+const SYSTEM = [
+  "Sei l'assistente di Ticket Farm per un tecnico dell'assistenza sul campo.",
+  "Scrivi il promemoria della sua giornata: da 3 a 5 frasi semplici in italiano, tono diretto e cordiale, senza elenchi, titoli o emoji.",
+  "Prima le urgenze da pianificare, poi gli interventi di oggi in ordine di orario, poi quelli dei prossimi giorni, infine i ticket in attesa (per esempio di un ricambio) con cosa fare.",
+  "Se dal titolo si capisce cosa portare con sé (ricambi, kit, strumenti di taratura) dillo in poche parole.",
+  "Usa solo i dati ricevuti: non inventare orari, clienti, persone o fatti.",
+  "Poi elenca tutti i ticket nell'ordine in cui conviene affrontarli, ognuno con il motivo in una frase breve.",
+].join("\n");
+
+let makeClient = key => new Anthropic(key ? { apiKey: key } : {});
+function setClientFactory(fn) { makeClient = fn; }          /* per i test */
+
+function configured() { const a = settings.ai(); return !!(a.enabled && (a.apiKey || process.env.ANTHROPIC_API_KEY)); }
+
+/* dati per Claude: solo quello che serve, una riga per ticket */
+function contextText({ tech, tickets, clients, date }) {
+  const name = id => (clients.find(c => c.id === id) || { name: id }).name;
+  const city = id => (clients.find(c => c.id === id) || {}).city || "";
+  const lines = tickets.map(t => "- " + [t.id, name(t.client) + (city(t.client) ? " (" + city(t.client) + ")" : ""), t.title, "stato: " + t.state,
+    t.urg ? "URGENTE" : "", t.plan ? (t.plan.day === 0 ? "oggi" : t.plan.day === 1 ? "domani" : "tra " + t.plan.day + " giorni") + " alle " + t.plan.time : "non pianificato"].filter(Boolean).join(" · "));
+  return "Data: " + date + "\nTecnico: " + (tech.nome || tech.ini) + ", zona " + (tech.zona || "") + "\nTicket aperti assegnati a lui:\n" + (lines.join("\n") || "(nessuno)");
+}
+
+const cache = new Map();
+async function agenda(input, opts) {
+  const a = settings.ai(), key = a.apiKey || process.env.ANTHROPIC_API_KEY, model = a.model;
+  const ctx = contextText(input);
+  const ck = model + "|" + ctx;
+  if (!(opts && opts.fresh) && cache.has(ck)) return { ...cache.get(ck), cached: true };
+  const client = makeClient(key);
+  const resp = await client.beta.messages.parse({
+    model,
+    max_tokens: 4000,
+    /* se il modello rifiuta, l'API riprova da sola con un altro modello adatto */
+    betas: ["server-side-fallback-2026-07-01"],
+    fallbacks: "default",
+    output_config: { effort: "low", format: zodOutputFormat(Agenda) },
+    system: SYSTEM,
+    messages: [{ role: "user", content: ctx }],
+  });
+  if (resp.stop_reason === "refusal") throw new Error("Claude ha rifiutato la richiesta" + (resp.stop_details && resp.stop_details.category ? " (" + resp.stop_details.category + ")" : ""));
+  if (resp.stop_reason === "max_tokens") throw new Error("risposta troppo lunga, interrotta");
+  const out = resp.parsed_output;
+  if (!out) throw new Error("risposta di Claude non leggibile");
+  const ids = new Set(input.tickets.map(t => t.id));
+  const r = { source: "claude", model: resp.model, text: out.promemoria.trim(), order: out.attivita.filter(x => ids.has(x.ticket)),
+    usage: { in: resp.usage.input_tokens, out: resp.usage.output_tokens } };
+  cache.set(ck, r);
+  return r;
+}
+
+/* risposta di esempio, quando l'assistente è acceso senza chiave (solo in prova) */
+function simulate({ tech, tickets, clients }) {
+  const name = id => (clients.find(c => c.id === id) || { name: id }).name;
+  const urg = tickets.filter(t => t.urg && !t.plan), today = tickets.filter(t => t.plan && t.plan.day === 0).sort((x, y) => x.plan.time.localeCompare(y.plan.time));
+  const later = tickets.filter(t => t.plan && t.plan.day > 0).sort((x, y) => x.plan.day - y.plan.day), wait = tickets.filter(t => !t.plan && !t.urg && /attesa/i.test(t.state));
+  const rest = tickets.filter(t => !urg.includes(t) && !today.includes(t) && !later.includes(t) && !wait.includes(t));
+  const f = [];
+  if (urg[0]) f.push("La priorità di oggi è " + name(urg[0].client) + ": l'" + urg[0].title.split(":")[0].toLowerCase() + " dà " + (urg[0].title.split(":")[1] || "problemi").trim() + " ed è urgente ma non ancora pianificato, quindi chiama il cliente in mattinata e fissa l'intervento.");
+  if (today[0]) f.push("Alle " + today[0].plan.time + " sei da " + name(today[0].client) + " per la " + today[0].title.split(":").slice(-1)[0].trim() + ": porta il kit di taratura.");
+  if (later[0]) f.push((later[0].plan.day === 1 ? "Domani" : "Tra " + later[0].plan.day + " giorni") + " alle " + later[0].plan.time + " ti aspetta " + name(later[0].client) + (/lampada/i.test(later[0].title) ? ": verifica di avere una lampada di ricambio." : "."));
+  if (wait[0]) f.push("Per " + name(wait[0].client) + " (" + wait[0].id + ") controlla se il ricambio è arrivato e, se sì, proponi una data.");
+  const why = t => urg.includes(t) ? "Urgente e senza data: va pianificato per primo." : today.includes(t) ? "È in agenda oggi alle " + t.plan.time + "." : later.includes(t) ? "Già pianificato: basta prepararsi." : wait.includes(t) ? "Dipende dal ricambio: solo un controllo veloce." : "Da pianificare quando hai tempo.";
+  return { source: "simulazione", model: settings.ai().model, text: f.join(" ") || "Oggi non hai attività aperte.", order: [...urg, ...today, ...wait, ...later, ...rest].map(t => ({ ticket: t.id, perche: why(t) })) };
+}
+module.exports = { MODELS, monthlyCost, configured, agenda, simulate, contextText, setClientFactory, SYSTEM };

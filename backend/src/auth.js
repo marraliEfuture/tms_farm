@@ -94,16 +94,22 @@ function verifyAdmin(token) {
   return acc;
 }
 /* il proprio profilo: nome, mail e (se data) la password; la password attuale è sempre richiesta */
-function updateAdmin({ nome, mail, attuale, nuova }, who) {
+const HOMES = ["cruscotto", "ticket", "clienti", "posta", "utenti", "profili", "tecnici", "office365", "ai", "regole", "collegamenti", "backup", "audit", "tutorial"];
+function updateAdmin({ nome, mail, attuale, nuova, home, vista }, who) {
   const list = users(), acc = list.find(x => x.user === (who || {}).user);
-  if (!acc || !checkPassword(acc, attuale)) return { error: "password attuale non corretta" };
+  if (!acc) return { error: "utente non trovato" };
+  /* schermata iniziale e vista: preferenze personali, non serve la password */
+  if (home !== undefined && HOMES.includes(home)) acc.home = home;
+  if (vista !== undefined && PROFILI.includes(vista)) acc.vista = vista;
+  if (!nuova && nome === undefined && mail === undefined) { saveUsers(list); return { ok: true, me: publicAdmin(acc) }; }
+  if (!checkPassword(acc, attuale)) return { error: "password attuale non corretta" };
   if (nuova && String(nuova).length < 8) return { error: "la nuova password deve avere almeno 8 caratteri" };
   acc.nome = String(nome || acc.nome || "").slice(0, 80); acc.mail = String(mail || acc.mail || "").slice(0, 120);
   if (nuova) acc.hash = hashCode(acc.user, nuova);
   saveUsers(list);
   return { ok: true, me: publicAdmin(acc) };
 }
-const publicAdmin = a => a ? { user: a.user, nome: a.nome || "", mail: a.mail || "", profilo: a.profilo || "admin", attivo: a.attivo !== false, ultimo: a.ultimo || "" } : null;
+const publicAdmin = a => a ? { user: a.user, nome: a.nome || "", mail: a.mail || "", profilo: a.profilo || "admin", attivo: a.attivo !== false, ultimo: a.ultimo || "", home: a.home || "cruscotto", vista: a.vista || "op" } : null;
 /* gestione utenti dalla console */
 function addUser({ user, nome, mail, profilo, password }) {
   user = String(user || "").trim().toLowerCase();

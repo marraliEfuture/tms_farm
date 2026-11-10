@@ -13,6 +13,7 @@ const { recognize } = require("./src/recognize");
 const logos = require("./src/logos");
 const settings = require("./src/settings");
 const audit = require("./src/audit");
+const ai = require("./src/ai");
 const graph = require("./src/connectors/graph");
 
 const app = express();
@@ -39,7 +40,7 @@ async function clientsWithOpen() {
   return clients.map(c => ({
     ...c,
     contacts: c.contacts.map((k, i) => (i === 0 && !k.tel && st.phones[c.id] ? { ...k, tel: st.phones[c.id] } : k)),
-    open: tickets.filter(t => t.client === c.id && t.state !== "Chiuso").map(t => ({ id: t.id, t: t.title, urg: !!t.urg })),
+    open: tickets.filter(t => t.client === c.id && t.state !== "Chiuso").map(t => ({ id: t.id, t: t.title, urg: !!t.urg, state: t.state, plan: t.plan || null, tech: t.tech || "" })),
   }));
 }
 async function appData(tech) {
@@ -75,6 +76,9 @@ app.post("/api/app/login", (req, res) => {
   res.json({ token });
 });
 app.get("/api/app/data", auth.requireTech, async (req, res, next) => { try { res.json(await appData(req.tech)); } catch (e) { next(e); } });
+/* promemoria e ordine delle attività per il tecnico collegato all'app */
+app.get("/api/app/ai/agenda", auth.requireTech, async (req, res, next) => { try { res.json(await aiAgenda(req.tech.ini, req.query.fresh === "1")); } catch (e) { next(e); } });
+app.get("/api/app/ai", auth.requireTech, (req, res) => res.json({ enabled: settings.ai().enabled, model: settings.ai().model, promemoria: settings.ai().promemoria, priorita: settings.ai().priorita }));
 app.post("/api/app/read", auth.requireTech, (req, res) => {
   const st = store.load(); const th = (st.threads[req.tech.mail] || []).find(t => t.ticket === req.body.ticket);
   if (th) { th.unread = false; store.save(); }
@@ -186,7 +190,7 @@ app.get("/api/admin/state", async (req, res, next) => {
         res: { ...recognize({ from: m.from, subject: m.subj, headers: m.hdr }, { techs: auth.techs(), clients, tickets, rules: st.rules }), act: "Esempio di mail arrivata direttamente da un cliente." } }));
       mails = [...st.mails, ...extra];
     }
-    res.json({ profiles: settings.profiles(), o365, settings: settings.can(req.admin.profilo || "admin", "office365", "v") ? settings.publicView() : null, me: auth.publicAdmin(req.admin), mode: cfg.mode, support: settings.support(), appUrl: cfg.appUrl, clients, tickets, techs: techsPublic(), mails, rules: st.rules, connections: await sources.status() });
+    res.json({ ai: settings.aiPublic(), profiles: settings.profiles(), o365, settings: settings.can(req.admin.profilo || "admin", "office365", "v") ? settings.publicView() : null, me: auth.publicAdmin(req.admin), mode: cfg.mode, support: settings.support(), appUrl: cfg.appUrl, clients, tickets, techs: techsPublic(), mails, rules: st.rules, connections: await sources.status() });
   } catch (e) { next(e); }
 });
 app.post("/api/admin/mails/:id/resolve", need("posta", "m"), async (req, res, next) => {
@@ -261,6 +265,25 @@ app.post("/api/admin/settings", need("office365", "m"), (req, res) => {
   res.json(r);
 });
 app.post("/api/admin/settings/test-o365", need("office365", "m"), async (req, res, next) => { try { res.json(await graph.test()); } catch (e) { next(e); } });
+/* assistente AI: promemoria e ordine delle attività di un tecnico */
+async function aiAgenda(techIni, fresh) {
+  const { clients, tickets } = await sources.data();
+  const tech = auth.techs().find(t => t.ini === techIni) || auth.techs()[0] || { ini: techIni };
+  const mine = tickets.filter(t => t.tech === tech.ini && t.state !== "Chiuso");
+  const input = { tech, tickets: mine, clients, date: new Date().toLocaleDateString("it-CH", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) };
+  if (!settings.ai().enabled) return { source: "spento" };
+  if (!ai.configured()) return cfg.mode === "demo" ? ai.simulate(input) : { source: "spento", error: "manca la chiave API" };
+  try { return await ai.agenda(input, { fresh }); }
+  catch (e) { const r = ai.simulate(input); return { source: "regole", error: e.message, order: r.order }; }
+}
+app.get("/api/admin/ai/agenda", need("cruscotto", "v"), async (req, res, next) => { try { res.json(await aiAgenda(String(req.query.tech || "MB"), req.query.fresh === "1")); } catch (e) { next(e); } });
+app.get("/api/admin/ai", need("ai", "v"), (req, res) => res.json({ ai: settings.aiPublic(), models: ai.MODELS, techs: auth.techs().length,
+  stime: Object.fromEntries(Object.keys(ai.MODELS).map(m => [m, ai.monthlyCost(m, Math.max(1, auth.techs().length), 22)])) }));
+app.post("/api/admin/ai", need("ai", "m"), (req, res) => {
+  const r = settings.updateAi(req.body || {}); if (r.error) return res.status(400).json(r);
+  log(req, r.ai.enabled ? "Assistente AI attivo" : "Assistente AI spento", "modello " + r.ai.model + (req.body.apiKey ? " · nuova chiave" : ""), "ai"); res.json(r);
+});
+app.post("/api/admin/ai/test", need("ai", "m"), async (req, res, next) => { try { const r = await aiAgenda(String(req.body.tech || "MB"), true); log(req, "Prova dell'assistente AI", r.source, "ai"); res.json(r); } catch (e) { next(e); } });
 /* utenti della console */
 app.get("/api/admin/users", need("utenti", "v"), (req, res) => res.json({ users: auth.users().map(auth.publicAdmin) }));
 app.post("/api/admin/users", need("utenti", "m"), (req, res) => { const r = auth.addUser(req.body || {}); if (r.error) return res.status(400).json(r); log(req, "Utente creato", r.user.user + " (" + r.user.profilo + ")", "utenti"); res.json(r); });
