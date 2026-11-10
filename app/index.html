@@ -790,7 +790,7 @@ function clientSheet(id){
 
 /* ---------- MAPPA: clienti e tappe consigliate ---------- */
 /* Mappa OpenStreetMap con Leaflet 1.9.4 (copia in vendor/leaflet, caricata solo quando serve). Tappe = clienti con ticket aperti,
-   ordinate per vicinanza (giro più corto partendo da dove sei) o per priorità (prima gli urgenti). */
+   ordinate per vicinanza (il giro più corto in assoluto partendo da dove sei) o per priorità (prima gli urgenti, poi il giro più corto). */
 const BASE_POS = {lat:46.0101, lng:8.9600, label:"Magazzino Lugano"};
 S.map = {order:"vicinanza", all:false, pos:null};
 let LMAP = null, LLAYER = null;
@@ -805,20 +805,31 @@ function loadLeaflet(){
 function km(a, b){ const R = 6371, t = x=>x*Math.PI/180, dLa = t(b.lat-a.lat), dLo = t(b.lng-a.lng);
   const h = Math.sin(dLa/2)**2 + Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dLo/2)**2; return 2*R*Math.asin(Math.sqrt(h)); }
 const roadKm = d => d*1.3;   /* in linea d'aria ×1,3: stima della strada */
+/* giro più corto che parte da «start» e tocca tutte le tappe: esatto fino a 8 tappe, oltre vicino-più-vicino + 2-opt */
+function shortest(start, stops){
+  const len = ord => { let h = start, t = 0; for(const x of ord){ t += km(h, x.c); h = x.c; } return t; };
+  if(stops.length <= 8){
+    let best = stops.slice(), bestL = len(best);
+    const perm = (arr, k) => { if(k === arr.length){ const l = len(arr); if(l < bestL){ bestL = l; best = arr.slice(); } return; }
+      for(let i=k;i<arr.length;i++){ [arr[k],arr[i]] = [arr[i],arr[k]]; perm(arr, k+1); [arr[k],arr[i]] = [arr[i],arr[k]]; } };
+    perm(stops.slice(), 0); return best;
+  }
+  let here = start, left = stops.slice(), ord = [];
+  while(left.length){ left.sort((a,b)=>km(here,a.c)-km(here,b.c)); const n = left.shift(); ord.push(n); here = n.c; }
+  for(let better = true; better;){ better = false;
+    for(let a=0;a<ord.length-1;a++) for(let b=a+1;b<ord.length;b++){ const t = [...ord.slice(0,a), ...ord.slice(a,b+1).reverse(), ...ord.slice(b+1)]; if(len(t) < len(ord) - 1e-9){ ord = t; better = true; } } }
+  return ord;
+}
 function plan(){
   const start = S.map.pos || BASE_POS;
-  const stops = CLIENTS.filter(c=>c.lat && c.open && c.open.length).map(c=>({c, urg:c.open.some(o=>o.urg), ticket:c.open[0]}));
-  const route = [];
-  let here = start, left = stops.slice();
+  const stops = CLIENTS.filter(c=>c.lat && c.open && c.open.length).map(c=>({c, urg:c.open.some(o=>o.urg), ticket:c.open.find(o=>o.urg) || c.open[0]}));
+  /* Vicinanza: il giro più corto in assoluto. Priorità: prima gli urgenti (giro più corto tra loro), poi gli altri dal punto in cui sei arrivato */
+  let route;
   if(S.map.order === "priorita"){
-    /* prima tutti gli urgenti (dal più vicino), poi gli altri, sempre scegliendo il più vicino */
-    for(const grp of [left.filter(x=>x.urg), left.filter(x=>!x.urg)]){
-      let g = grp.slice();
-      while(g.length){ g.sort((a,b)=>km(here,a.c)-km(here,b.c)); const n = g.shift(); n.d = km(here,n.c); route.push(n); here = n.c; }
-    }
-  } else {
-    while(left.length){ left.sort((a,b)=>km(here,a.c)-km(here,b.c)); const n = left.shift(); n.d = km(here,n.c); route.push(n); here = n.c; }
-  }
+    const u = shortest(start, stops.filter(x=>x.urg)), last = u.length ? u[u.length-1].c : start;
+    route = [...u, ...shortest(last, stops.filter(x=>!x.urg))];
+  } else route = shortest(start, stops);
+  let here = start; route.forEach(n=>{ n.d = km(here, n.c); here = n.c; });
   return {start, route};
 }
 function renderMappa(){
@@ -835,6 +846,10 @@ function renderMappa(){
     <div class="mapbox" id="mapbox"><div class="empty">Carico la mappa…</div></div>
     <label class="chk"><input type="checkbox" id="m-all" ${S.map.all?"checked":""}> Mostra anche i clienti senza ticket aperti</label>
     <div class="row"><b>${route.length} tappe consigliate</b><span class="sub">circa ${Math.round(tot)} km</span></div>
+    <p class="hint">${(()=>{ const o = S.map.order; S.map.order = o==="priorita" ? "vicinanza" : "priorita"; const alt = plan().route.reduce((a,x)=>a+roadKm(x.d),0); S.map.order = o;
+      const same = plan().route.map(x=>x.c.id).join() === (()=>{ S.map.order = o==="priorita" ? "vicinanza" : "priorita"; const r = plan().route.map(x=>x.c.id).join(); S.map.order = o; return r; })();
+      return o==="priorita" ? "Prima gli urgenti, poi il giro più corto. "+(same ? "Qui coincide con il giro più corto." : "Il giro più corto sarebbe di circa "+Math.round(alt)+" km.")
+        : "Il giro più corto da qui. "+(same ? "Gli urgenti sono già sulla strada." : "Partendo dagli urgenti sarebbero circa "+Math.round(alt)+" km."); })()}</p>
     <ol class="stops">${route.map((x,i)=>`<li class="stop${x.urg?" urg":""}">
       <span class="sn">${i+1}</span>
       <div class="sbody"><div class="row" style="justify-content:flex-start;gap:8px">${logo(x.c)}<b>${esc(x.c.name)}</b>${x.urg?'<span class="pill p-urg">Urgente</span>':""}</div>
