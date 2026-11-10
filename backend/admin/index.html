@@ -50,6 +50,27 @@ button{cursor:pointer}
 .nav button{display:flex;justify-content:space-between;align-items:center;background:none;border:0;border-radius:10px;padding:9px 12px;text-align:left;color:var(--muted);font-weight:500}
 .nav button:hover{background:var(--raise);color:var(--ink)}
 .nav button[aria-current="page"]{background:var(--accent-soft);color:var(--ink)}
+.nav .grp{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px 12px 4px;opacity:.8}
+.nav .grp:first-child{padding-top:2px}
+.tuts{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.tut{display:flex;flex-direction:column;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;padding:0;cursor:pointer;color:var(--text)}
+.tut:hover{border-color:var(--accent)}
+.thumb{position:relative;aspect-ratio:16/9;background:#000;display:block}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.play{position:absolute;inset:0;margin:auto;width:52px;height:52px;border-radius:50%;background:var(--grad);color:#fff;display:grid;place-items:center;font-size:18px;padding-left:4px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.tbody{display:flex;flex-direction:column;gap:6px;padding:14px 16px 16px}
+.tbody b{color:var(--ink);font-weight:600;font-size:15.5px;line-height:1.3}
+.article{max-width:860px;display:flex;flex-direction:column;gap:18px}
+.article h1{margin-top:4px}
+.tvideo{width:100%;aspect-ratio:16/9;border-radius:14px;background:#000;border:1px solid var(--line)}
+.article h2{font-size:17px;color:var(--ink);margin:0 0 10px}
+.proc{margin:0;padding:0;list-style:none;counter-reset:p;display:flex;flex-direction:column;gap:10px}
+.proc li{counter-increment:p;display:grid;grid-template-columns:30px minmax(0,1fr);gap:12px;align-items:start;line-height:1.55}
+.proc li::before{content:counter(p);width:28px;height:28px;border-radius:50%;background:var(--grad);color:#fff;font-weight:700;font-size:13px;display:grid;place-items:center}
+.proc b,.tip b{color:var(--ink);font-weight:600}
+.tip{margin:0;background:var(--gold-soft);border-radius:12px;padding:12px 14px;font-size:14px}
+.linkback{background:none;border:0;padding:0;color:var(--accent);font-weight:600;cursor:pointer;font-size:14px}
+#tut-next{align-self:flex-start}
 .nav .n{font-size:11px;font-weight:700;background:var(--gold-soft);color:var(--gold);border-radius:999px;padding:1px 8px}
 .side .foot{margin-top:auto;font-size:12px;color:var(--muted);padding:0 6px;display:flex;flex-direction:column;gap:6px}
 .side .foot a{color:var(--accent)}
@@ -172,6 +193,10 @@ td.act{white-space:nowrap;text-align:right}
 .pw{border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px;margin:0}
 .pw legend{font-size:12.5px;color:var(--muted);padding:0 6px}
 .pw:disabled{opacity:.55}
+.wide-box{width:min(620px,100%)}
+.crow{display:grid;grid-template-columns:1.1fr 1.3fr 1fr auto;gap:8px;margin-bottom:8px;align-items:center}
+.code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:28px;font-weight:700;letter-spacing:.12em;color:var(--ink);background:var(--surface-2);border-radius:12px;padding:14px;text-align:center;margin:0}
+@media (max-width:600px){.crow{grid-template-columns:minmax(0,1fr)}}
 .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,10px);background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:12px;font-size:13.5px;font-weight:500;opacity:0;transition:.25s;pointer-events:none;z-index:50;max-width:calc(100% - 32px)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 .note{font-size:12.5px;color:var(--muted)}
@@ -186,6 +211,7 @@ td.act{white-space:nowrap;text-align:right}
   .logo span{display:none}
   .nav{flex-direction:row}
   .nav button{white-space:nowrap;gap:6px}
+  .nav .grp{display:none}
   .side .foot{display:none}
   .conns{grid-template-columns:minmax(0,1fr)}
   .kv{grid-template-columns:minmax(0,1fr)}
@@ -225,6 +251,8 @@ td.act{white-space:nowrap;text-align:right}
     <button class="btn primary" type="submit" id="lg-go">Accedi</button>
   </form>
 </section>
+
+<section class="modal" id="editor" hidden><form class="panel modal-box wide-box" id="ed-form"></form></section>
 
 <section class="modal" id="profile" hidden>
   <form class="panel modal-box" id="pf-form">
@@ -328,6 +356,7 @@ function fresh(){
   };
 }
 let S = fresh();
+S.tut = null;
 let LIVE = false, CONN = null, BACKEND = false, ME = null;
 let TOKEN = ""; try{ TOKEN = localStorage.getItem("tf-admin-token") || ""; }catch(e){}
 const H = () => TOKEN ? {Authorization: "Bearer "+TOKEN} : {};
@@ -344,12 +373,99 @@ const HOW = {
 const ST = {ok:["p-ok","Riconosciuta"], new:["p-new","Nuovo ticket"], warn:["p-warn","Da verificare"]};
 const toCheck = () => S.mails.filter(m=>m.res.state==="warn").length;
 
-const VIEWS = [["cruscotto","Cruscotto"],["posta","Posta in arrivo"],["ticket","Ticket"],["clienti","Clienti"],["tecnici","Tecnici"],["collegamenti","Collegamenti"],["regole","Riconoscimento"]];
+/* menu diviso: il lavoro di ogni giorno, la configurazione, i tutorial */
+const GROUPS = [
+  ["Operativo", [["cruscotto","Cruscotto"],["posta","Posta in arrivo"],["ticket","Ticket"],["clienti","Clienti"]]],
+  ["Configurazione", [["tecnici","Tecnici"],["collegamenti","Collegamenti"],["regole","Riconoscimento"]]],
+  ["Tutorial", [["tutorial","Casi d'uso"]]]
+];
 function nav(){
-  $("#nav").innerHTML = VIEWS.map(([k,l])=>`<button type="button" data-v="${k}" ${S.view===k?'aria-current="page"':""}>${l}${k==="posta"&&toCheck()?`<span class="n">${toCheck()}</span>`:""}</button>`).join("");
-  $("#nav").querySelectorAll("button").forEach(b=>b.onclick=()=>{ S.view=b.dataset.v; S.sel=null; render(); window.scrollTo(0,0); });
+  $("#nav").innerHTML = GROUPS.map(([g,items])=>`<span class="grp">${g}</span>`+items.map(([k,l])=>`<button type="button" data-v="${k}" ${S.view===k?'aria-current="page"':""}>${l}${k==="posta"&&toCheck()?`<span class="n">${toCheck()}</span>`:""}${k==="tutorial"?`<span class="n">${TUTORIALS.length}</span>`:""}</button>`).join("")).join("");
+  $("#nav").querySelectorAll("button").forEach(b=>b.onclick=()=>{ S.view=b.dataset.v; S.sel=null; S.tut=null; render(); window.scrollTo(0,0); });
 }
-function render(){ nav(); ({cruscotto,posta,ticket,clienti,tecnici,collegamenti,regole})[S.view](); }
+function render(){ nav(); ({cruscotto,posta,ticket,clienti,tecnici,collegamenti,regole,tutorial})[S.view](); }
+
+/* ---------- Tutorial: 5 casi d'uso operativi, ognuno con video e procedura ---------- */
+const TUTORIALS = [
+  { id:"whatsapp", n:1, title:"Inoltrare un messaggio WhatsApp del cliente", where:"App del tecnico", time:"1 minuto",
+    intro:"Un cliente scrive sul numero personale del tecnico. Il tecnico porta il messaggio in Ticket Farm in pochi tocchi e l'ufficio lo vede subito in Posta in arrivo.",
+    steps:[
+      "In WhatsApp tieni premuto il messaggio del cliente. Se sono più messaggi, selezionali tutti. Tocca <b>Copia</b>.",
+      "Apri l'app Ticket Farm e tocca <b>Inoltra</b> in basso.",
+      "Tocca il riquadro e scegli <b>Incolla</b>, oppure tocca <b>Incolla dagli appunti</b>.",
+      "In <b>Ticket o cliente</b> tocca il ticket aperto del cliente. Se non c'è, tocca il cliente e lascia <b>Nuova richiesta</b>. Se non lo trovi, cercalo per nome o tocca <b>Non lo trovo</b>: lo identifica l'ufficio.",
+      "Controlla <b>Ora del messaggio</b>. Se il cliente ha scritto prima, tocca <b>15 min fa</b>, <b>1 ora fa</b>, <b>3 ore fa</b> o <b>Ieri</b>.",
+      "Se serve, scrivi una <b>nota per l'ufficio</b> (per esempio «Passo io alle 14»).",
+      "Tocca <b>Invia a Ticket Farm</b>. Dalla tua casella parte una mail a support@efuture.it con il numero del ticket nell'intestazione.",
+      "Nella console, in <b>Posta in arrivo</b>, la mail compare come <b>Riconosciuta</b> (ticket esistente) o <b>Nuovo ticket</b>."
+    ],
+    tip:"Il riquadro <b>La mail che parte</b> mostra mittente, oggetto e intestazioni prima dell'invio." },
+  { id:"mail", n:2, title:"Inoltrare una mail arrivata alla casella personale", where:"App del tecnico", time:"1 minuto",
+    intro:"Il cliente ha scritto alla mail personale del tecnico. Dal testo della mail l'app riconosce da sola cliente, ora e oggetto.",
+    steps:[
+      "Apri la mail del cliente e copia <b>tutto il testo</b>, comprese le righe <b>Da</b>, <b>Inviato</b> e <b>Oggetto</b>.",
+      "Nell'app Ticket Farm tocca <b>Inoltra</b> e incolla nel riquadro.",
+      "L'app legge mittente, ora e oggetto. Il cliente viene proposto dal <b>dominio della mail</b> (per esempio @caseificiovalle.ch).",
+      "Controlla <b>Dove va</b>: il ticket aperto del cliente oppure <b>Nuova richiesta</b>.",
+      "Tocca <b>Invia a Ticket Farm</b>. La conversazione del ticket si apre con la mail del cliente e la conferma."
+    ],
+    tip:"In alternativa la mail si può inoltrare direttamente a support@efuture.it dal programma di posta: mittente e data restano nel testo inoltrato." },
+  { id:"verifica", n:3, title:"Sistemare le mail da verificare", where:"Console", time:"1 minuto",
+    intro:"Quando una mail arriva senza ticket e senza un cliente riconosciuto, resta in Posta in arrivo come «Da verificare». Basta indicare il cliente e aprire il ticket.",
+    steps:[
+      "Nel <b>Cruscotto</b> guarda il riquadro <b>Da verificare</b>, oppure il numero oro accanto a <b>Posta in arrivo</b>.",
+      "Apri <b>Posta in arrivo</b> e tocca il filtro <b>Da verificare</b>.",
+      "Tocca la mail: a destra vedi mittente, intestazioni, testo e i passaggi del riconoscimento.",
+      "In <b>Cliente</b> scegli il cliente giusto.",
+      "Lascia attivo <b>Ricorda il mittente</b> se l'indirizzo è di quel cliente: la prossima volta sarà riconosciuto da solo.",
+      "Tocca <b>Apri il ticket</b>. La mail passa a <b>Nuovo ticket</b> e il ticket compare in <b>Ticket</b>."
+    ],
+    tip:"Le mail dei tecnici con «cliente da identificare» arrivano qui: sono i messaggi per cui il tecnico non ha trovato il cliente." },
+  { id:"telefono", n:4, title:"Aprire un ticket per una richiesta al telefono", where:"Console", time:"40 secondi",
+    intro:"Un cliente chiama l'ufficio. Il ticket si apre dalla console e finisce nel sistema giusto, ITSM o Halo.",
+    steps:[
+      "Vai in <b>Ticket</b> e tocca <b>+ Nuovo ticket</b> in alto a destra.",
+      "Scegli il <b>Cliente</b>: sotto la console dice se il ticket va in ITSM o in Halo.",
+      "Scegli il <b>Tecnico</b> oppure lascia <b>Da assegnare</b>.",
+      "Scrivi la <b>Richiesta</b> in poche parole (per esempio «Bilancia analitica: non si accende»).",
+      "Se serve, spunta <b>Urgente</b>.",
+      "Tocca <b>Crea ticket</b>: il ticket compare in cima all'elenco con il suo numero e il tecnico lo vede nell'app."
+    ],
+    tip:"Un ticket creato per errore si toglie con <b>Elimina</b> in fondo alla riga, dopo la conferma." },
+  { id:"rispondi", n:5, title:"Rispondere al cliente e aggiornare il ticket", where:"App del tecnico", time:"1 minuto",
+    intro:"Nelle conversazioni il tecnico legge gli aggiornamenti dei suoi ticket, risponde al cliente su WhatsApp e scrive all'ufficio.",
+    steps:[
+      "Nell'app apri <b>Messaggi</b>: il pallino blu indica le conversazioni con novità.",
+      "Tocca la conversazione del ticket e leggi gli aggiornamenti.",
+      "Se c'è un riquadro <b>Da mandare al cliente</b>, tocca <b>Apri in WhatsApp</b>: si apre la chat del cliente con il testo già scritto. In alternativa tocca <b>Copia per WhatsApp</b> e incollalo nella chat.",
+      "Per scrivere all'ufficio usa il campo in basso e tocca <b>Invia</b>: parte una mail collegata al ticket.",
+      "Se il cliente ti manda un altro messaggio sullo stesso problema, tocca <b>+ Inoltra un altro messaggio del cliente su questo ticket</b>.",
+      "Per scrivere al cliente in qualsiasi momento, in <b>Clienti</b> tocca il pulsante verde di WhatsApp."
+    ],
+    tip:"Toccando <b>Ticket Farm</b> in alto si torna sempre alla schermata iniziale." }
+];
+function tutorial(){
+  const t = TUTORIALS.find(x=>x.id===S.tut);
+  if(!t){
+    $("#main").innerHTML = `<div class="top"><div><h1>Tutorial</h1><p class="sub">Cinque casi d'uso di tutti i giorni. Ognuno ha un video breve e la procedura passo per passo.</p></div></div>
+      <div class="tuts">${TUTORIALS.map(x=>`<button class="tut" type="button" data-t="${x.id}">
+        <span class="thumb"><img src="tutorial/${x.n}-${x.id}.jpg" alt="" loading="lazy" onerror="this.remove()"><span class="play" aria-hidden="true">▶</span></span>
+        <span class="tbody"><span class="dim">${x.n} · ${x.where} · ${x.time}</span><b>${x.title}</b><span class="dim">${x.intro}</span></span></button>`).join("")}</div>`;
+    document.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{ S.tut=b.dataset.t; tutorial(); window.scrollTo(0,0); });
+    return;
+  }
+  const next = TUTORIALS[t.n % TUTORIALS.length];
+  $("#main").innerHTML = `<div><button class="linkback" type="button" id="tut-back">‹ Tutti i tutorial</button></div>
+    <article class="article">
+      <header><span class="dim">Caso ${t.n} di ${TUTORIALS.length} · ${t.where} · ${t.time}</span><h1>${t.title}</h1><p class="sub">${t.intro}</p></header>
+      <video class="tvideo" controls playsinline preload="none" poster="tutorial/${t.n}-${t.id}.jpg" src="tutorial/${t.n}-${t.id}.mp4"></video>
+      <section><h2>Procedura</h2><ol class="proc">${t.steps.map(x=>`<li>${x}</li>`).join("")}</ol></section>
+      <p class="tip">${t.tip}</p>
+      <button class="btn" type="button" id="tut-next">Prossimo: ${next.title} ›</button>
+    </article>`;
+  $("#tut-back").onclick = ()=>{ S.tut=null; tutorial(); };
+  $("#tut-next").onclick = ()=>{ S.tut=next.id; tutorial(); window.scrollTo(0,0); };
+}
 
 /* ---------- Cruscotto ---------- */
 function cruscotto(){
@@ -475,20 +591,112 @@ function ticket(){
 
 /* ---------- Clienti ---------- */
 function clienti(){
-  $("#main").innerHTML = `<div class="top"><div><h1>Clienti</h1><p class="sub">Anagrafiche da ITSM e Halo, contatti anche da Office 365. Servono a riconoscere il mittente delle mail.</p></div></div>
-    <div class="tbl"><table><thead><tr><th>Cliente</th><th>Ticket in</th><th>Dominio</th><th>Contatti</th></tr></thead><tbody>
-      ${CLIENTS.map(c=>`<tr><td><div style="display:flex;gap:10px;align-items:center">${logo(c)}<div><span class="strong">${esc(c.name)}</span><div class="dim">${esc(c.city)}</div></div></div></td><td>${badge(c.sys)}</td><td class="mono">@${esc(c.dom)}</td>
-        <td>${c.contacts.map(k=>`<div class="contact"><div>${esc(k.n)} ${badge(k.src)}<div class="dim">${esc(k.mail)}${k.tel?" · "+esc(k.tel):""}</div></div>${waBtn(k.tel)}</div>`).join("")}</td></tr>`).join("")}
+  $("#main").innerHTML = `<div class="top"><div><h1>Clienti</h1><p class="sub">Anagrafiche da ITSM e Halo, contatti anche da Office 365. Servono a riconoscere il mittente delle mail.</p></div>
+      <button class="btn primary" type="button" id="c-add">+ Nuovo cliente</button></div>
+    <div class="tbl"><table><thead><tr><th>Cliente</th><th>Ticket in</th><th>Dominio</th><th>Contatti</th><th><span class="sr">Azioni</span></th></tr></thead><tbody>
+      ${CLIENTS.map(c=>`<tr><td><div style="display:flex;gap:10px;align-items:center">${logo(c)}<div><span class="strong">${esc(c.name)}</span><div class="dim">${esc(c.city||"")}</div></div></div></td><td>${badge(c.sys)}</td><td class="mono">${c.dom?"@"+esc(c.dom):"—"}</td>
+        <td>${(c.contacts||[]).map(k=>`<div class="contact"><div>${esc(k.n)} ${badge(k.src)}<div class="dim">${esc(k.mail||"")}${k.tel?" · "+esc(k.tel):""}</div></div>${waBtn(k.tel)}</div>`).join("") || `<span class="dim">Nessun contatto</span>`}</td>
+        <td class="act" data-row="${esc(c.id)}"><button class="btn small" type="button" data-edit="${esc(c.id)}">Modifica</button> <button class="btn small danger" type="button" data-ask="${esc(c.id)}">Elimina</button></td></tr>`).join("") || `<tr><td colspan="5" class="dim">Nessun cliente</td></tr>`}
     </tbody></table></div>`;
+  $("#c-add").onclick = ()=>clientForm(null);
+  document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>clientForm(cl(b.dataset.edit)));
+  document.querySelectorAll("[data-ask]").forEach(b=>b.onclick=()=>askDelete(b, "il cliente "+cl(b.dataset.ask).name, ()=>{
+    const id = b.dataset.ask;
+    if(LIVE) return del("/api/admin/clients/"+encodeURIComponent(id)).then(()=>{ toast("Cliente eliminato"); load(); });
+    CLIENTS.splice(CLIENTS.findIndex(c=>c.id===id), 1); clienti(); toast("Cliente eliminato (prova)");
+  }, clienti));
+}
+/* conferma dentro la riga, senza finestre del browser */
+function askDelete(btn, what, yes, back){
+  const cell = btn.parentNode;
+  cell.innerHTML = `<span class="confirm">Eliminare ${esc(what)}? <button class="btn small danger" type="button" data-yes>Sì, elimina</button> <button class="btn small" type="button" data-no>No</button></span>`;
+  cell.querySelector("[data-no]").onclick = back;
+  cell.querySelector("[data-yes]").onclick = ()=>{ const r = yes(); if(r && r.catch) r.catch(err=>{ toast("Non riuscito: "+err.message); back(); }); };
+}
+const del = u => fetch(u, {method:"DELETE", headers:H()}).then(r=>r.ok ? r.json() : r.json().then(j=>Promise.reject(new Error(j.error||r.status))));
+const put = (u, b) => fetch(u, {method:"PUT", headers:{"Content-Type":"application/json", ...H()}, body:JSON.stringify(b)}).then(r=>r.ok ? r.json() : r.json().then(j=>Promise.reject(new Error(j.error||r.status))));
+function openEditor(html, onSubmit){
+  const m = $("#editor"); m.hidden = false; $("#ed-form").innerHTML = html;
+  $("#ed-form").onsubmit = e => { e.preventDefault(); onSubmit(); };
+  $("#ed-form").querySelector("[data-close]").onclick = ()=>{ m.hidden = true; };
+  setTimeout(()=>{ const f = $("#ed-form").querySelector("input,select"); if(f) f.focus(); }, 30);
+}
+const closeEditor = ()=>{ $("#editor").hidden = true; };
+function contactRow(k){
+  return `<div class="crow"><input class="input" data-k="n" placeholder="Nome e cognome" value="${esc(k.n||"")}"><input class="input" data-k="mail" type="email" placeholder="mail" value="${esc(k.mail||"")}"><input class="input" data-k="tel" inputmode="tel" placeholder="+39 333 …" value="${esc(k.tel||"")}"><button class="btn small danger" type="button" data-rm aria-label="Togli contatto">✕</button></div>`;
+}
+function clientForm(c){
+  const isNew = !c; c = c || {name:"", city:"", sys:"ITSM", dom:"", contacts:[{n:"",mail:"",tel:""}]};
+  openEditor(`<h2>${isNew ? "Nuovo cliente" : "Modifica cliente"}</h2>
+    <div class="formgrid">
+      <label class="field wide"><span>Ragione sociale</span><input class="input" id="cf-name" required maxlength="120" value="${esc(c.name)}"></label>
+      <label class="field"><span>Città</span><input class="input" id="cf-city" maxlength="60" value="${esc(c.city||"")}"></label>
+      <label class="field"><span>Ticket in</span><select class="input" id="cf-sys"><option value="ITSM" ${c.sys==="ITSM"?"selected":""}>ITSM</option><option value="Halo" ${c.sys==="Halo"?"selected":""}>Halo</option></select></label>
+      <label class="field wide"><span>Dominio delle mail</span><input class="input" id="cf-dom" placeholder="es. caseificiovalle.ch" value="${esc(c.dom||"")}"></label>
+    </div>
+    <div class="field"><span>Contatti</span><div id="cf-contacts">${(c.contacts||[]).map(contactRow).join("")}</div>
+      <button class="linkback" type="button" id="cf-addc">+ Aggiungi contatto</button></div>
+    <p class="note">Il numero di telefono serve per il pulsante WhatsApp; il dominio per riconoscere le mail del cliente.</p>
+    <div class="actions"><button class="btn primary" type="submit">${isNew ? "Crea cliente" : "Salva"}</button><button class="btn" type="button" data-close>Annulla</button></div>`, ()=>{
+      const contacts = [...document.querySelectorAll("#cf-contacts .crow")].map(r=>({n:r.querySelector('[data-k="n"]').value.trim(), mail:r.querySelector('[data-k="mail"]').value.trim(), tel:r.querySelector('[data-k="tel"]').value.trim(), src:$("#cf-sys").value==="Halo"?"Halo":"ITSM"})).filter(k=>k.n||k.mail||k.tel);
+      const body = {name:$("#cf-name").value.trim(), city:$("#cf-city").value.trim(), sys:$("#cf-sys").value, dom:$("#cf-dom").value.trim().replace(/^@/,"").toLowerCase(), contacts};
+      if(!body.name){ toast("Scrivi la ragione sociale"); return; }
+      if(LIVE){ (isNew ? post("/api/admin/clients", body) : put("/api/admin/clients/"+encodeURIComponent(c.id), body))
+        .then(()=>{ closeEditor(); toast(isNew ? "Cliente creato" : "Cliente salvato"); load(); }).catch(err=>toast("Non riuscito: "+err.message)); return; }
+      if(isNew) CLIENTS.push(Object.assign({id:"c"+Date.now()}, body)); else Object.assign(c, body);
+      closeEditor(); clienti(); toast((isNew ? "Cliente creato" : "Cliente salvato")+" (prova)");
+    });
+  const wire = ()=>document.querySelectorAll("#cf-contacts [data-rm]").forEach(b=>b.onclick=()=>b.closest(".crow").remove());
+  $("#cf-addc").onclick = ()=>{ $("#cf-contacts").insertAdjacentHTML("beforeend", contactRow({})); wire(); };
+  wire();
 }
 
 /* ---------- Tecnici ---------- */
+const techName = t => t.name || t.nome || "";
 function tecnici(){
-  $("#main").innerHTML = `<div class="top"><div><h1>Tecnici</h1><p class="sub">Le mail che arrivano da questi indirizzi sono messaggi dei clienti inoltrati dall'app, non richieste del tecnico.</p></div><button class="btn primary" type="button" id="t-add">Aggiungi tecnico</button></div>
-    <div class="tbl"><table><thead><tr><th>Tecnico</th><th>Casella che invia</th><th>Zona</th><th>App</th><th>Ultimo invio</th><th>Ticket aperti</th></tr></thead><tbody>
-      ${TECHS.map(t=>`<tr><td><span class="strong">${t.ini}</span> · ${esc(t.name)}</td><td class="mono">${t.mail}</td><td>${t.zona}</td><td>${t.app?'<span class="pill p-ok">Attiva</span>':'<span class="pill p-mut">Non installata</span>'}</td><td class="mono">${t.last}</td><td class="mono">${S.tickets.filter(x=>x.tech===t.ini&&x.state!=="Chiuso").length}</td></tr>`).join("")}
+  $("#main").innerHTML = `<div class="top"><div><h1>Tecnici</h1><p class="sub">Le mail che arrivano da questi indirizzi sono messaggi dei clienti inoltrati dall'app, non richieste del tecnico.</p></div><button class="btn primary" type="button" id="t-add">+ Nuovo tecnico</button></div>
+    <div class="tbl"><table><thead><tr><th>Tecnico</th><th>Casella che invia</th><th>Zona</th><th>App</th><th>Ultimo invio</th><th>Ticket aperti</th><th><span class="sr">Azioni</span></th></tr></thead><tbody>
+      ${TECHS.map(t=>`<tr><td><span class="strong">${esc(t.ini)}</span> · ${esc(techName(t))}</td><td class="mono">${esc(t.mail)}</td><td>${esc(t.zona||"")}</td><td>${t.app?'<span class="pill p-ok">Attiva</span>':'<span class="pill p-mut">Non installata</span>'}</td><td class="mono">${esc(t.last||"—")}</td><td class="mono">${S.tickets.filter(x=>x.tech===t.ini&&x.state!=="Chiuso").length}</td>
+        <td class="act"><button class="btn small" type="button" data-edit="${esc(t.mail)}">Modifica</button> <button class="btn small danger" type="button" data-ask="${esc(t.mail)}">Elimina</button></td></tr>`).join("") || `<tr><td colspan="7" class="dim">Nessun tecnico</td></tr>`}
     </tbody></table></div>`;
-  $("#t-add").onclick = ()=>toast("Nella versione vera: nome, casella mail e zona. Il tecnico riceve il link per installare l'app.");
+  $("#t-add").onclick = ()=>techForm(null);
+  document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>techForm(TECHS.find(t=>t.mail===b.dataset.edit)));
+  document.querySelectorAll("[data-ask]").forEach(b=>b.onclick=()=>askDelete(b, "il tecnico "+b.dataset.ask, ()=>{
+    const mail = b.dataset.ask;
+    if(LIVE) return del("/api/admin/techs/"+encodeURIComponent(mail)).then(()=>{ toast("Tecnico eliminato: non può più accedere all'app"); load(); });
+    TECHS.splice(TECHS.findIndex(t=>t.mail===mail), 1); tecnici(); toast("Tecnico eliminato (prova)");
+  }, tecnici));
+}
+function showCode(t, code){
+  openEditor(`<h2>Codice di accesso</h2>
+    <p>Dai questo codice a <b>${esc(techName(t))}</b> (${esc(t.mail)}). Lo usa con la sua mail per entrare nell'app.</p>
+    <p class="code">${esc(code)}</p>
+    <p class="note">Il codice si vede solo adesso: nel sistema resta solo la sua impronta. Se lo perde, generane uno nuovo da Modifica.</p>
+    <div class="actions"><button class="btn primary" type="button" data-close>Fatto</button></div>`, closeEditor);
+}
+function techForm(t){
+  const isNew = !t; t = t || {nome:"", ini:"", mail:"", zona:""};
+  openEditor(`<h2>${isNew ? "Nuovo tecnico" : "Modifica tecnico"}</h2>
+    <div class="formgrid">
+      <label class="field wide"><span>Nome e cognome</span><input class="input" id="tf-nome" required maxlength="80" value="${esc(techName(t))}"></label>
+      <label class="field"><span>Iniziali</span><input class="input" id="tf-ini" maxlength="3" value="${esc(t.ini||"")}" placeholder="es. MR"></label>
+      <label class="field"><span>Zona</span><input class="input" id="tf-zona" maxlength="40" value="${esc(t.zona||"")}" placeholder="es. Sud"></label>
+      <label class="field wide"><span>Mail aziendale (casella da cui partono le mail dell'app)</span><input class="input" id="tf-mail" type="email" required value="${esc(t.mail||"")}" ${isNew?"":"readonly"}></label>
+    </div>
+    ${isNew ? `<p class="note">Alla creazione viene generato il codice di accesso all'app.</p>` : `<label class="check"><input type="checkbox" id="tf-code"> Genera un nuovo codice di accesso (quello vecchio smette di funzionare)</label>`}
+    <div class="actions"><button class="btn primary" type="submit">${isNew ? "Crea tecnico" : "Salva"}</button><button class="btn" type="button" data-close>Annulla</button></div>`, ()=>{
+      const nome = $("#tf-nome").value.trim(), mail = $("#tf-mail").value.trim().toLowerCase(), zona = $("#tf-zona").value.trim();
+      const ini = ($("#tf-ini").value.trim() || nome.split(/\s+/).slice(0,2).map(w=>w[0]).join("")).toUpperCase();
+      const newCode = !isNew && $("#tf-code").checked;
+      if(!nome || !mail.includes("@")){ toast("Scrivi nome e mail aziendale"); return; }
+      if(LIVE){ (isNew ? post("/api/admin/techs", {mail, nome, ini, zona}) : put("/api/admin/techs/"+encodeURIComponent(t.mail), {nome, ini, zona, newCode}))
+        .then(r=>{ load(); if(r.code) showCode(r.tech, r.code); else { closeEditor(); toast("Tecnico salvato"); } }).catch(err=>toast("Non riuscito: "+err.message)); return; }
+      const code = String(100000 + Math.floor(Math.random()*900000));
+      if(isNew){ if(TECHS.some(x=>x.mail===mail)){ toast("Esiste già un tecnico con questa mail"); return; } TECHS.push({mail, name:nome, nome, ini, zona, app:false, last:"—"}); }
+      else Object.assign(t, {name:nome, nome, ini, zona});
+      tecnici();
+      if(isNew || newCode) showCode({nome, mail}, code+" (prova)"); else { closeEditor(); toast("Tecnico salvato (prova)"); }
+    });
 }
 
 /* ---------- Collegamenti ---------- */
@@ -565,7 +773,7 @@ function logout(){
 let HINT = null;
 $("#me").onclick = e => { e.stopPropagation(); const m = $("#me-menu"); m.hidden = !m.hidden; $("#me").setAttribute("aria-expanded", String(!m.hidden)); };
 document.addEventListener("click", e => { if(!e.target.closest(".mewrap")){ $("#me-menu").hidden = true; $("#me").setAttribute("aria-expanded","false"); } });
-document.addEventListener("keydown", e => { if(e.key==="Escape"){ $("#me-menu").hidden = true; $("#profile").hidden = true; } });
+document.addEventListener("keydown", e => { if(e.key==="Escape"){ $("#me-menu").hidden = true; $("#profile").hidden = true; $("#editor").hidden = true; } });
 $("#me-out").onclick = ()=>{ $("#me-menu").hidden = true; logout(); toast("Sei uscito"); };
 $("#me-edit").onclick = ()=>{
   $("#me-menu").hidden = true; $("#profile").hidden = false;

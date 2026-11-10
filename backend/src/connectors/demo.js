@@ -55,6 +55,9 @@ module.exports = {
     TICKETS.unshift({ id, sys: client.sys, client: client.id, title, state: "Aperto", tech: techIni || "", urg: !!opts.urg, origin: opts.origin || "App tecnico", upd: "adesso", msgIds: [] });
     return id;
   },
+  createClient(c) { const id = "c" + Date.now().toString(36); CLIENTS.push({ id, ...c }); return id; },
+  updateClient(id, c) { const x = CLIENTS.find(y => y.id === id); if (!x) return false; Object.assign(x, c); return true; },
+  deleteClient(id) { const i = CLIENTS.findIndex(y => y.id === id); if (i < 0) return false; CLIENTS.splice(i, 1); return true; },
   deleteTicket(id) {
     const i = TICKETS.findIndex(t => t.id === id);
     if (i < 0) return false;

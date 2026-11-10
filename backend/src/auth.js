@@ -94,6 +94,38 @@ function requireAdmin(req, res, next) {
   if (!acc) return res.status(401).json({ error: "accesso richiesto" });
   req.admin = acc; next();
 }
+/* ---- gestione dei tecnici dalla console: data/tecnici.json (in prova parte dai tecnici di esempio) ---- */
+function saveTechs(list) { fs.mkdirSync(cfg.dataDir, { recursive: true }); fs.writeFileSync(TECH_FILE, JSON.stringify(list.map(({ codice, ...t }) => t), null, 2)); }
+const newCode = () => String(crypto.randomInt(100000, 1000000));
+function addTech({ mail, nome, ini, zona }) {
+  mail = String(mail || "").trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail) || !nome) return { error: "nome e mail aziendale obbligatori" };
+  const list = techs();
+  if (list.some(t => t.mail.toLowerCase() === mail)) return { error: "esiste già un tecnico con questa mail" };
+  const code = newCode(), t = { mail, nome: String(nome).slice(0, 80), ini: String(ini || "").slice(0, 3).toUpperCase(), zona: String(zona || "").slice(0, 40), hash: hashCode(mail, code) };
+  list.push(t); saveTechs(list);
+  return { tech: { mail, nome: t.nome, ini: t.ini, zona: t.zona }, code };
+}
+function editTech(mail, { nome, ini, zona, newCode: regen }) {
+  const list = techs(), t = list.find(x => x.mail.toLowerCase() === String(mail).toLowerCase());
+  if (!t) return { error: "tecnico non trovato" };
+  if (nome) t.nome = String(nome).slice(0, 80);
+  if (ini !== undefined) t.ini = String(ini).slice(0, 3).toUpperCase();
+  if (zona !== undefined) t.zona = String(zona).slice(0, 40);
+  let code;
+  if (regen) { code = newCode(); t.hash = hashCode(t.mail, code); }
+  saveTechs(list);
+  return { tech: { mail: t.mail, nome: t.nome, ini: t.ini, zona: t.zona }, code };
+}
+function removeTech(mail) {
+  const list = techs(), i = list.findIndex(x => x.mail.toLowerCase() === String(mail).toLowerCase());
+  if (i < 0) return false;
+  list.splice(i, 1); saveTechs(list); return true;
+}
 /* solo in prova, senza tecnici veri: credenziali da suggerire nella schermata di accesso */
-function demoHint() { return cfg.mode === "demo" && !fs.existsSync(TECH_FILE) ? { mail: DEMO_TECHS[0].mail, code: DEMO_TECHS[0].codice } : null; }
-module.exports = { adminLogin, adminDemoHint, adminAccount, updateAdmin, publicAdmin, demoHint, hashCode, techs, findTech, login, verify, requireTech, requireAdmin, TECH_FILE };
+function demoHint() {
+  if (cfg.mode !== "demo") return null;
+  const t = findTech(DEMO_TECHS[0].mail);
+  return t && t.hash === hashCode(DEMO_TECHS[0].mail, DEMO_TECHS[0].codice) ? { mail: DEMO_TECHS[0].mail, code: DEMO_TECHS[0].codice } : null;
+}
+module.exports = { addTech, editTech, removeTech, adminLogin, adminDemoHint, adminAccount, updateAdmin, publicAdmin, demoHint, hashCode, techs, findTech, login, verify, requireTech, requireAdmin, TECH_FILE };

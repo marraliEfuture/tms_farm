@@ -199,6 +199,31 @@ app.delete("/api/admin/tickets/:id", (req, res) => {
   if (!sources.demo.deleteTicket(req.params.id)) return res.status(404).json({ error: "ticket non trovato" });
   res.json({ ok: true });
 });
+/* clienti: in prova sui dati di esempio; dal vivo le anagrafiche si gestiscono in ITSM o Halo */
+const cleanClient = b => ({ name: String(b.name || "").trim().slice(0, 120), city: String(b.city || "").slice(0, 60), sys: b.sys === "Halo" ? "Halo" : "ITSM",
+  dom: String(b.dom || "").toLowerCase().replace(/^@/, "").slice(0, 120),
+  contacts: (Array.isArray(b.contacts) ? b.contacts : []).slice(0, 20).map(k => ({ n: String(k.n || "").slice(0, 80), mail: String(k.mail || "").slice(0, 120), tel: String(k.tel || "").slice(0, 30), src: k.src === "Halo" ? "Halo" : k.src === "O365" ? "O365" : "ITSM" })) });
+const liveOnly = (res, what) => res.status(501).json({ error: "dal vivo " + what + " si gestiscono in ITSM o Halo: collegamento non ancora disponibile" });
+app.post("/api/admin/clients", (req, res) => {
+  if (cfg.mode !== "demo") return liveOnly(res, "i clienti");
+  const c = cleanClient(req.body || {}); if (!c.name) return res.status(400).json({ error: "ragione sociale mancante" });
+  res.json({ id: sources.demo.createClient(c) });
+});
+app.put("/api/admin/clients/:id", (req, res) => {
+  if (cfg.mode !== "demo") return liveOnly(res, "i clienti");
+  const c = cleanClient(req.body || {}); if (!c.name) return res.status(400).json({ error: "ragione sociale mancante" });
+  if (!sources.demo.updateClient(req.params.id, c)) return res.status(404).json({ error: "cliente non trovato" });
+  res.json({ ok: true });
+});
+app.delete("/api/admin/clients/:id", (req, res) => {
+  if (cfg.mode !== "demo") return liveOnly(res, "i clienti");
+  if (!sources.demo.deleteClient(req.params.id)) return res.status(404).json({ error: "cliente non trovato" });
+  res.json({ ok: true });
+});
+/* tecnici: account dell'app, gestiti qui (data/tecnici.json) anche dal vivo */
+app.post("/api/admin/techs", (req, res) => { const r = auth.addTech(req.body || {}); if (r.error) return res.status(400).json(r); res.json(r); });
+app.put("/api/admin/techs/:mail", (req, res) => { const r = auth.editTech(req.params.mail, req.body || {}); if (r.error) return res.status(404).json(r); res.json(r); });
+app.delete("/api/admin/techs/:mail", (req, res) => { if (!auth.removeTech(req.params.mail)) return res.status(404).json({ error: "tecnico non trovato" }); res.json({ ok: true }); });
 app.post("/api/admin/rules", (req, res) => {
   const st = store.load(); const r = st.rules.find(x => x.k === req.body.k);
   if (r) { r.on = !!req.body.on; store.save(); }
