@@ -871,7 +871,7 @@ function renderRiepilogo(){
   const when = t => w.urgent.includes(t) ? "Da pianificare" : t.plan ? (t.plan.day===0 ? "Oggi " : t.plan.day===1 ? "Domani " : dayName(t.plan.day)+" ")+t.plan.time : w.waiting.includes(t) ? "In attesa" : "Da fare";
   const list = [...w.urgent, ...w.today, ...w.later, ...w.waiting, ...w.todo];
   el.innerHTML = `<div><h2 class="sec">Riepilogo</h2><p class="sub">${esc(dayName(0).replace(/^./,x=>x.toUpperCase()))}</p></div>
-    <section class="rcard${remClosed()?" closed":""}" id="r-rem"><button class="r-head" type="button" id="r-tog" aria-expanded="${!remClosed()}"><span class="r-ic" aria-hidden="true">✦</span><b>Promemoria di oggi</b><span class="r-chev">${remClosed()?"Mostra":"Riduci"}</span></button>
+    <section class="rcard${remClosed()?" closed":""}" id="r-rem" hidden><button class="r-head" type="button" id="r-tog" aria-expanded="${!remClosed()}"><span class="r-ic" aria-hidden="true">✦</span><b>Promemoria di oggi</b><span class="r-chev">${remClosed()?"Mostra":"Riduci"}</span></button>
       <div class="r-body"><p id="r-text" class="r-text">Sto preparando il promemoria…</p><span class="hint" id="r-foot"></span></div></section>
     <div class="r-nums">
       <div class="${w.urgent.length?"hot":""}"><b>${w.urgent.length}</b><span>urgenze</span></div>
@@ -893,15 +893,18 @@ function renderRiepilogo(){
   $("#r-tog").onclick = ()=>{ const c = !remClosed(); try{ localStorage.setItem("tf-rem-closed", c?"1":""); }catch(e){} $("#r-rem").classList.toggle("closed", c); $("#r-tog").setAttribute("aria-expanded", String(!c)); $("#r-tog .r-chev").textContent = c?"Mostra":"Riduci"; };
   const show = (r, model) => {
     if(!$("#r-text")) return;
+    $("#r-rem").hidden = false;
     $("#r-text").textContent = r.text || "Oggi non hai attività aperte.";
     $("#r-foot").textContent = r.source==="claude" ? "Scritto da "+(AIM[r.model]||r.model)+" con i tuoi ticket." : r.source==="simulazione" ? "Assistente AI · "+(AIM[model]||"Claude")+" · risposta di esempio" : r.source==="regole" ? "Promemoria scritto dalle regole (l'assistente non ha risposto)." : "Promemoria scritto dai tuoi ticket.";
     const ol = $("#r-acts"); (r.order||[]).forEach(x=>{ const li = ol.querySelector(`[data-tid="${CSS.escape(x.ticket)}"]`); if(!li) return; ol.appendChild(li); const s2 = li.querySelector(".why"); s2.hidden = false; s2.textContent = "✦ "+x.perche; });
   };
+  /* il promemoria compare solo se l'assistente AI è stato acceso a mano in Configurazione */
   if(API) api("/api/app/ai").then(cfg=>{
-      if(!cfg.enabled){ show({source:"spento", text: simulateAgenda(w).text}); return; }
-      return api("/api/app/ai/agenda").then(r=>show(r.source==="spento" ? {source:"spento", text:simulateAgenda(w).text} : r, cfg.model));
-    }).catch(()=>show({source:"regole", text:simulateAgenda(w).text}));
-  else setTimeout(()=>show(simulateAgenda(w), "claude-opus-5-5"), 800);
+      if(!cfg.enabled) return;
+      return api("/api/app/ai/agenda").then(r=>{ if(r.source!=="spento") show(r, cfg.model); });
+    }).catch(()=>{});
+  else { let ai = null; try{ ai = JSON.parse(localStorage.getItem("tf-admin-ai")||"null"); }catch(e){}
+    if(ai && ai.enabled) setTimeout(()=>show(simulateAgenda(w), ai.model||"claude-opus-5-5"), 800); }
 }
 
 /* ---------- navigazione ---------- */

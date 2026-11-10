@@ -132,6 +132,28 @@ tbody tr.sel td{background:var(--accent-soft)}
 .p-urg{background:var(--red-soft);color:var(--red)}
 .p-mut{background:var(--raise);color:var(--muted)}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
+.msgs{display:grid;grid-template-columns:340px minmax(0,1fr);gap:16px;align-items:start}
+.msg-l{display:flex;flex-direction:column;gap:10px;position:sticky;top:16px}
+.msg-list{display:flex;flex-direction:column;gap:6px;max-height:calc(100vh - 260px);overflow:auto}
+.msg-i{display:flex;flex-direction:column;gap:3px;text-align:left;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;color:var(--text);font:inherit}
+.msg-i[aria-current="true"]{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.msg-i-h{display:flex;gap:8px;align-items:center}.msg-i-h b{flex:1;color:var(--ink)}.msg-i-h .logo,.msg-h .logo{width:26px;height:26px;font-size:11px}
+.msg-i-x{font-size:13px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.msg-r{display:flex;flex-direction:column;gap:12px;min-height:420px}
+.msg-h{display:flex;justify-content:space-between;gap:12px;align-items:center;border-bottom:1px solid var(--line);padding-bottom:12px}.msg-h>div{display:flex;gap:10px;align-items:center}.msg-h b{color:var(--ink)}
+.chatbox{display:flex;flex-direction:column;gap:10px;max-height:calc(100vh - 340px);min-height:200px;overflow:auto;padding:4px}
+.bub{max-width:78%;background:var(--surface-2);border:1px solid var(--line);border-radius:14px;padding:9px 12px;display:flex;flex-direction:column;gap:4px;align-self:flex-start}
+.bub p{margin:0;color:var(--ink);white-space:pre-wrap}.bub-w{font-size:12px;font-weight:700;color:var(--muted)}.bub-t{font-size:11px;color:var(--muted);align-self:flex-end}
+.bub.fwd{border-left:3px solid #25d366}.bub.tf{align-self:flex-end;background:var(--accent-soft);border-color:transparent}.bub.tf .bub-w{color:var(--accent)}
+.bub-fc{border-left:3px solid var(--gold);padding:4px 8px;font-size:13px;color:var(--text);display:flex;flex-direction:column;gap:2px}.bub-fc b{font-size:11px;color:var(--gold)}
+.msg-f{display:flex;gap:8px;align-items:flex-end}.msg-f textarea{resize:vertical}
+.ts-chat{max-height:260px}
+@media (max-width:900px){.msgs{grid-template-columns:minmax(0,1fr)}.msg-l{position:static}.msg-list{max-height:260px}}
+.filters{display:flex;flex-direction:column;gap:12px;margin-bottom:10px}
+.f-row{display:flex;gap:10px;align-items:center}.f-q{flex:1}
+.f-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.f-grid .field{margin:0}.chip[aria-pressed="true"] .dim{color:inherit;opacity:.85}.f-count{margin:4px 2px 10px;color:var(--muted);font-size:13px}
+.tlink{white-space:nowrap;background:none;border:0;padding:0;color:var(--accent);cursor:pointer;font:inherit;text-align:left}.tlink:hover{text-decoration:underline}
 .chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px;font-size:13px;font-weight:500;color:var(--muted)}
 .chip[aria-pressed="true"]{background:var(--grad);border-color:transparent;color:#fff}
 .btn{border:1px solid var(--line);background:var(--raise);border-radius:999px;padding:8px 16px;font-weight:600;font-size:13.5px;color:var(--ink)}
@@ -437,9 +459,12 @@ const TECHS = [
   {ini:"GN", name:"Tecnico Zona Nord", mail:"gn@efuture.it", zona:"Nord", app:false, last:"—"}
 ];
 
+const tfReset = () => ({q:"", stato:"aperti", client:"", tech:"", sys:"", origin:"", per:"", dal:"", al:"", urg:false});
+const cfReset = () => ({q:"", sys:"", city:"", open:false, wa:false});
+const dago = n => { const d = new Date(); d.setDate(d.getDate()-n); return d.toISOString().slice(0,10); };
 function fresh(){
   return {
-    view:"cruscotto", sel:null, filt:"tutti", tfilt:"tutti", seq:31,
+    view:"cruscotto", sel:null, filt:"tutti", tf:tfReset(), cf:cfReset(), seq:31,
     rules:[
       {k:"reply", t:"Risposta a una mail del ticket", d:"In-Reply-To o References contiene l'identificativo di una mail mandata da ITSM o Halo", on:true},
       {k:"subj", t:"Numero del ticket nell'oggetto", d:"Oggetto con «Tck #714139» (ITSM) o «HALO-4821» (Halo)", on:true},
@@ -447,13 +472,32 @@ function fresh(){
       {k:"from", t:"Mittente è un contatto noto", d:"Indirizzo presente nei contatti di ITSM, Halo o Office 365", on:true},
       {k:"dom", t:"Dominio del mittente", d:"Es. @caseificiovalle.ch porta a Caseificio Valle SA", on:true}
     ],
+    threads:[
+      {ticket:"HALO-4821", client:"lab", tech:"MB", techMail:"mb@efuture.it", msgs:[
+        {k:"fwd", from:"Giulia Bernasconi", t:"ieri 18:05", text:"Buonasera, lo spettrofotometro dà di nuovo errore lampada all'accensione."},
+        {k:"tf", t:"ieri 18:06", text:"Ticket HALO-4821 aperto in Halo per Laboratorio Esempio SA."},
+        {k:"tf", t:"07:40", by:"Laura Bianchi", text:"La cliente ha scritto anche per mail e chiede un passaggio domani mattina. L'ufficio ha fissato le 9:00 in Halo.", forClient:"Buongiorno, confermo il passaggio domani alle 9:00 per lo spettrofotometro (pratica HALO-4821). Buona giornata."}]},
+      {ticket:"Tck #714139", client:"cas", tech:"MB", techMail:"mb@efuture.it", msgs:[
+        {k:"tf", t:"07:55", text:"Nuovo ticket assegnato a te in ITSM: analizzatore latte con letture instabili. Priorità urgente."},
+        {k:"fwd", from:"Marco Rossi", t:"07:51", text:"Buongiorno, l'analizzatore continua a dare letture diverse sullo stesso campione. Potete passare oggi?"},
+        {k:"me", t:"08:20", text:"Chiamo il cliente in mattinata e fisso l'intervento."}]},
+      {ticket:"HALO-4799", client:"far", tech:"MB", techMail:"mb@efuture.it", msgs:[
+        {k:"me", t:"ven 16:20", text:"Serve la cella di carico, l'ho segnata nel rapporto."},
+        {k:"tf", t:"ven 16:21", text:"Nota aggiunta a HALO-4799. Il ticket è ora in attesa del ricambio."}]},
+      {ticket:"Tck #714136", client:"alp", tech:"LC", techMail:"lc@efuture.it", msgs:[
+        {k:"fwd", from:"Luca Pedrazzini", t:"09:01", text:"La centrifuga vibra molto sopra i 3000 giri, l'abbiamo fermata."},
+        {k:"me", t:"09:05", text:"Probabile cuscinetto. Passo nel pomeriggio a verificare."}]}
+    ],
     tickets:[
-      {id:"Tck #714139", plan:null, sys:"ITSM", client:"cas", title:"Analizzatore latte: letture instabili", state:"In lavorazione", tech:"MB", urg:true, origin:"ITSM", upd:"08:20"},
-      {id:"Tck #714133", plan:{day:0,time:"14:00"}, sys:"ITSM", client:"che", title:"Titolatore: taratura annuale", state:"Pianificato", tech:"MB", origin:"ITSM", upd:"ieri"},
-      {id:"Tck #714128", sys:"ITSM", client:"alp", title:"HPLC: manutenzione ordinaria", state:"Chiuso", tech:"LC", origin:"Mail cliente", upd:"ven"},
-      {id:"HALO-4821", plan:{day:1,time:"09:00"}, sys:"Halo", client:"lab", title:"Spettrofotometro: errore lampada", state:"Pianificato", tech:"MB", origin:"WhatsApp tecnico", upd:"07:40"},
-      {id:"HALO-4799", plan:null, sys:"Halo", client:"far", title:"Bilancia analitica: guasto", state:"In attesa ricambio", tech:"MB", origin:"Telefono", upd:"ven"},
-      {id:"HALO-4812", sys:"Halo", client:"vin", title:"Ordine reagenti e agenti", state:"Aperto", tech:"", origin:"Mail cliente", upd:"ieri"}
+      {id:"Tck #714139", opened:dago(0), plan:null, sys:"ITSM", client:"cas", title:"Analizzatore latte: letture instabili", state:"In lavorazione", tech:"MB", urg:true, origin:"ITSM", upd:"08:20"},
+      {id:"Tck #714133", opened:dago(6), plan:{day:0,time:"14:00"}, sys:"ITSM", client:"che", title:"Titolatore: taratura annuale", state:"Pianificato", tech:"MB", origin:"ITSM", upd:"ieri"},
+      {id:"Tck #714128", opened:dago(12), sys:"ITSM", client:"alp", title:"HPLC: manutenzione ordinaria", state:"Chiuso", tech:"LC", origin:"Mail cliente", upd:"ven"},
+      {id:"HALO-4821", opened:dago(1), plan:{day:1,time:"09:00"}, sys:"Halo", client:"lab", title:"Spettrofotometro: errore lampada", state:"Pianificato", tech:"MB", origin:"WhatsApp tecnico", upd:"07:40"},
+      {id:"HALO-4799", opened:dago(9), plan:null, sys:"Halo", client:"far", title:"Bilancia analitica: guasto", state:"In attesa ricambio", tech:"MB", origin:"Telefono", upd:"ven"},
+      {id:"HALO-4812", opened:dago(1), sys:"Halo", client:"vin", title:"Ordine reagenti e agenti", state:"Aperto", tech:"", origin:"Mail cliente", upd:"ieri"},
+      {id:"Tck #714136", opened:dago(3), sys:"ITSM", client:"alp", title:"Centrifuga: vibrazioni anomale", state:"In lavorazione", tech:"LC", origin:"Telefono", upd:"09:05"},
+      {id:"HALO-4806", opened:dago(5), sys:"Halo", client:"acq", title:"pH-metro: calibrazione", state:"In attesa cliente", tech:"GN", origin:"Mail cliente", upd:"lun"},
+      {id:"Tck #714121", opened:dago(24), sys:"ITSM", client:"che", title:"Bilancia di precisione: verifica metrica", state:"Chiuso", tech:"MB", origin:"ITSM", upd:"21/10"}
     ],
     mails:[
       {id:1, at:"08:20", from:"mb@efuture.it", fromName:"Tecnico Zona Sud", subj:"Re: Tck #714139 - Analizzatore latte: letture instabili",
@@ -504,7 +548,7 @@ const toCheck = () => S.mails.filter(m=>m.res.state==="warn").length;
 
 /* menu diviso: il lavoro di ogni giorno, la configurazione, i tutorial */
 const GROUPS = [
-  ["Operativo", [["cruscotto","Riepilogo"],["ticket","Ticket"],["clienti","Clienti"]]],
+  ["Operativo", [["cruscotto","Riepilogo"],["ticket","Ticket"],["messaggi","Messaggi"],["clienti","Clienti"]]],
   ["Configurazione", [["utenti","Utenti"],["profili","Profili e permessi"],["tecnici","Tecnici"],["office365","Office 365"],["ai","Assistente AI"],["posta","Posta in arrivo"],["regole","Riconoscimento"],["collegamenti","Collegamenti"],["backup","Backup e ripristino"],["audit","Registro attività"]]],
   ["Tutorial", [["tutorial","Casi d'uso"]]]
 ];
@@ -516,7 +560,7 @@ let PROFILES = {
   op:{nome:"Tecnico", desc:"I suoi interventi, ticket e clienti; nessuna configurazione", perm:{cruscotto:"v",posta:"",ticket:"vm",clienti:"v",utenti:"",profili:"",tecnici:"",office365:"",ai:"",collegamenti:"",regole:"",backup:"",audit:"",tutorial:"v"}}
 };
 let ROLE = "op", REAL_ROLE = "admin", BOOTED = false;   /* all'ingresso si vede la console come Tecnico, sul cruscotto */
-const can = (area, right) => ((PROFILES[ROLE]||{perm:{}}).perm[area]||"").includes(right||"v");
+const can = (area, right) => ((PROFILES[ROLE]||{perm:{}}).perm[area==="messaggi"?"ticket":area]||"").includes(right||"v");
 /* nasconde i pulsanti che il profilo non può usare (attributo data-perm="area:diritto") */
 function applyPerms(root){ (root||document).querySelectorAll("[data-perm]").forEach(el=>{ const [a,r] = el.dataset.perm.split(":"); el.hidden = !can(a,r); }); }
 function nav(){
@@ -524,7 +568,7 @@ function nav(){
   $("#nav").innerHTML = GROUPS.map(([g,items])=>[g, items.filter(([k])=>can(k,"v"))]).filter(([,items])=>items.length).map(([g,items])=>`<span class="grp">${g}</span>`+items.map(([k,l])=>`<button type="button" data-v="${k}" ${S.view===k?'aria-current="page"':""}>${l}${k==="posta"&&toCheck()?`<span class="n">${toCheck()}</span>`:""}${k==="tutorial"?`<span class="n">${TUTORIALS.filter(x=>x.for.includes(ROLE)).length}</span>`:""}</button>`).join("")).join("");
   $("#nav").querySelectorAll("button").forEach(b=>b.onclick=()=>{ S.view=b.dataset.v; S.sel=null; S.tut=null; render(); window.scrollTo(0,0); });
 }
-function render(){ nav(); ({cruscotto,posta,ticket,clienti,utenti,profili,tecnici,office365,ai:assistente,collegamenti,regole,backup,audit,tutorial})[S.view](); applyPerms(); paintRole(); }
+function render(){ nav(); ({cruscotto,posta,ticket,messaggi,clienti,utenti,profili,tecnici,office365,ai:assistente,collegamenti,regole,backup,audit,tutorial})[S.view](); applyPerms(); paintRole(); }
 new MutationObserver(()=>applyPerms($("#main"))).observe(document.getElementById("main"), {childList:true, subtree:true});
 
 /* ---------- Tutorial: 5 casi d'uso operativi, ognuno con video e procedura ---------- */
@@ -709,7 +753,7 @@ function respHome(){
   $("#main").innerHTML = `<div class="top"><div><h1>Riepilogo</h1><p class="sub">${giorno(0).replace(/^./,x=>x.toUpperCase())} · ${open.length} ticket aperti tra ITSM e Halo</p></div></div>
     <div class="riep">
       <div class="riep-main">
-        <section class="remind${remClosed()?" closed":""}" id="rem"><div class="rem-h"><span class="rem-i" aria-hidden="true">☀</span><b id="rem-title">Situazione di oggi</b><button class="linkback" type="button" id="rem-again" hidden>Riscrivi</button><button class="linkback" type="button" id="rem-tog">${remClosed()?"Mostra":"Riduci"}</button></div>
+        <section class="remind${remClosed()?" closed":""}" id="rem"${AI.enabled?"":" hidden"}><div class="rem-h"><span class="rem-i" aria-hidden="true">☀</span><b id="rem-title">Situazione di oggi</b><button class="linkback" type="button" id="rem-again" hidden>Riscrivi</button><button class="linkback" type="button" id="rem-tog">${remClosed()?"Mostra":"Riduci"}</button></div>
           <div class="rem-b"><p id="rem-text">Oggi ci sono ${open.length} ticket aperti${urg.length?", "+urg.length+" urgent"+(urg.length===1?"e":"i"):""}${unas.length?" e "+unas.length+" senza tecnico":""}.</p>
           <ol class="tips" id="tips"></ol><span class="dim" id="rem-foot">Scritto in automatico dai ticket.</span></div></section>
         <section><h2 class="h2s">Da seguire <span class="dim">· ${follow.length}</span></h2>
@@ -743,8 +787,8 @@ function simulateTeamLocal(){
   open.filter(x=>x.urg && !x.plan).forEach(t=>tips.push({titolo:"Pianifica l'urgenza di "+name(t), perche:t.title+": è urgente ma senza data"+(t.tech?", assegnato a "+t.tech+".":" e senza tecnico."), ticket:t.id}));
   open.filter(x=>!x.tech).forEach(t=>tips.push({titolo:"Assegna "+t.id+" a "+(freest?freest.ini:"un tecnico"), perche:"Nessun tecnico per «"+t.title+"» di "+name(t)+(freest?"; "+freest.ini+" ha "+load(freest)+" ticket aperti.":"."), ticket:t.id}));
   if(busiest && freest && load(busiest)-load(freest)>=3) tips.push({titolo:"Alleggerisci "+busiest.ini, perche:busiest.ini+" ha "+load(busiest)+" ticket aperti, "+freest.ini+" solo "+load(freest)+": sposta un intervento non urgente.", ticket:""});
-  open.filter(x=>/attesa/i.test(x.state)).forEach(t=>tips.push({titolo:"Sollecita il ricambio per "+name(t), perche:t.id+" è fermo in «"+t.state.toLowerCase()+"».", ticket:t.id}));
   if(toCheck() && can("posta","v")) tips.push({titolo:"Verifica "+toCheck()+" mail in Posta in arrivo", perche:"Non hanno ticket né cliente riconosciuto: finché restano lì nessuno le segue.", ticket:"", view:"posta"});
+  open.filter(x=>/attesa/i.test(x.state)).forEach(t=>tips.push({titolo:(/cliente/i.test(t.state)?"Risenti il cliente ":"Sollecita il ricambio per ")+name(t), perche:t.id+" è fermo in «"+t.state.toLowerCase()+"».", ticket:t.id}));
   const u = open.filter(x=>x.urg).length, n = open.filter(x=>!x.tech).length;
   return {source:"simulazione", model:AI.model, text:"Oggi ci sono "+open.length+" ticket aperti"+(u?", "+u+" urgent"+(u===1?"e":"i"):"")+(n?" e "+n+" senza tecnico":"")+". "+(busiest?"Il più carico è "+busiest.ini+" con "+load(busiest)+" ticket"+(freest&&freest!==busiest?", il più libero "+freest.ini+" con "+load(freest)+".":"."):""), tips:tips.slice(0,5)};
 }
@@ -819,7 +863,6 @@ function wireFix(m){
 
 /* ---------- Ticket ---------- */
 function ticket(){
-  const list = S.tickets.filter(t => S.tfilt==="tutti" || t.sys===S.tfilt || (S.tfilt==="aperti" && t.state!=="Chiuso"));
   $("#main").innerHTML = `<div class="top"><div><h1>Ticket</h1><p class="sub">Letti da ITSM e Halo. Il ticket resta nel suo sistema: Ticket Farm li mostra insieme.</p></div>
       <button class="btn primary" type="button" id="t-new" data-perm="ticket:m">+ Nuovo ticket</button></div>
     <form class="panel" id="t-form" hidden>
@@ -833,14 +876,59 @@ function ticket(){
       <p class="note" id="nt-where">Il ticket viene aperto nel sistema del cliente (ITSM o Halo).</p>
       <div class="actions"><button class="btn primary" type="submit" id="nt-go">Crea ticket</button><button class="btn" type="button" id="nt-x">Annulla</button></div>
     </form>
-    <div class="chips">${[["tutti","Tutti"],["aperti","Aperti"],["ITSM","ITSM"],["Halo","Halo"]].map(([k,l])=>`<button class="chip" data-f="${k}" aria-pressed="${S.tfilt===k}">${l}</button>`).join("")}</div>
-    <div class="tbl"><table><thead><tr><th>Ticket</th><th>Cliente</th><th>Richiesta</th><th>Stato</th><th>Tecnico</th><th>Origine</th><th>Agg.</th><th><span class="sr">Azioni</span></th></tr></thead><tbody>
-      ${list.map(t=>{ const c=cl(t.client); return `<tr><td><span class="mono strong">${esc(t.id)}</span><div>${badge(t.sys)}</div></td><td>${esc(c?c.name:t.client)}</td><td>${esc(t.title)}${t.urg?' <span class="pill p-urg">Urgente</span>':""}</td>
+    <div class="panel filters" id="tf">
+      <div class="f-row"><label class="f-q"><span class="sr">Cerca</span><input class="input" id="tf-q" type="search" placeholder="Numero ticket (es. 714139, HALO-4821), richiesta o cliente" value="${esc(S.tf.q)}"></label>
+        <button class="btn small" type="button" id="tf-x">Azzera filtri</button></div>
+      <div class="chips" id="tf-stato"></div>
+      <div class="f-grid">
+        <label class="field"><span>Cliente</span><select class="input" id="tf-client"><option value="">Tutti i clienti</option>${[...CLIENTS].sort((a,b)=>a.name.localeCompare(b.name)).map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select></label>
+        <label class="field" id="tf-tech-w"><span>Tecnico</span><select class="input" id="tf-tech"><option value="">Tutti i tecnici</option><option value="-">Da assegnare</option>${TECHS.map(t=>`<option value="${t.ini}">${t.ini} · ${esc(techName(t))}</option>`).join("")}</select></label>
+        <label class="field"><span>Sistema</span><select class="input" id="tf-sys"><option value="">ITSM e Halo</option><option>ITSM</option><option>Halo</option></select></label>
+        <label class="field"><span>Origine</span><select class="input" id="tf-origin"><option value="">Tutte le origini</option>${[...new Set(S.tickets.map(t=>t.origin).filter(Boolean))].sort().map(o=>`<option>${esc(o)}</option>`).join("")}</select></label>
+        <label class="field"><span>Aperto</span><select class="input" id="tf-per"><option value="">In qualsiasi data</option><option value="0">Oggi</option><option value="7">Ultimi 7 giorni</option><option value="30">Ultimi 30 giorni</option><option value="c">Dal… al…</option></select></label>
+        <label class="field" id="tf-dal-w"><span>Dal</span><input class="input" id="tf-dal" type="date" value="${esc(S.tf.dal)}"></label>
+        <label class="field" id="tf-al-w"><span>Al</span><input class="input" id="tf-al" type="date" value="${esc(S.tf.al)}"></label>
+      </div>
+      <label class="check"><input type="checkbox" id="tf-urg" ${S.tf.urg?"checked":""}> Solo urgenti</label>
+    </div>
+    <p class="f-count" id="tf-n" aria-live="polite"></p>
+    <div class="tbl"><table><thead><tr><th>Ticket</th><th>Cliente</th><th>Richiesta</th><th>Stato</th><th>Tecnico</th><th>Origine</th><th>Aperto</th><th>Agg.</th><th><span class="sr">Azioni</span></th></tr></thead><tbody id="tf-body"></tbody></table></div>`;
+  const F = S.tf, mine = ROLE==="op" ? myTech().ini : "";
+  if(mine){ F.tech = mine; $("#tf-tech-w").hidden = true; $("#tf-n").dataset.mine = "1"; }
+  ["client","tech","sys","origin","per"].forEach(k=>$("#tf-"+k).value = F[k]);
+  const STATI = [["aperti","Tutti gli aperti", t=>t.state!=="Chiuso"],["Aperto","Aperti", t=>t.state==="Aperto"],["In lavorazione","In lavorazione", t=>t.state==="In lavorazione"],["Pianificato","Pianificati", t=>t.state==="Pianificato"],["attesa","In attesa", t=>/attesa/i.test(t.state)],["Chiuso","Chiusi", t=>t.state==="Chiuso"],["tutti","Tutti", ()=>true]];
+  const norm = x => String(x||"").toLowerCase().replace(/[^a-z0-9]/g,"");
+  const base = t => {
+    if(F.client && t.client!==F.client) return false;
+    if(F.tech==="-" ? t.tech : F.tech && t.tech!==F.tech) return false;
+    if(F.sys && t.sys!==F.sys) return false;
+    if(F.origin && t.origin!==F.origin) return false;
+    if(F.urg && !t.urg) return false;
+    const d = t.opened||"";
+    if(F.per==="c"){ if(F.dal && d<F.dal) return false; if(F.al && d>F.al) return false; }
+    else if(F.per!==""){ if(!d || d<dago(+F.per)) return false; }
+    if(F.q){ const q = norm(F.q), c = cl(t.client); if(![t.id, t.title, c?c.name:t.client].some(v=>norm(v).includes(q))) return false; }
+    return true;
+  };
+  const paint = () => {
+    $("#tf-dal-w").hidden = $("#tf-al-w").hidden = F.per!=="c";
+    const pre = S.tickets.filter(base), st = STATI.find(x=>x[0]===F.stato) || STATI[0];
+    $("#tf-stato").innerHTML = STATI.map(([k,l,f])=>`<button class="chip" type="button" data-st="${k}" aria-pressed="${F.stato===k}">${l} <span class="dim">${pre.filter(f).length}</span></button>`).join("");
+    const list = pre.filter(st[2]).sort((a,b)=>(b.opened||"").localeCompare(a.opened||""));
+    $("#tf-n").textContent = (mine?"I tuoi ticket · ":"")+list.length+" di "+S.tickets.filter(t=>!mine||t.tech===mine).length;
+    $("#tf-body").innerHTML = list.map(t=>{ const c=cl(t.client); return `<tr><td><button class="tlink mono strong" type="button" data-open="${esc(t.id)}">${esc(t.id)}</button><div>${badge(t.sys)}</div></td><td>${esc(c?c.name:t.client)}</td><td>${esc(t.title)}${t.urg?' <span class="pill p-urg">Urgente</span>':""}</td>
         <td><span class="pill ${t.state==="Chiuso"?"p-mut":t.state==="Aperto"?"p-new":t.state.startsWith("In attesa")?"p-warn":"p-ok"}">${esc(t.state)}</span></td>
-        <td>${t.tech?`<span class="strong">${t.tech}</span>`:`<span class="dim">da assegnare</span>`}</td><td class="dim">${esc(t.origin)}</td><td class="mono">${esc(t.upd)}</td>
-        <td class="act" data-del="${esc(t.id)}"><button class="btn small danger" type="button" data-ask="${esc(t.id)}" data-perm="ticket:e">Elimina</button></td></tr>`; }).join("") || `<tr><td colspan="8" class="dim">Nessun ticket</td></tr>`}
-    </tbody></table></div>`;
-  document.querySelectorAll(".chip[data-f]").forEach(b=>b.onclick=()=>{ S.tfilt=b.dataset.f; ticket(); });
+        <td>${t.tech?`<span class="strong">${t.tech}</span>`:`<span class="dim">da assegnare</span>`}</td><td class="dim">${esc(t.origin)}</td><td class="mono">${t.opened?esc(t.opened.split("-").reverse().join("/")):"—"}</td><td class="mono">${esc(t.upd)}</td>
+        <td class="act" data-del="${esc(t.id)}"><button class="btn small" type="button" data-open="${esc(t.id)}">Apri</button> <button class="btn small danger" type="button" data-ask="${esc(t.id)}" data-perm="ticket:e">Elimina</button></td></tr>`; }).join("") || `<tr><td colspan="9" class="dim">Nessun ticket con questi filtri</td></tr>`;
+    $("#tf-body").querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>ticketSheet(b.dataset.open));
+    $("#tf-body").querySelectorAll("[data-ask]").forEach(askTicket);
+  };
+  $("#tf-stato").onclick = e => { const b = e.target.closest("[data-st]"); if(b){ F.stato = b.dataset.st; paint(); } };
+  $("#tf-q").oninput = e => { F.q = e.target.value; paint(); };
+  ["client","tech","sys","origin","per","dal","al"].forEach(k=>$("#tf-"+k).onchange = e => { F[k] = e.target.value; paint(); });
+  $("#tf-urg").onchange = e => { F.urg = e.target.checked; paint(); };
+  $("#tf-x").onclick = () => { S.tf = tfReset(); ticket(); };
+  paint();
   const form = $("#t-form");
   $("#t-new").onclick = ()=>{ form.hidden = false; $("#nt-client").focus(); };
   $("#nt-x").onclick = ()=>{ form.hidden = true; form.reset(); };
@@ -853,10 +941,11 @@ function ticket(){
       post("/api/admin/tickets", {client:c.id, title, tech, urg}).then(r=>{ toast("Ticket "+r.ticket.id+" aperto in "+SRC[c.sys]); load(); })
         .catch(err=>{ $("#nt-go").disabled = false; toast("Non riuscito: "+err.message); }); return; }
     const id = c.sys==="Halo" ? "HALO-48"+(++S.seq) : "Tck #7142"+(++S.seq);
-    S.tickets.unshift({id, sys:c.sys, client:c.id, title, state:"Aperto", tech, urg, origin:"Console", upd:"adesso"}); logLocal("Ticket creato", id+" · "+c.name+" · "+title, "ticket");
-    S.tfilt = "tutti"; ticket(); toast("Ticket "+id+" aperto in "+SRC[c.sys]+" (prova)");
+    S.tickets.unshift({id, opened:dago(0), sys:c.sys, client:c.id, title, state:"Aperto", tech, urg, origin:"Console", upd:"adesso"}); logLocal("Ticket creato", id+" · "+c.name+" · "+title, "ticket");
+    S.tf = tfReset(); ticket(); toast("Ticket "+id+" aperto in "+SRC[c.sys]+" (prova)");
   };
-  document.querySelectorAll("[data-ask]").forEach(b=>b.onclick=()=>{
+}
+function askTicket(b){ b.onclick=()=>{
     const cell = b.parentNode, id = b.dataset.ask;
     cell.innerHTML = `<span class="confirm">Eliminare ${esc(id)}? <button class="btn small danger" type="button" data-yes>Sì, elimina</button> <button class="btn small" type="button" data-no>No</button></span>`;
     cell.querySelector("[data-no]").onclick = ()=>ticket();
@@ -865,25 +954,108 @@ function ticket(){
         .then(()=>{ toast("Ticket "+id+" eliminato"); load(); }).catch(err=>{ toast("Non riuscito: "+err.message); ticket(); }); return; }
       S.tickets = S.tickets.filter(t=>t.id!==id); ticket(); toast("Ticket "+id+" eliminato (prova)");
     };
-  });
+  };
+}
+
+/* ---------- Messaggi: le conversazioni dei tecnici con Ticket Farm, ticket per ticket ---------- */
+const bubbles = th => (th.msgs||[]).map(m=>{
+  const who = m.k==="fwd" ? (m.from||"Cliente")+" · inoltrato da "+(th.tech||"tecnico") : m.k==="me" ? "Tecnico "+(th.tech||"") : (m.by ? m.by+" · ufficio" : "Ticket Farm");
+  return `<div class="bub ${m.k}"><span class="bub-w">${esc(who)}</span><p>${esc(m.text)}</p>${m.forClient?`<div class="bub-fc"><b>Testo per il cliente</b>${esc(m.forClient)}</div>`:""}<span class="bub-t">${esc(m.t||"")}</span></div>`;
+}).join("") || `<p class="dim">Nessun messaggio.</p>`;
+function myThreads(){ const mine = ROLE==="op" ? myTech().ini : ""; return (S.threads||[]).filter(th=>!mine || th.tech===mine); }
+function messaggi(){
+  const M = S.mf = S.mf || {q:"", tech:""}, mine = ROLE==="op";
+  $("#main").innerHTML = `<div class="top"><div><h1>Messaggi</h1><p class="sub">Le conversazioni tra i tecnici e Ticket Farm: messaggi dei clienti inoltrati dall'app, note dei tecnici e risposte dell'ufficio.</p></div></div>
+    <div class="msgs">
+      <aside class="msg-l panel">
+        <input class="input" id="mf-q" type="search" placeholder="Cerca ticket, cliente o testo" value="${esc(M.q)}">
+        ${mine?"":`<select class="input" id="mf-tech"><option value="">Tutti i tecnici</option>${TECHS.map(t=>`<option value="${t.ini}" ${M.tech===t.ini?"selected":""}>${t.ini} · ${esc(techName(t))}</option>`).join("")}</select>`}
+        <div id="mf-list" class="msg-list"></div>
+      </aside>
+      <section class="msg-r panel" id="mf-chat"></section>
+    </div>`;
+  const norm = x => String(x||"").toLowerCase();
+  const list = () => myThreads().filter(th=>{ if(M.tech && th.tech!==M.tech) return false; if(!M.q) return true; const c = cl(th.client), q = norm(M.q);
+    return [th.ticket, c?c.name:"", ...(th.msgs||[]).map(m=>m.text)].some(v=>norm(v).includes(q)); });
+  const paintList = () => {
+    const l = list(); if(!S.thSel || !l.some(th=>th.ticket===S.thSel)) S.thSel = l[0] ? l[0].ticket : null;
+    $("#mf-list").innerHTML = l.map(th=>{ const c = cl(th.client) || {name:th.client}, last = (th.msgs||[]).slice(-1)[0] || {};
+      return `<button type="button" class="msg-i" data-th="${esc(th.ticket)}" aria-current="${S.thSel===th.ticket}"><div class="msg-i-h">${logo(c)}<b>${esc(c.name)}</b><span class="dim">${esc(last.t||"")}</span></div>
+        <span class="mono dim">${esc(th.ticket)} · ${esc(th.tech||"")}</span><span class="msg-i-x">${esc(last.text||"")}</span></button>`; }).join("") || `<p class="dim">Nessuna conversazione.</p>`;
+    $("#mf-list").querySelectorAll("[data-th]").forEach(b=>b.onclick=()=>{ S.thSel = b.dataset.th; paintList(); });
+    paintChat();
+  };
+  const paintChat = () => {
+    const th = myThreads().find(x=>x.ticket===S.thSel), box = $("#mf-chat");
+    if(!th){ box.innerHTML = `<p class="dim">Scegli una conversazione.</p>`; return; }
+    const c = cl(th.client) || {name:th.client}, t = S.tickets.find(x=>x.id===th.ticket);
+    box.innerHTML = `<div class="msg-h"><div>${logo(c)}<div><b>${esc(c.name)}</b><div class="dim"><span class="mono">${esc(th.ticket)}</span>${t?" · "+esc(t.title)+" · "+esc(t.state):""} · tecnico ${esc(th.tech||"")}</div></div></div>
+        <button class="btn small primary" type="button" id="mf-open">Apri ticket</button></div>
+      <div class="chatbox" id="mf-bub">${bubbles(th)}</div>
+      <form class="msg-f" id="mf-form" data-perm="ticket:m"><textarea class="input" id="mf-text" rows="2" placeholder="Scrivi al tecnico ${esc(th.tech||"")}: lo riceve nell'app" required></textarea><button class="btn primary" type="submit">Invia</button></form>`;
+    const bb = $("#mf-bub"); bb.scrollTop = bb.scrollHeight;
+    $("#mf-open").onclick = ()=>ticketSheet(th.ticket);
+    $("#mf-form").onsubmit = e => { e.preventDefault(); const text = $("#mf-text").value.trim(); if(!text) return;
+      if(LIVE) return post("/api/admin/threads/reply", {ticket:th.ticket, techMail:th.techMail, text}).then(r=>{ th.msgs.push(r.msg); paintList(); toast("Inviato a "+th.tech); }).catch(err=>toast("Non inviato: "+err.message));
+      th.msgs.push({k:"tf", t:new Date().toLocaleTimeString("it-CH",{hour:"2-digit",minute:"2-digit"}), by:(ME&&ME.nome)||"Ufficio", text}); logLocal("Messaggio al tecnico", th.ticket+" · "+th.tech, "ticket"); paintList(); toast("Inviato a "+th.tech+" (prova)"); };
+  };
+  $("#mf-q").oninput = e => { M.q = e.target.value; paintList(); };
+  if($("#mf-tech")) $("#mf-tech").onchange = e => { M.tech = e.target.value; paintList(); };
+  paintList();
 }
 
 /* ---------- Clienti ---------- */
 function clienti(){
+  const F = S.cf = S.cf || cfReset(), mine = ROLE==="op" ? myTech().ini : "";
+  if(mine && F.mine===undefined) F.mine = true;
+  const openOf = c => S.tickets.filter(t=>t.client===c.id && t.state!=="Chiuso");
   $("#main").innerHTML = `<div class="top"><div><h1>Clienti</h1><p class="sub">Anagrafiche da ITSM e Halo, contatti anche da Office 365. Servono a riconoscere il mittente delle mail.</p></div>
       <button class="btn primary" type="button" id="c-add" data-perm="clienti:m">+ Nuovo cliente</button></div>
-    <div class="tbl"><table><thead><tr><th>Cliente</th><th>Ticket in</th><th>Dominio</th><th>Contatti</th><th><span class="sr">Azioni</span></th></tr></thead><tbody>
-      ${CLIENTS.map(c=>`<tr><td><div style="display:flex;gap:10px;align-items:center">${logo(c)}<div><span class="strong">${esc(c.name)}</span><div class="dim">${esc(c.city||"")}</div></div></div></td><td>${badge(c.sys)}</td><td class="mono">${c.dom?"@"+esc(c.dom):"—"}</td>
+    <div class="panel filters">
+      <div class="f-row"><label class="f-q"><span class="sr">Cerca</span><input class="input" id="cf-q" type="search" placeholder="Nome, città, contatto, mail, telefono o dominio" value="${esc(F.q)}"></label>
+        <button class="btn small" type="button" id="cf-x">Azzera filtri</button></div>
+      <div class="f-grid">
+        <label class="field"><span>Sistema</span><select class="input" id="cf-sys"><option value="">ITSM e Halo</option><option>ITSM</option><option>Halo</option></select></label>
+        <label class="field"><span>Città</span><select class="input" id="cf-city"><option value="">Tutte le città</option>${[...new Set(CLIENTS.map(c=>c.city).filter(Boolean))].sort().map(x=>`<option>${esc(x)}</option>`).join("")}</select></label>
+      </div>
+      <div class="chips">
+        ${mine?`<label class="check"><input type="checkbox" id="cf-mine" ${F.mine?"checked":""}> Solo i clienti dei miei ticket</label>`:""}
+        <label class="check"><input type="checkbox" id="cf-open" ${F.open?"checked":""}> Con ticket aperti</label>
+        <label class="check"><input type="checkbox" id="cf-wa" ${F.wa?"checked":""}> Con numero WhatsApp</label>
+      </div>
+    </div>
+    <p class="f-count" id="cf-n" aria-live="polite"></p>
+    <div class="tbl"><table><thead><tr><th>Cliente</th><th>Ticket in</th><th>Ticket aperti</th><th>Dominio</th><th>Contatti</th><th><span class="sr">Azioni</span></th></tr></thead><tbody id="cf-body"></tbody></table></div>`;
+  $("#cf-sys").value = F.sys; $("#cf-city").value = F.city;
+  const norm = x => String(x||"").toLowerCase();
+  const paint = () => {
+    const list = CLIENTS.filter(c=>{
+      if(F.sys && c.sys!==F.sys) return false;
+      if(F.city && c.city!==F.city) return false;
+      if(F.open && !openOf(c).length) return false;
+      if(F.wa && !(c.contacts||[]).some(k=>k.tel)) return false;
+      if(mine && F.mine && !S.tickets.some(t=>t.client===c.id && t.tech===mine)) return false;
+      if(F.q){ const q = norm(F.q), qd = q.replace(/[^0-9+]/g,""); if(![c.name, c.city, c.dom, ...(c.contacts||[]).flatMap(k=>[k.n,k.mail])].some(v=>norm(v).includes(q)) && !(qd.length>2 && (c.contacts||[]).some(k=>String(k.tel||"").replace(/[^0-9+]/g,"").includes(qd)))) return false; }
+      return true; }).sort((a,b)=>a.name.localeCompare(b.name));
+    $("#cf-n").textContent = list.length+" di "+CLIENTS.length+" clienti";
+    $("#cf-body").innerHTML = list.map(c=>{ const o = openOf(c); return `<tr><td><div style="display:flex;gap:10px;align-items:center">${logo(c)}<div><span class="strong">${esc(c.name)}</span><div class="dim">${esc(c.city||"")}</div></div></div></td><td>${badge(c.sys)}</td>
+        <td>${o.length?`<button class="tlink strong" type="button" data-tk="${esc(c.id)}">${o.length} aperti</button>${o.some(t=>t.urg)?' <span class="pill p-urg">Urgente</span>':""}`:`<span class="dim">nessuno</span>`}</td><td class="mono">${c.dom?"@"+esc(c.dom):"—"}</td>
         <td>${(c.contacts||[]).map(k=>`<div class="contact"><div>${esc(k.n)} ${badge(k.src)}<div class="dim">${esc(k.mail||"")}${k.tel?" · "+esc(k.tel):""}</div></div>${waBtn(k.tel)}</div>`).join("") || `<span class="dim">Nessun contatto</span>`}</td>
-        <td class="act" data-row="${esc(c.id)}"><button class="btn small" type="button" data-edit="${esc(c.id)}" data-perm="clienti:m">Modifica</button> <button class="btn small danger" type="button" data-ask="${esc(c.id)}" data-perm="clienti:e">Elimina</button></td></tr>`).join("") || `<tr><td colspan="5" class="dim">Nessun cliente</td></tr>`}
-    </tbody></table></div>`;
-  $("#c-add").onclick = ()=>clientForm(null);
-  document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>clientForm(cl(b.dataset.edit)));
-  document.querySelectorAll("[data-ask]").forEach(b=>b.onclick=()=>askDelete(b, "il cliente "+cl(b.dataset.ask).name, ()=>{
-    const id = b.dataset.ask;
-    if(LIVE) return del("/api/admin/clients/"+encodeURIComponent(id)).then(()=>{ toast("Cliente eliminato"); load(); });
-    CLIENTS.splice(CLIENTS.findIndex(c=>c.id===id), 1); clienti(); toast("Cliente eliminato (prova)");
-  }, clienti));
+        <td class="act" data-row="${esc(c.id)}"><button class="btn small" type="button" data-edit="${esc(c.id)}" data-perm="clienti:m">Modifica</button> <button class="btn small danger" type="button" data-ask="${esc(c.id)}" data-perm="clienti:e">Elimina</button></td></tr>`; }).join("") || `<tr><td colspan="6" class="dim">Nessun cliente con questi filtri</td></tr>`;
+    $("#cf-body").querySelectorAll("[data-tk]").forEach(b=>b.onclick=()=>{ S.view="ticket"; S.tf = Object.assign(tfReset(), {client:b.dataset.tk}); render(); });
+    $("#cf-body").querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>clientForm(cl(b.dataset.edit)));
+    $("#cf-body").querySelectorAll("[data-ask]").forEach(b=>b.onclick=()=>askDelete(b, "il cliente "+cl(b.dataset.ask).name, ()=>{
+      const id = b.dataset.ask;
+      if(LIVE) return del("/api/admin/clients/"+encodeURIComponent(id)).then(()=>{ toast("Cliente eliminato"); load(); });
+      CLIENTS.splice(CLIENTS.findIndex(c=>c.id===id), 1); clienti(); toast("Cliente eliminato (prova)");
+    }, clienti));
+  };
+  $("#cf-q").oninput = e => { F.q = e.target.value; paint(); };
+  $("#cf-sys").onchange = e => { F.sys = e.target.value; paint(); };
+  $("#cf-city").onchange = e => { F.city = e.target.value; paint(); };
+  ["open","wa","mine"].forEach(k=>{ const el = $("#cf-"+k); if(el) el.onchange = e => { F[k] = e.target.checked; paint(); }; });
+  $("#cf-x").onclick = () => { S.cf = cfReset(); clienti(); };
+  paint();
 }
 /* conferma dentro la riga, senza finestre del browser */
 function askDelete(btn, what, yes, back){
@@ -1027,9 +1199,11 @@ function ticketSheet(id){
     <p style="margin:0;color:var(--ink);font-size:16px;font-weight:600">${esc(t.title)}</p>
     <dl class="kv"><dt>Cliente</dt><dd>${esc(c.name)}${c.city?" · "+esc(c.city):""}</dd><dt>Stato</dt><dd>${esc(t.state)}</dd><dt>Intervento</dt><dd>${esc(plan)}</dd>
       <dt>Tecnico</dt><dd>${tech?esc(tech.ini)+" · "+esc(techName(tech)):"da assegnare"}</dd><dt>Origine</dt><dd>${esc(t.origin||"")}</dd><dt>Aggiornato</dt><dd>${esc(t.upd||"")}</dd></dl>
+    ${(()=>{ const th = (S.threads||[]).find(x=>x.ticket===t.id); return th ? `<div class="field"><span>Conversazione con il tecnico ${esc(th.tech||"")}</span><div class="chatbox ts-chat">${bubbles(th)}</div><button class="btn small" type="button" id="ts-chat">Apri nei Messaggi</button></div>` : ""; })()}
     ${(c.contacts||[]).length?`<div class="field"><span>Contatti</span>${c.contacts.map(k=>`<div class="contact"><div>${esc(k.n)}<div class="dim">${esc(k.mail||"")}${k.tel?" · "+esc(k.tel):""}</div></div>${waBtn(k.tel)}</div>`).join("")}</div>`:""}
-    <div class="actions"><a class="btn" href="${mapsUrl(c)}" target="_blank" rel="noopener">Naviga</a><button class="btn" type="button" id="ts-list">Vedi tra i ticket</button><button class="btn primary" type="button" data-close>Chiudi</button></div>`, closeEditor);
-  $("#ts-list").onclick = ()=>{ closeEditor(); S.view="ticket"; S.tfilt="tutti"; render(); };
+    <div class="actions"><a class="btn" href="${mapsUrl(c)}" target="_blank" rel="noopener">Naviga</a><button class="btn" type="button" id="ts-list">Tutti i ticket del cliente</button><button class="btn primary" type="button" data-close>Chiudi</button></div>`, closeEditor);
+  if($("#ts-chat")) $("#ts-chat").onclick = ()=>{ closeEditor(); S.view="messaggi"; S.thSel=t.id; S.mf={q:"",tech:""}; render(); };
+  $("#ts-list").onclick = ()=>{ closeEditor(); S.view="ticket"; S.tf = Object.assign(tfReset(), {client:t.client, stato:"tutti"}); render(); };
 }
 function tecnicoHome(){
   const a = agenda();
@@ -1045,7 +1219,7 @@ function tecnicoHome(){
   $("#main").innerHTML = `<div class="top"><div><h1>Riepilogo</h1><p class="sub">${giorno(0).replace(/^./,x=>x.toUpperCase())} · ${esc(a.me.ini||"")} · Zona ${esc(a.me.zona||"")}</p></div></div>
     <div class="riep">
       <div class="riep-main">
-        <section class="remind${remClosed()?" closed":""}" id="rem"><div class="rem-h"><span class="rem-i" aria-hidden="true">☀</span><b id="rem-title">Promemoria di oggi</b><button class="linkback" type="button" id="rem-again" hidden>Riscrivi</button><button class="linkback" type="button" id="rem-tog" aria-expanded="${!remClosed()}">${remClosed()?"Mostra":"Riduci"}</button></div>
+        <section class="remind${remClosed()?" closed":""}" id="rem"${AI.enabled?"":" hidden"}><div class="rem-h"><span class="rem-i" aria-hidden="true">☀</span><b id="rem-title">Promemoria di oggi</b><button class="linkback" type="button" id="rem-again" hidden>Riscrivi</button><button class="linkback" type="button" id="rem-tog" aria-expanded="${!remClosed()}">${remClosed()?"Mostra":"Riduci"}</button></div>
           <div class="rem-b"><p id="rem-text">${esc(reminderText(a))}</p><span class="dim" id="rem-foot">Scritto in automatico dai tuoi ticket.</span></div></section>
         <section><h2 class="h2s">Prossime attività <span class="dim">· ${rows.length}</span></h2>
           <ol class="acts">${rows.join("") || `<li class="dim">Nessuna attività aperta: ottimo lavoro.</li>`}</ol></section>
@@ -1069,7 +1243,7 @@ function tecnicoHome(){
 }
 /* ---------- assistente AI nel cruscotto del Tecnico ---------- */
 const AI_MODELS = {"claude-opus-5-5":{nome:"Claude Opus 5.5", nota:"il più capace (consigliato)", in:4, out:20}, "claude-sonnet-5-5":{nome:"Claude Sonnet 5.5", nota:"veloce, buon equilibrio", in:2, out:10}, "claude-haiku-5-5":{nome:"Claude Haiku 5.5", nota:"il più economico", in:0.1, out:0.5}};
-let AI = {enabled:true, keySet:false, envKey:false, model:"claude-opus-5-5", promemoria:true, priorita:true};
+let AI = {enabled:false, keySet:false, envKey:false, model:"claude-opus-5-5", promemoria:true, priorita:true};
 try{ const x = JSON.parse(localStorage.getItem("tf-admin-ai")||"null"); if(x) AI = Object.assign(AI, x); }catch(e){}
 const aiCost = (m, techs) => { const x = AI_MODELS[m]; return (1800*x.in + 700*x.out)/1e6 * Math.max(1,techs) * 22; };
 /* risposta di esempio quando l'assistente è acceso senza chiave (versione di prova) */
@@ -1114,9 +1288,9 @@ function paintRole(){
 function setRole(r){
   ROLE = r; S.sel = null; S.tut = null;
   /* filtri e vista d'ingresso sensati per profilo */
-  if(r==="op"){ S.filt = "tutti"; S.tfilt = "aperti"; S.view = "cruscotto"; }
-  else if(r==="resp"){ S.filt = "tutti"; S.tfilt = "aperti"; S.view = "cruscotto"; }
-  else { S.filt = "tutti"; S.tfilt = "tutti"; S.view = "cruscotto"; }
+  if(r==="op"){ S.filt = "tutti"; S.tf = tfReset(); S.cf = cfReset(); S.view = "cruscotto"; }
+  else if(r==="resp"){ S.filt = "tutti"; S.tf = tfReset(); S.cf = cfReset(); S.view = "cruscotto"; }
+  else { S.filt = "tutti"; S.tf = tfReset(); S.cf = cfReset(); S.view = "cruscotto"; }
   $("#me-menu").hidden = true; render(); toast("Vista: "+PROFILES[r].nome);
 }
 document.querySelectorAll("#rolesw [data-role]").forEach(b=>b.onclick=()=>setRole(b.dataset.role));
@@ -1404,7 +1578,7 @@ function load(){
   return fetch("/api/admin/state", {headers:H()}).then(r=>{ if(r.status===401) throw {auth:true}; return r.ok ? r.json() : Promise.reject(new Error("errore "+r.status)); }).then(d=>{
     LIVE = true; CONN = d.connections; ME = d.me || ME; paintMe();
     CLIENTS.splice(0, CLIENTS.length, ...d.clients); TECHS.splice(0, TECHS.length, ...d.techs);
-    S.mails = d.mails; S.tickets = d.tickets; S.rules = d.rules; SETTINGS = d.settings || SETTINGS; O365 = d.o365 || null;
+    S.mails = d.mails; S.tickets = d.tickets; S.threads = d.threads || []; S.rules = d.rules; SETTINGS = d.settings || SETTINGS; O365 = d.o365 || null;
     if(d.ai) AI = d.ai;
     if(d.profiles) PROFILES = d.profiles; REAL_ROLE = (d.me && d.me.profilo) || "admin"; if(REAL_ROLE !== "admin") ROLE = REAL_ROLE;
     if(!BOOTED){ BOOTED = true; landing(); }

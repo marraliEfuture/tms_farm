@@ -132,9 +132,9 @@ function simulateTeam({ tickets, clients, techs, toCheck }) {
   const tips = [];
   for (const t of tickets.filter(x => x.urg && !x.plan)) tips.push({ titolo: "Pianifica l'urgenza di " + name(t.client), perche: t.title + ": è urgente ma senza data" + (t.tech ? ", assegnato a " + t.tech + "." : " e senza tecnico."), ticket: t.id });
   for (const t of tickets.filter(x => !x.tech)) tips.push({ titolo: "Assegna " + t.id + " a " + (freest ? freest.ini : "un tecnico"), perche: "Nessun tecnico per «" + t.title + "» di " + name(t.client) + (freest ? "; " + freest.ini + " ha " + load(freest) + " ticket aperti." : "."), ticket: t.id });
-  if (busiest && freest && load(busiest) - load(freest) >= 3) tips.push({ titolo: "Alleggerisci " + busiest.ini, perche: busiest.ini + " ha " + load(busiest) + " ticket aperti, " + freest.ini + " solo " + load(freest) + ": sposta un intervento non urgente.", ticket: "" });
-  for (const t of tickets.filter(x => /attesa/i.test(x.state))) tips.push({ titolo: "Sollecita il ricambio per " + name(t.client), perche: t.id + " è fermo in «" + t.state.toLowerCase() + "».", ticket: t.id });
   if (toCheck) tips.push({ titolo: "Verifica " + toCheck + " mail in Posta in arrivo", perche: "Non hanno ticket né cliente riconosciuto: finché restano lì nessuno le segue.", ticket: "" });
+  if (busiest && freest && load(busiest) - load(freest) >= 3) tips.push({ titolo: "Alleggerisci " + busiest.ini, perche: busiest.ini + " ha " + load(busiest) + " ticket aperti, " + freest.ini + " solo " + load(freest) + ": sposta un intervento non urgente.", ticket: "" });
+  for (const t of tickets.filter(x => /attesa/i.test(x.state))) tips.push({ titolo: (/cliente/i.test(t.state) ? "Risenti il cliente " : "Sollecita il ricambio per ") + name(t.client), perche: t.id + " è fermo in «" + t.state.toLowerCase() + "».", ticket: t.id });
   const urg = tickets.filter(x => x.urg).length, unas = tickets.filter(x => !x.tech).length;
   const text = "Oggi ci sono " + tickets.length + " ticket aperti" + (urg ? ", " + urg + " urgent" + (urg === 1 ? "e" : "i") : "") + (unas ? " e " + unas + " senza tecnico" : "") + ". " +
     (busiest ? "Il più carico è " + busiest.ini + " con " + load(busiest) + " ticket" + (freest && freest !== busiest ? ", il più libero " + freest.ini + " con " + load(freest) + "." : ".") : "");

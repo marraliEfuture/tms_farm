@@ -285,8 +285,24 @@ app.get("/api/admin/state", async (req, res, next) => {
         res: { ...recognize({ from: m.from, subject: m.subj, headers: m.hdr }, { techs: auth.techs(), clients, tickets, rules: st.rules }), act: "Esempio di mail arrivata direttamente da un cliente." } }));
       mails = [...st.mails, ...extra];
     }
-    res.json({ ai: settings.aiPublic(), profiles: settings.profiles(), o365, settings: settings.can(req.admin.profilo || "admin", "office365", "v") ? settings.publicView() : null, me: auth.publicAdmin(req.admin), mode: cfg.mode, support: settings.support(), appUrl: cfg.appUrl, clients, tickets, techs: techsPublic(), mails, rules: st.rules, connections: await sources.status() });
+    /* conversazioni dei tecnici con Ticket Farm, ticket per ticket (in prova anche quelle di esempio non ancora aperte dall'app) */
+    if (cfg.mode === "demo") for (const [m, list] of Object.entries(sources.demo.seedThreads)) if (!st.threads[m]) { st.threads[m] = JSON.parse(JSON.stringify(list)); store.save(); }
+    const tl = auth.techs(), op = (req.admin.profilo || "admin") === "op";
+    const threads = Object.entries(st.threads).flatMap(([m, list]) => { const t = tl.find(x => x.mail === m); return (list || []).map(th => ({ ...th, tech: t ? t.ini : "", techMail: m })); })
+      .filter(th => !op || th.techMail === req.admin.mail);
+    res.json({ threads, ai: settings.aiPublic(), profiles: settings.profiles(), o365, settings: settings.can(req.admin.profilo || "admin", "office365", "v") ? settings.publicView() : null, me: auth.publicAdmin(req.admin), mode: cfg.mode, support: settings.support(), appUrl: cfg.appUrl, clients, tickets, techs: techsPublic(), mails, rules: st.rules, connections: await sources.status() });
   } catch (e) { next(e); }
+});
+/* l'ufficio scrive nella conversazione del tecnico: il messaggio arriva nell'app come «Ticket Farm» */
+app.post("/api/admin/threads/reply", need("ticket", "m"), (req, res) => {
+  const st = store.load(), text = String(req.body.text || "").trim().slice(0, 2000), m = String(req.body.techMail || "");
+  const th = (st.threads[m] || []).find(t => t.ticket === req.body.ticket);
+  if (!th || !text) return res.status(400).json({ error: "conversazione o testo mancante" });
+  const msg = { k: "tf", t: now(), text: text, by: req.admin.nome || req.admin.user || "Ufficio" };
+  if (req.body.forClient) msg.forClient = String(req.body.forClient).slice(0, 2000);
+  th.msgs.push(msg); th.unread = true; store.save();
+  log(req, "Messaggio al tecnico", th.ticket + " · " + m, "ticket");
+  res.json({ ok: true, msg });
 });
 app.post("/api/admin/mails/:id/resolve", need("posta", "m"), async (req, res, next) => {
   try {

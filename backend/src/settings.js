@@ -20,7 +20,7 @@ function graph() {
 /* assistente AI: in prova è acceso di base (senza chiave risponde con un esempio); dal vivo si accende dalla console */
 function ai() {
   const a = load().ai || {};
-  return { enabled: a.enabled !== undefined ? !!a.enabled : cfg.mode === "demo", apiKey: a.apiKey || "", model: a.model || "claude-opus-5-5",
+  return { enabled: !!a.enabled, apiKey: a.apiKey || "", model: a.model || "claude-opus-5-5",
     promemoria: a.promemoria !== false, priorita: a.priorita !== false };
 }
 function aiPublic() { const a = ai(); return { enabled: a.enabled, keySet: !!a.apiKey, envKey: !!process.env.ANTHROPIC_API_KEY, model: a.model, promemoria: a.promemoria, priorita: a.priorita }; }
