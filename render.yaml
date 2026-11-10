@@ -1,0 +1,29 @@
+# Render (render.com): pubblica il backend Ticket Farm con app e console allo stesso indirizzo.
+#   https://<nome>.onrender.com/app/    app dei tecnici
+#   https://<nome>.onrender.com/admin/  console dell'ufficio
+# Piano gratuito: si addormenta dopo 15 minuti senza visite (il primo accesso impiega ~1 minuto)
+# e i dati salvati (data/, outbox/) si azzerano a ogni riavvio. Va bene per la prova (MODE=demo).
+services:
+  - type: web
+    name: ticketfarm
+    runtime: node
+    plan: free
+    region: frankfurt
+    rootDir: backend
+    buildCommand: npm install --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /api/app/info
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: MODE
+        value: demo
+      - key: SECRET
+        generateValue: true
+      - key: SUPPORT_ADDRESS
+        value: support@efuture.it
+      - key: ADMIN_USER
+        value: admin
+      - key: ADMIN_PASSWORD
+        sync: false

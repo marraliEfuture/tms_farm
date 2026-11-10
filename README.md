@@ -57,6 +57,16 @@ I tecnici **non** hanno bisogno di un account GitHub: GitHub serve solo a chi la
 
 Per una prova veloce senza backend si può aprire `app/index.html` da un piccolo server: con `backendUrl` vuoto in `app/config.js` l'app usa dati di esempio e non manda mail.
 
+## Online in pochi minuti con Render (gratis)
+
+1. Apri <https://render.com/deploy?repo=https://github.com/marraliEfuture/tms_farm> e accedi con GitHub.
+2. Render legge `render.yaml`: scegli una password per la console (`ADMIN_PASSWORD`) e conferma con **Deploy Blueprint**.
+3. Dopo 3-5 minuti il servizio è su `https://ticketfarm-xxxx.onrender.com`:
+   - app: `…/app/` (prova: `mb@efuture.it`, codice `123456`)
+   - console: `…/admin/` (utente `admin`, la password scelta)
+
+Piano gratuito: si addormenta dopo 15 minuti senza visite (il primo accesso dopo la pausa impiega circa un minuto) e i dati di prova si azzerano a ogni riavvio. Ogni modifica salvata su GitHub viene pubblicata da sola.
+
 ## Mettere online il backend
 
 **Server Linux senza Docker:** segui [`deploy/LEGGIMI.md`](deploy/LEGGIMI.md). Uno script installa il servizio systemd, e ci sono gli esempi per nginx e Apache.
