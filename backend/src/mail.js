@@ -38,6 +38,8 @@ function buildMessage(o) {
     headers,
     attachments: (o.files || []).filter(f => f && f.data).map(f => ({ filename: f.name || "foto.jpg", content: Buffer.from(f.data, "base64"), contentType: f.type || "image/jpeg" })),
   };
+  /* risposta a un cliente che ha scritto per mail: gli arriva in copia, l'ufficio resta in «A» */
+  if (o.cc) { msg.cc = o.cc; headers["X-TicketFarm-Copia-Cliente"] = o.cc; }
   if (o.inReplyTo) { msg.inReplyTo = o.inReplyTo; msg.references = [o.inReplyTo]; }
   return msg;
 }

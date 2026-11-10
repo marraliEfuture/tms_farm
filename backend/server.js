@@ -32,6 +32,18 @@ app.use("/api/app", (req, res, next) => {
   next();
 });
 
+const mailAddr = x => { const m = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/.exec(String(x || "")); return m ? m[0].toLowerCase() : ""; };
+/* mail del cliente per la copia: quella salvata sulla conversazione, l'ultima mail inoltrata, o una mail arrivata a support sul ticket (mai un tecnico) */
+function clientMailOf(th, st, tech) {
+  const techMails = new Set(auth.techs().map(t => String(t.mail).toLowerCase()));
+  const ok = a => a && !techMails.has(a) && a !== String(settings.support()).toLowerCase();
+  if (ok(th.clientMail)) return th.clientMail;
+  const f = [...(th.msgs || [])].reverse().find(m => m.k === "fwd" && ok(mailAddr(m.mailFrom)));
+  if (f) return mailAddr(f.mailFrom);
+  const inbound = [...(st.mails || []), ...(cfg.mode === "demo" ? sources.demo.inbound : [])].reverse()
+    .find(m => ok(mailAddr(m.from)) && ((m.res && m.res.ticket === th.ticket) || String(m.subj || "").includes(th.ticket)));
+  return inbound ? mailAddr(inbound.from) : "";
+}
 const now = () => new Date().toLocaleTimeString("it-CH", { hour: "2-digit", minute: "2-digit" });
 const techsPublic = () => { const st = store.load(); return auth.techs().map(({ hash, codice, ...t }) => ({ ...t, app: !!st.threads[t.mail], last: (st.mails.find(m => m.from === t.mail) || {}).at || "—" })); };
 
@@ -131,7 +143,9 @@ app.post("/api/app/send", auth.requireTech, async (req, res, next) => {
     const threads = st.threads[tech.mail] = st.threads[tech.mail] || [];
     let th = threads.find(t => t.ticket === ticket);
     if (!th) { th = { ticket, client: c ? c.id : null, unread: false, msgs: [] }; threads.unshift(th); }
-    th.msgs.push({ k: "fwd", kind: b.kind, from: b.from || "", t: b.time || now(), text: b.body, lines: b.lines || null, photos: (b.files || []).length });
+    const cm = b.kind === "mail" ? mailAddr(b.mailFrom) : "";
+    if (cm) th.clientMail = cm;
+    th.msgs.push({ k: "fwd", kind: b.kind, mailFrom: cm || undefined, from: b.from || "", t: b.time || now(), text: b.body, lines: b.lines || null, photos: (b.files || []).length });
     if (b.note) th.msgs.push({ k: "me", t: now(), text: b.note });
     const where = sent.real ? "Mail spedita a " + settings.support() : "Modalità prova: mail preparata ma non spedita";
     th.msgs.push({ k: "tf", t: now(), text: where + (existing ? ", collegata a " + ticket + "." : isNew && c ? ". " + (cfg.mode === "demo" ? "Ticket " + ticket + " aperto (simulato)." : "Il numero del ticket comparirà quando " + c.sys + " lo apre.") : ". L'ufficio identificherà il cliente."),
@@ -148,12 +162,16 @@ app.post("/api/app/note", auth.requireTech, async (req, res, next) => {
     if (!th || !text) return res.status(400).json({ error: "conversazione o testo mancante" });
     const { tickets } = await sources.data();
     const t = tickets.find(x => x.id === th.ticket);
-    const msg = mail.buildMessage({ tech, client: null, ticket: th.ticket, isNew: false, subject: "Re: " + th.ticket + (t ? " - " + t.title : ""),
-      text: text + "\n\n-- Nota del tecnico inviata con l'app Ticket Farm --", inReplyTo: t ? (t.msgIds || []).slice(-1)[0] || "" : "", time: "", origin: "nota del tecnico" });
+    /* se il cliente ha scritto per mail, la risposta del tecnico gli arriva in copia (si può togliere dall'app) */
+    const cc = req.body.cc ? clientMailOf(th, st, tech) : "";
+    const msg = mail.buildMessage({ tech, client: null, ticket: th.ticket, isNew: false, subject: "Re: " + th.ticket + (t ? " - " + t.title : ""), cc,
+      text: text + (cc ? "\n\n-- " + (tech.nome || tech.mail) + ", tecnico Efuture. Rispondendo a questa mail la risposta resta nel ticket " + th.ticket + ". --" : "\n\n-- Nota del tecnico inviata con l'app Ticket Farm --"),
+      inReplyTo: t ? (t.msgIds || []).slice(-1)[0] || "" : "", time: "", origin: cc ? "risposta del tecnico al cliente" : "nota del tecnico" });
     const sent = await mail.send(msg);
     await logMail(msg, sent);
-    th.msgs.push({ k: "me", t: now(), text });
-    th.msgs.push({ k: "tf", t: now(), text: sent.real ? "Mail spedita a " + settings.support() + "." : "Modalità prova: mail preparata ma non spedita." });
+    if (cc) audit.add(tech.mail, "Risposta al cliente dall'app", th.ticket + " · copia a " + cc, "app");
+    th.msgs.push({ k: "me", t: now(), text, cc: cc || undefined });
+    th.msgs.push({ k: "tf", t: now(), text: (sent.real ? "Mail spedita a " + settings.support() : "Modalità prova: mail preparata ma non spedita") + (cc ? (sent.real ? " e in copia a " : " (in copia a ") + cc + (sent.real ? "." : ").") : ".") });
     store.save();
     res.json({ data: await appData(tech) });
   } catch (e) { next(e); }

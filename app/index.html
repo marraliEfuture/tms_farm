@@ -166,6 +166,7 @@ textarea.input{min-height:96px;resize:vertical}
 .copybox{margin-top:8px;border:1px dashed var(--wa-edge);background:var(--wa);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;white-space:normal}
 .copybox p{margin:0;white-space:pre-wrap;user-select:text}
 .composer{background:var(--surface);border-top:1px solid var(--line);padding:10px 12px 16px;display:flex;flex-direction:column;gap:8px}
+.composer .cc{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted)}.composer .cc b{color:var(--ink);overflow-wrap:anywhere}.composer .cc span{min-width:0}.composer .cc input{flex:0 0 18px;width:18px;height:18px;accent-color:var(--accent)}
 .composer .line{display:flex;gap:8px;align-items:flex-end}
 .composer textarea{min-height:44px;height:44px;flex:1}
 .typing{font-size:12px;color:var(--muted);align-self:flex-start;font-style:italic}
@@ -370,7 +371,7 @@ function freshState(){
   return {
     tab:"messaggi", csearch:"", openThread:null, seq:4830,
     threads:[
-      {ticket:"HALO-4821", client:"lab", unread:true, msgs:[
+      {ticket:"HALO-4821", client:"lab", clientMail:"g.bernasconi@laboratorioesempio.ch", unread:true, msgs:[
         {k:"fwd", from:"Giulia Bernasconi", t:"ieri 18:05", text:"Buonasera, lo spettrofotometro dà di nuovo errore lampada all'accensione."},
         {k:"tf", t:"ieri 18:06", text:"Ticket HALO-4821 aperto in Halo per Laboratorio Esempio SA."},
         {k:"tf", t:"07:40", text:"La cliente ha scritto anche per mail (Office 365) e chiede un passaggio domani mattina. L'ufficio ha fissato le 9:00 in Halo.",
@@ -438,6 +439,9 @@ function suggestions(f){
 }
 
 /* ---------- MESSAGGI ---------- */
+/* indirizzo del cliente se ha scritto per mail: la risposta del tecnico gli arriva in copia */
+function mailAddr(x){ const m = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/.exec(x||""); return m ? m[0].toLowerCase() : ""; }
+function clientMailOf(th){ if(th.clientMail) return th.clientMail; const m = [...th.msgs].reverse().find(x=>x.k==="fwd" && x.mailFrom); return m ? m.mailFrom : ""; }
 function lastOf(th){ return th.msgs[th.msgs.length-1]; }
 function updateCount(){ const n = S.threads.filter(t=>t.unread).length; const c=$("#count"); c.hidden = !n; c.textContent = n; }
 function renderMessaggi(){
@@ -454,29 +458,31 @@ function renderMessaggi(){
 
 function msgHTML(m, i){
   if(m.k==="fwd") return `<div class="msg fwd"><small>${m.kind==="mail"?"Mail del cliente":"Dal WhatsApp del cliente"}${m.from?" · "+esc(m.from):""} · ${esc(m.t)}</small>${m.lines?m.lines.map(l=>`<q><span class="mono">${esc(l.time)}</span> ${esc(l.text)}</q>`).join(""):`<q>${esc(m.text)}</q>`}${m.photos?`<small style="margin-top:6px">${m.photos} foto allegate</small>`:""}</div>`;
-  if(m.k==="me") return `<div class="msg out"><small>Tua mail a ${SUPPORT} · ${esc(m.t)}</small>${esc(m.text)}</div>`;
+  if(m.k==="me") return `<div class="msg out"><small>Tua mail a ${SUPPORT}${m.cc?" · copia a "+esc(m.cc):""} · ${esc(m.t)}</small>${esc(m.text)}</div>`;
   return `<div class="msg in"><small>${API ? "Ticket Farm" : "Letto da "+(SRC[curSys]||"Ticket Farm")} · ${esc(m.t)}</small>${esc(m.text)}${m.forClient?`<div class="copybox"><span class="lbl">Da mandare al cliente</span><p id="cb-${i}">${esc(m.forClient)}</p><div class="cb-act"><button class="btn small primary" data-copy="${i}" type="button">Copia negli appunti</button>${waBtn(curTel, m.forClient, "Apri chat cliente")}</div></div>`:""}</div>`;
 }
 function openChat(i){
   S.openThread = i; const th = S.threads[i]; if(th.unread && API) api("/api/app/read", {ticket:th.ticket}).catch(()=>{}); th.unread = false;
-  const c = cl(th.client);
+  const c = cl(th.client), cm = clientMailOf(th);
   const ch = $("#chat"); ch.hidden = false;
   ch.innerHTML = `<div class="chead"><button class="back" id="c-back" aria-label="Indietro">‹</button>
       ${c?logo(c,36):""}<div style="min-width:0;flex:1"><div class="client">${esc(c?c.name:"Cliente da identificare")}</div><div class="row" style="justify-content:flex-start"><span class="mono">${esc(th.ticket)}</span>${c?badge(c.sys):""}</div></div>${waBtn(firstTel(c))}</div>
     <div class="msgs" id="msgs"></div>
     <div class="composer">
-      <div class="line"><textarea class="input" id="c-text" placeholder="Scrivi una mail su questo ticket…"></textarea><button class="btn primary" id="c-send" type="button">Invia</button></div>
+      ${cm?`<label class="cc"><input type="checkbox" id="c-cc" checked><span>Copia al cliente: <b>${esc(cm)}</b></span></label>`:""}
+      <div class="line"><textarea class="input" id="c-text" placeholder="${cm?"Rispondi al cliente (e all'ufficio)…":"Scrivi una mail su questo ticket…"}"></textarea><button class="btn primary" id="c-send" type="button">Invia</button></div>
       <button class="linkbtn" id="c-fwd" type="button">+ Inoltra un altro messaggio del cliente su questo ticket</button>
     </div>`;
   drawMsgs();
   $("#c-back").onclick = ()=>{ ch.hidden = true; S.openThread = null; renderMessaggi(); };
   $("#c-send").onclick = ()=>{
     const v = $("#c-text").value.trim(); if(!v){ toast("Scrivi prima il messaggio"); return; }
+    const cc = cm && $("#c-cc") && $("#c-cc").checked ? cm : "";
     if(API){ const b=$("#c-send"); b.disabled=true;
-      api("/api/app/note", {ticket:th.ticket, text:v}).then(r=>{ applyData(r.data); reopen(th.ticket); toast("Mail inviata a "+SUPPORT); })
+      api("/api/app/note", {ticket:th.ticket, text:v, cc:!!cc}).then(r=>{ applyData(r.data); reopen(th.ticket); toast("Mail inviata a "+SUPPORT+(cc?" e in copia a "+cc:"")); })
         .catch(e=>{ b.disabled=false; toast("Invio non riuscito: "+e.message+". Riprova."); }); return; }
-    th.msgs.push({k:"me", t:nowStr(), text:v}); $("#c-text").value=""; drawMsgs();
-    reply(th, {k:"tf", t:nowStr(), text:"Aggiunto a "+th.ticket+" come nota del tecnico"+(c?" in "+SRC[c.sys]:"")+"."});
+    th.msgs.push({k:"me", t:nowStr(), text:v, cc}); $("#c-text").value=""; drawMsgs();
+    reply(th, {k:"tf", t:nowStr(), text:cc ? "Risposta aggiunta a "+th.ticket+(c?" in "+SRC[c.sys]:"")+" e spedita in copia a "+cc+"." : "Aggiunto a "+th.ticket+" come nota del tecnico"+(c?" in "+SRC[c.sys]:"")+"."});
   };
   $("#c-fwd").onclick = ()=>{ ch.hidden = true; S.openThread = null; S.f = blankForm(); if(c){ S.f.client=c.id; S.f.dest=th.ticket; } show("inoltra"); };
   updateCount();
@@ -690,7 +696,7 @@ function send(){
   const c = f.client ? cl(f.client) : null;
   const from = (f.msgs.find(m=>m.from)||{}).from || "";
   const body = f.msgs.map(m=>m.text).join("\n");
-  const fwd = {k:"fwd", kind:f.kind, from, t:f.time, text:body, lines:f.msgs.some(m=>m.time)?f.msgs:null, photos:f.photos};
+  const fwd = {k:"fwd", kind:f.kind, mailFrom:f.kind==="mail"?mailAddr(f.mailFrom):"", from, t:f.time, text:body, lines:f.msgs.some(m=>m.time)?f.msgs:null, photos:f.photos};
   const note = f.note.trim();
   const saveNum = c && digits(f.number).length>=7 && f.remember && !c.contacts.some(k=>digits(k.tel)===digits(f.number));
   if(API) return sendLive(f, c, from, body, fwd, note, saveNum);
@@ -699,11 +705,11 @@ function send(){
   if(c && f.dest !== "new"){
     th = S.threads.find(t=>t.ticket===f.dest);
     if(!th){ th = {ticket:f.dest, client:c.id, unread:false, msgs:[]}; S.threads.unshift(th); }
-    th.msgs.push(fwd);
+    th.msgs.push(fwd); if(fwd.mailFrom) th.clientMail = fwd.mailFrom;
     answer = {k:"tf", t:"", text:"Messaggio aggiunto a "+f.dest+" in "+SRC[c.sys]+" e segnalato all'ufficio."+(saveNum?" Numero salvato sul contatto.":"")};
   } else if(c){
     ++S.seq; const id = c.sys==="Halo" ? "HALO-"+S.seq : "Tck #7142"+String(S.seq).slice(-2);
-    th = {ticket:id, client:c.id, unread:false, msgs:[fwd]}; S.threads.unshift(th);
+    th = {ticket:id, client:c.id, clientMail:fwd.mailFrom||"", unread:false, msgs:[fwd]}; S.threads.unshift(th);
     c.open.unshift({id, t:body.slice(0,46)+(body.length>46?"…":"")});
     answer = {k:"tf", t:"", text:"Ticket "+id+" aperto in "+SRC[c.sys]+" per "+c.name+"."+(saveNum?" Numero salvato sul contatto.":""),
       forClient:"Buongiorno, abbiamo registrato la sua richiesta con il numero "+id+". La ricontattiamo al più presto. Grazie."};

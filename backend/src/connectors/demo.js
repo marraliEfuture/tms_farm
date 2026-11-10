@@ -21,7 +21,7 @@ const TICKETS = [
   { id: "Tck #714121", opened: dago(24), plan: null, sys: "ITSM", client: "che", title: "Bilancia di precisione: verifica metrica", state: "Chiuso", tech: "MB", origin: "ITSM", upd: "21/10", msgIds: [] },
 ];
 const THREADS_MB = [
-  { ticket: "HALO-4821", client: "lab", unread: true, msgs: [
+  { ticket: "HALO-4821", client: "lab", clientMail: "g.bernasconi@laboratorioesempio.ch", unread: true, msgs: [
     { k: "fwd", from: "Giulia Bernasconi", t: "ieri 18:05", text: "Buonasera, lo spettrofotometro dà di nuovo errore lampada all'accensione." },
     { k: "tf", t: "ieri 18:06", text: "Ticket HALO-4821 aperto in Halo per Laboratorio Esempio SA." },
     { k: "tf", t: "07:40", text: "La cliente ha scritto anche per mail e chiede un passaggio domani mattina. L'ufficio ha fissato le 9:00 in Halo.",
