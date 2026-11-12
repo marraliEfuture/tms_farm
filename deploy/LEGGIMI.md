@@ -17,7 +17,7 @@ Non usare nvm sul server: installa Node nella cartella di un utente e il servizi
 ## 2. Codice
 
 ```bash
-sudo git clone https://github.com/marraliEfuture/tms_farm /opt/tms_farm
+sudo git clone https://github.com/marrali4future/tms_farm /opt/tms_farm
 ```
 
 Il repository è privato: serve un token GitHub con permesso di lettura (Contents: Read) su tms_farm.

@@ -53,13 +53,13 @@ L'app è una **web app installabile** (PWA): niente App Store, si installa dal b
 
 I tecnici **non** hanno bisogno di un account GitHub: GitHub serve solo a chi lavora sul codice.
 
-**Versione di prova pubblica:** app <https://marraliefuture.github.io/tms_farm/> e console <https://marraliefuture.github.io/tms_farm/admin/> (GitHub Pages, dati di esempio, nessuna mail spedita). Da PC con Chrome o Edge e da Android propone l'installazione.
+**Versione di prova pubblica:** app <https://marrali4future.github.io/tms_farm/> e console <https://marrali4future.github.io/tms_farm/admin/> (GitHub Pages, dati di esempio, nessuna mail spedita). Da PC con Chrome o Edge e da Android propone l'installazione.
 
 Per una prova veloce senza backend si può aprire `app/index.html` da un piccolo server: con `backendUrl` vuoto in `app/config.js` l'app usa dati di esempio e non manda mail.
 
 ## Online in pochi minuti con Render (gratis)
 
-1. Apri <https://render.com/deploy?repo=https://github.com/marraliEfuture/tms_farm> e accedi con GitHub.
+1. Apri <https://render.com/deploy?repo=https://github.com/marrali4future/tms_farm> e accedi con GitHub.
 2. Render legge `render.yaml`: scegli una password per la console (`ADMIN_PASSWORD`) e conferma con **Deploy Blueprint**.
 3. Dopo 3-5 minuti il servizio è su `https://ticketfarm-xxxx.onrender.com`:
    - app: `…/app/` (prova: `mb@efuture.it`, codice `123456`)

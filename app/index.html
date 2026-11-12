@@ -88,6 +88,8 @@ button{cursor:pointer}
 .themebtn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 10px;font-size:12px;font-weight:600;color:var(--ink)}
 .avatar{width:30px;height:30px;border-radius:50%;background:var(--ink);color:var(--surface);display:grid;place-items:center;font-weight:700;font-size:12px}
 .screen{flex:1;overflow-y:auto;padding:0 16px 96px;display:flex;flex-direction:column;gap:14px;min-height:0}
+/* nessun blocco della pagina si schiaccia sugli schermi bassi: si scorre */
+.screen>*{flex-shrink:0}
 .screen[hidden]{display:none!important}
 .tabs{position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(6,1fr);background:var(--surface);border-top:1px solid var(--line);padding:8px 4px 14px;z-index:10}
 .tab{background:none;border:0;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11.5px;font-weight:600;color:var(--muted);padding:6px 0;border-radius:12px;position:relative}

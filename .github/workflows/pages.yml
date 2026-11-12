@@ -1,5 +1,5 @@
 # Pubblica la cartella app/ su GitHub Pages a ogni modifica su main.
-# Indirizzi: https://marraliefuture.github.io/tms_farm/ (app) e .../tms_farm/admin/ (console), in modalità prova
+# Indirizzi: https://marrali4future.github.io/tms_farm/ (app) e .../tms_farm/admin/ (console), in modalità prova
 # Una volta sola: Settings → Pages → Source: "GitHub Actions".
 name: Pubblica app su GitHub Pages
 on:
