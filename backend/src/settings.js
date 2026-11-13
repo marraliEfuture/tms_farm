@@ -53,14 +53,14 @@ function update(body) {
   return { ok: true, settings: publicView() };
 }
 /* profili e permessi: per ogni area, v = vedere, m = creare/modificare, e = eliminare */
-const AREE = ["cruscotto", "posta", "ticket", "clienti", "utenti", "profili", "tecnici", "aree", "recap", "office365", "ai", "collegamenti", "regole", "backup", "audit", "tutorial"];
+const AREE = ["cruscotto", "posta", "ticket", "clienti", "utenti", "profili", "tecnici", "aree", "recap", "modelli", "office365", "ai", "collegamenti", "regole", "backup", "audit", "tutorial"];
 const P = o => Object.fromEntries(AREE.map(a => [a, o[a] || ""]));
 const DEFAULT_PROFILES = {
   admin: { nome: "Amministratore", desc: "Tutto, compresa la configurazione", base: true, perm: Object.fromEntries(AREE.map(a => [a, "vme"])) },
   resp: { nome: "Responsabile service", desc: "Lavoro quotidiano, tecnici, aree e regole; vede utenti e registro", base: true, perm: P({
-    cruscotto: "v", posta: "vm", ticket: "vme", clienti: "vme", utenti: "v", profili: "v", tecnici: "vme", aree: "vme", recap: "vm", collegamenti: "v", regole: "vm", audit: "v", tutorial: "v" }) },
+    cruscotto: "v", posta: "vm", ticket: "vme", clienti: "vme", utenti: "v", profili: "v", tecnici: "vme", aree: "vme", recap: "vm", modelli: "vm", collegamenti: "v", regole: "vm", audit: "v", tutorial: "v" }) },
   agent: { nome: "Agente", desc: "Ufficio: ticket, messaggi, clienti e posta in arrivo delle sue aree di lavoro", base: true, perm: P({
-    cruscotto: "v", posta: "vm", ticket: "vm", clienti: "vm", tecnici: "v", aree: "v", recap: "v", tutorial: "v" }) },
+    cruscotto: "v", posta: "vm", ticket: "vm", clienti: "vm", tecnici: "v", aree: "v", recap: "v", modelli: "v", tutorial: "v" }) },
   op: { nome: "Tecnico", desc: "I suoi interventi, messaggi, ticket e clienti; nessuna configurazione", base: true, perm: P({
     cruscotto: "v", ticket: "vm", clienti: "v", tutorial: "v" }) },
   cliente: { nome: "Cliente", desc: "Solo i ticket della propria azienda: li vede e ne apre di nuovi", base: true, perm: P({ cruscotto: "v", ticket: "vm" }) },
@@ -141,11 +141,11 @@ const SISTEMI = ["ITSM", "Halo"];
 function sistema() { const v = load().sistema; return SISTEMI.includes(v) ? v : "ITSM"; }
 function setSistema(v) { if (!SISTEMI.includes(v)) return { error: "sistema non valido" }; const s = load(); s.sistema = v; save(s); return { ok: true, sistema: v }; }
 /* recap ai clienti: mail al contatto del ticket a ogni passaggio importante e riepilogo settimanale */
-const RECAP_DEF = { attivo: true, apertura: true, intervento: true, chiusura: true, settimanale: true, giorno: 1, ora: 8, conferma: true };
+const RECAP_DEF = { attivo: true, apertura: true, aggiornamento: true, intervento: true, messaggio: true, chiusura: true, settimanale: true, giorno: 1, ora: 8, conferma: true };
 function recap() { return { ...RECAP_DEF, ...(load().recap || {}) }; }
 function updateRecap(b) {
   const r = recap();
-  for (const k of ["attivo", "apertura", "intervento", "chiusura", "settimanale", "conferma"]) if (b[k] !== undefined) r[k] = !!b[k];
+  for (const k of ["attivo", "apertura", "aggiornamento", "intervento", "messaggio", "chiusura", "settimanale", "conferma"]) if (b[k] !== undefined) r[k] = !!b[k];
   if (b.giorno !== undefined) r.giorno = Math.max(0, Math.min(6, Math.floor(Number(b.giorno) || 0)));
   if (b.ora !== undefined) r.ora = Math.max(0, Math.min(23, Math.floor(Number(b.ora) || 0)));
   const s = load(); s.recap = r; save(s); return { ok: true, recap: r };
@@ -162,13 +162,13 @@ const can = (profilo, area, right) => ((profiles()[profilo] || { perm: {} }).per
 function backupData() {
   const read = f => { try { return JSON.parse(fs.readFileSync(path.join(cfg.dataDir, f), "utf8")); } catch (e) { return null; } };
   const st = load(); if (st.graph) { st.graph = { ...st.graph }; delete st.graph.clientSecret; } if (st.ai) { st.ai = { ...st.ai }; delete st.ai.apiKey; }
-  return { app: "Ticket Farm", version: 1, created: new Date().toISOString(), files: { "settings.json": st, "users.json": read("users.json"), "tecnici.json": read("tecnici.json"), "state.json": read("state.json") } };
+  return { app: "Ticket Farm", version: 1, created: new Date().toISOString(), files: { "settings.json": st, "users.json": read("users.json"), "tecnici.json": read("tecnici.json"), "state.json": read("state.json"), "templates.json": read("templates.json") } };
 }
 function restoreData(b) {
   if (!b || b.app !== "Ticket Farm" || !b.files) return { error: "file di backup non valido" };
   const keep = load();
   fs.mkdirSync(cfg.dataDir, { recursive: true });
-  for (const f of ["settings.json", "users.json", "tecnici.json", "state.json"]) {
+  for (const f of ["settings.json", "users.json", "tecnici.json", "state.json", "templates.json"]) {
     let v = b.files[f]; if (v == null) continue;
     if (f === "settings.json" && keep.graph && keep.graph.clientSecret) { v.graph = v.graph || {}; v.graph.clientSecret = keep.graph.clientSecret; }
     if (f === "settings.json" && keep.ai && keep.ai.apiKey) { v.ai = v.ai || {}; v.ai.apiKey = keep.ai.apiKey; }

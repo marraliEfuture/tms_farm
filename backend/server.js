@@ -8,6 +8,7 @@ const cfg = require("./src/config");
 const store = require("./src/store");
 const auth = require("./src/auth");
 const recap = require("./src/recap");
+const tpl = require("./src/templates");
 const sources = require("./src/connectors");
 const mail = require("./src/mail");
 const { recognize } = require("./src/recognize");
@@ -34,9 +35,10 @@ app.use("/api/app", (req, res, next) => {
 });
 
 /* contatti: persone di un'azienda cliente o fornitrice */
+const recapWhen = p => { const d = new Date(); d.setDate(d.getDate() + p.day); return d.toLocaleDateString("it-CH", { weekday: "long", day: "numeric", month: "long" }) + " alle " + p.time; };
 const techNameOf = ini => { const t = auth.techs().find(x => x.ini === ini); return t ? t.nome : ""; };
 /* recap al cliente senza mai bloccare l'operazione che lo ha fatto partire */
-const sendRecap = async (t, kind) => { try { const { clients } = await sources.data(); return await recap.forTicket(t, clients, kind, techNameOf(t.tech)); } catch (e) { console.error("recap", e.message); return null; } };
+const sendRecap = async (t, kind, extra) => { try { const { clients } = await sources.data(); return await recap.forTicket(t, clients, kind, techNameOf(t.tech), false, extra); } catch (e) { console.error("recap", e.message); return null; } };
 const contactOf = (clients, id) => { for (const c of clients) { const k = (c.contacts || []).find(x => x.id && x.id === id); if (k) return { ...k, azienda: c }; } return null; };
 const mailAddr = x => { const m = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/.exec(String(x || "")); return m ? m[0].toLowerCase() : ""; };
 /* mail del cliente per la copia: quella salvata sulla conversazione, l'ultima mail inoltrata, o una mail arrivata a support sul ticket (mai un tecnico) */
@@ -96,8 +98,8 @@ app.post("/api/app/forgot", async (req, res, next) => {
     const out = { ok: true, message: "Se la mail è di un tecnico registrato, gli abbiamo mandato un nuovo codice." };
     if (t) {
       const r = auth.editTech(t.mail, { newCode: true });
-      await mail.send({ from: { name: "Ticket Farm", address: settings.support() }, to: t.mail, subject: "Ticket Farm: il tuo nuovo codice",
-        text: "Ciao " + (t.nome || "") + ",\n\nil tuo nuovo codice per l'app Ticket Farm è: " + r.code + "\n\nIl codice precedente non funziona più. Se non l'hai chiesto tu, avvisa l'ufficio." });
+      const mm = tpl.render("codice_app", { nome: t.nome || "", codice: r.code });
+      await mail.send({ from: { name: "Ticket Farm", address: settings.support() }, to: t.mail, subject: mm.oggetto, text: mm.testo });
       audit.add(t.mail, "Nuovo codice richiesto dall'app", "mandato a " + t.mail, "app");
       if (cfg.mode === "demo") out.demoCode = r.code;
     }
@@ -164,7 +166,7 @@ app.post("/api/app/send", auth.requireTech, async (req, res, next) => {
     if (b.note) th.msgs.push({ k: "me", t: now(), text: b.note });
     /* nessun messaggio di conferma: solo, per un ticket nuovo, il numero e il testo da girare al cliente */
     if (isNew && c && cfg.mode === "demo") th.msgs.push({ k: "tf", t: now(), text: "Nuovo ticket " + ticket + ".",
-      forClient: "Buongiorno, abbiamo registrato la sua richiesta con il numero " + ticket + ". La ricontattiamo al più presto. Grazie." });
+      forClient: tpl.render("testo_cliente", { nome: k ? String(k.n).split(" ")[0] : "", ticket }).testo.replace(/Buongiorno ,/, "Buongiorno,") });
     else if (!c) th.msgs.push({ k: "tf", t: now(), text: "Cliente da identificare: l'ufficio ti scrive qui appena lo trova." });
     store.save();
     res.json({ ticket, data: await appData(tech) });
@@ -182,12 +184,14 @@ app.post("/api/app/note", auth.requireTech, async (req, res, next) => {
     /* se il cliente ha scritto per mail, la risposta del tecnico gli arriva in copia (si può togliere dall'app) */
     const cc = req.body.cc ? clientMailOf(th, st, tech) : "";
     const msg = mail.buildMessage({ tech, client: null, ticket: th.ticket, isNew: false, subject: "Re: " + th.ticket + (t ? " - " + t.title : ""), cc,
-      text: text + (cc ? "\n\n-- " + (tech.nome || tech.mail) + ", tecnico Efuture. Rispondendo a questa mail la risposta resta nel ticket " + th.ticket + ". --" : "\n\n-- Nota del tecnico inviata con l'app Ticket Farm --"),
+      text: text + (cc ? "\n\n" + tpl.render("firma_tecnico", { tecnico: tech.nome || tech.mail, ticket: th.ticket }).testo : "\n\n-- Nota del tecnico inviata con l'app Ticket Farm --"),
       inReplyTo: t ? (t.msgIds || []).slice(-1)[0] || "" : "", time: "", origin: cc ? "risposta del tecnico al cliente" : "nota del tecnico" });
     const sent = await mail.send(msg);
     await logMail(msg, sent);
     if (cc) audit.add(tech.mail, "Risposta al cliente dall'app", th.ticket + " · copia a " + cc, "app");
     th.msgs.push({ k: "me", t: now(), text, cc: cc || undefined });
+    /* nota interna: il cliente riceve solo l'avviso che c'è un aggiornamento (mai il testo); il messaggio al cliente gli arriva già in copia */
+    if (!cc && t) await sendRecap(t, "messaggio", { chi: "Il tecnico" });
     store.save();
     res.json({ data: await appData(tech) });
   } catch (e) { next(e); }
@@ -218,8 +222,8 @@ app.post("/api/admin/forgot", async (req, res, next) => {
     const out = { ok: true, message: "Se l'utente esiste ed ha una mail, gli abbiamo mandato il link per scegliere una nuova password." };
     if (f) {
       const link = baseUrl(req) + "/admin/#reset=" + f.token;
-      await mail.send({ from: { name: "Ticket Farm", address: settings.support() }, to: f.acc.mail, subject: "Ticket Farm: nuova password",
-        text: "Ciao " + (f.acc.nome || f.acc.user) + ",\n\nper scegliere una nuova password della console apri questo link entro 30 minuti:\n" + link + "\n\nSe non l'hai chiesto tu, ignora questa mail: la password attuale resta valida." });
+      const mm = tpl.render("reset_password", { nome: f.acc.nome || f.acc.user, link });
+      await mail.send({ from: { name: "Ticket Farm", address: settings.support() }, to: f.acc.mail, subject: mm.oggetto, text: mm.testo });
       audit.add(f.acc.user, "Richiesta nuova password", "link mandato a " + f.acc.mail, "accesso");
       if (cfg.mode === "demo") out.demoLink = link;
     }
@@ -343,6 +347,7 @@ app.post("/api/admin/threads/reply", need("ticket", "m"), (req, res) => {
   if (req.body.forClient) msg.forClient = String(req.body.forClient).slice(0, 2000);
   th.msgs.push(msg); th.unread = true; store.save();
   log(req, "Messaggio al tecnico", th.ticket + " · " + m, "ticket");
+  sources.data().then(d => { const t = d.tickets.find(x => x.id === th.ticket); if (t) return sendRecap(t, "messaggio", { chi: "L'ufficio" }); }).catch(() => {});
   res.json({ ok: true, msg });
 });
 app.post("/api/admin/mails/:id/resolve", need("posta", "m"), async (req, res, next) => {
@@ -355,6 +360,7 @@ app.post("/api/admin/mails/:id/resolve", need("posta", "m"), async (req, res, ne
     if (!m || !c) return res.status(400).json({ error: "mail o cliente non trovati" });
     const ticket = cfg.mode === "demo" ? sources.demo.createTicket(c, m.subj, "") : "";
     log(req, "Mail verificata", m.subj + " → " + c.name, "posta");
+    if (ticket) { const nt = (await sources.data()).tickets.find(x => x.id === ticket); if (nt) await sendRecap(nt, "apertura"); }
     m.res = { ...(m.res || {}), state: "new", client: c.id, ticket, act: ticket ? "Aperto " + ticket + " per " + c.name + " (simulato)." : "Cliente indicato: " + c.name + ". Il ticket va aperto nel sistema dei ticket." };
     store.save();
     res.json({ ok: true, mail: m });
@@ -388,12 +394,26 @@ app.put("/api/admin/tickets/:id", need("ticket", "m"), async (req, res, next) =>
   const { clients } = await sources.data(), cur = (await sources.data()).tickets.find(x => x.id === req.params.id);
   if (b.contatto && cur) { const az = clients.find(x => x.id === cur.client); if (!az || !(az.contacts || []).some(x => x.id === b.contatto)) return res.status(400).json({ error: "il contatto non è di questo cliente" }); }
   if (b.fornitore && !clients.some(x => x.id === b.fornitore && x.tipo === "fornitore")) return res.status(400).json({ error: "fornitore non valido" });
-  const before = cur ? { state: cur.state, plan: JSON.stringify(cur.plan || null) } : null;
+  const before = cur ? JSON.parse(JSON.stringify(cur)) : null;
   const t = sources.demo.updateTicket(req.params.id, b);
   if (!t) return res.status(404).json({ error: "ticket non trovato" });
   log(req, "Ticket modificato", t.id + " · " + t.state + (t.tech ? " · " + t.tech : ""), "ticket");
-  if (before && t.state === "Chiuso" && before.state !== "Chiuso") await sendRecap(t, "chiusura");
-  else if (before && t.plan && JSON.stringify(t.plan) !== before.plan && t.state !== "Chiuso") await sendRecap(t, "intervento");
+  /* ogni modifica delle proprietà arriva al cliente: chiusura, intervento o aggiornamento con l'elenco delle modifiche */
+  if (before) {
+    const plan = p => p ? recapWhen(p) : "da fissare", nm = id => { const k = contactOf(clients, id); return k ? k.n : "—"; }, az = id => (clients.find(x => x.id === id) || { name: "nessuno" }).name;
+    const ch = [];
+    if (before.state !== t.state) ch.push("• Stato: " + before.state + " → " + t.state);
+    if (JSON.stringify(before.plan || null) !== JSON.stringify(t.plan || null)) ch.push("• Intervento: " + plan(before.plan) + " → " + plan(t.plan));
+    if ((before.tech || "") !== (t.tech || "")) ch.push("• Tecnico: " + (techNameOf(before.tech) || "da assegnare") + " → " + (techNameOf(t.tech) || "da assegnare"));
+    if (before.title !== t.title) ch.push("• Richiesta: " + t.title);
+    if (!!before.urg !== !!t.urg) ch.push("• Urgenza: " + (t.urg ? "urgente" : "non urgente"));
+    if ((before.contatto || "") !== (t.contatto || "")) ch.push("• Referente: " + nm(t.contatto));
+    if ((before.fornitore || "") !== (t.fornitore || "")) ch.push("• Fornitore coinvolto: " + az(t.fornitore));
+    const modifiche = ch.join("\n");
+    if (t.state === "Chiuso" && before.state !== "Chiuso") await sendRecap(t, "chiusura", { modifiche });
+    else if (JSON.stringify(before.plan || null) !== JSON.stringify(t.plan || null) && t.plan && t.state !== "Chiuso") await sendRecap(t, "intervento", { modifiche });
+    else if (ch.length) await sendRecap(t, "aggiornamento", { modifiche });
+  }
   res.json({ ticket: t });
   } catch (e) { next(e); }
 });
@@ -498,6 +518,10 @@ app.delete("/api/admin/profiles/:key", need("profili", "e"), (req, res) => {
   const r = settings.removeProfile(req.params.key, auth.users().some(u => !u.eliminato && u.profilo === req.params.key));
   if (r.error) return res.status(400).json(r); log(req, "Profilo eliminato", req.params.key, "profili"); res.json(r);
 });
+/* modelli dei messaggi: tutti i testi delle mail e dei messaggi, modificabili */
+app.get("/api/admin/templates", need("modelli", "v"), (req, res) => res.json({ modelli: tpl.all() }));
+app.put("/api/admin/templates/:key", need("modelli", "m"), (req, res) => { const r = tpl.update(req.params.key, req.body || {}); if (r.error) return res.status(400).json(r); log(req, "Modello modificato", r.modello.nome, "modelli"); res.json(r); });
+app.delete("/api/admin/templates/:key", need("modelli", "m"), (req, res) => { if (!tpl.DEFAULTS[req.params.key]) return res.status(404).json({ error: "modello non trovato" }); const r = tpl.reset(req.params.key); log(req, "Modello ripristinato", r.modello.nome, "modelli"); res.json(r); });
 /* recap ai clienti: impostazioni, registro, invii manuali, prova, nuovi tentativi */
 app.get("/api/admin/recap", need("recap", "v"), async (req, res, next) => { try { const { clients, tickets } = await sources.data(); res.json({ recap: settings.recap(), recaps: recap.list().slice(0, 500), missing: recap.missing(clients, tickets) }); } catch (e) { next(e); } });
 app.post("/api/admin/recap/settings", need("recap", "m"), (req, res) => { const r = settings.updateRecap(req.body || {}); log(req, "Impostazioni dei recap", r.recap.attivo ? "attivi" : "spenti", "recap"); res.json(r); });
@@ -540,6 +564,7 @@ app.post("/api/admin/threads", need("ticket", "m"), async (req, res, next) => {
     if (!th) { th = { ticket: t.id, client: t.client, contatto: t.contatto || "", unread: true, msgs: [] }; list.unshift(th); }
     const msg = { k: "tf", t: now(), text, by: req.admin.nome || req.admin.user, id: "o" + Date.now().toString(36) };
     th.msgs.push(msg); th.unread = true; store.save(); log(req, "Conversazione aperta con il tecnico", t.id + " · " + m, "ticket");
+    await sendRecap(t, "messaggio", { chi: "L'ufficio" });
     res.json({ ok: true, msg });
   } catch (e) { next(e); }
 });

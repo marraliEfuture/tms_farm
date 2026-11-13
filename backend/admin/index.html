@@ -52,6 +52,13 @@ button{cursor:pointer}
 .nav button[aria-current="page"]{background:var(--accent-soft);color:var(--ink)}
 .nav .grp{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px 12px 4px;opacity:.8}
 .nav .grp:first-child{padding-top:2px}
+.nav .grpbox{display:flex;flex-direction:column;gap:2px}
+.nav button.grp{display:flex;justify-content:space-between;align-items:center;width:100%;border-radius:8px;cursor:pointer;padding:12px 12px 6px}
+.nav button.grp:hover{background:none;color:var(--ink)}
+.nav .grp-r{display:flex;align-items:center;gap:6px}
+.nav .chev{width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .15s;margin-right:2px}
+.nav .grpbox.open .chev{transform:rotate(45deg)}
+.nav .grp-items{display:none;flex-direction:column;gap:2px}.nav .grpbox.open .grp-items{display:flex}
 .tgroup{font-size:15px;color:var(--ink);margin:10px 0 0;font-weight:600}
 .tuts{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
 .tut{display:flex;flex-direction:column;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;padding:0;cursor:pointer;color:var(--text)}
@@ -162,6 +169,24 @@ th.sortable::after{content:"↕";opacity:.3;margin-left:5px;font-size:11px}th.so
 .warnbox{border-color:var(--gold);background:var(--gold-soft)}.okbox{border-color:var(--ok);background:var(--ok-soft)}
 .rsteps{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:8px;font-size:13.5px;line-height:1.5}.rsteps li{display:list-item}.input.inl{display:inline-block;width:auto;padding:4px 8px;margin:0 4px}
 .nav .n.bad{background:var(--red-soft);color:var(--red)}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:4px 0 18px}
+.kpi{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 18px;color:var(--text);cursor:pointer;font:inherit}
+.kpi:disabled{cursor:default}.kpi:not(:disabled):hover{border-color:var(--accent)}
+.kpi b{font-size:34px;line-height:1.05;color:var(--ink);font-variant-numeric:tabular-nums}.kpi span{font-size:14.5px;font-weight:600;color:var(--ink)}.kpi small{font-size:12.5px;color:var(--muted)}
+.kpi.hot{border-color:var(--red);background:var(--red-soft)}.kpi.hot b{color:var(--red)}.kpi.warm{border-color:var(--gold);background:var(--gold-soft)}.kpi.warm b{color:var(--gold)}
+.empty-ok{list-style:none;padding:14px 16px;border:1px dashed var(--line);border-radius:12px;color:var(--muted)}
+.srow{display:grid;grid-template-columns:12px 1fr auto 14px;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:11px 2px;color:var(--text);font:inherit;cursor:pointer}.srow:first-of-type{border-top:0}.srow:hover b{color:var(--accent)}
+.sdot{width:10px;height:10px;border-radius:50%;background:var(--muted)}.sdot.ok{background:var(--ok)}.sdot.ko{background:var(--red)}.chev-r{color:var(--muted)}
+.arow{display:grid;grid-template-columns:120px 1fr;gap:2px 10px;padding:8px 0;border-top:1px solid var(--line);font-size:13.5px}.arow .dim{grid-column:2}.arow:first-child{border-top:0}
+.qmsg{display:flex;flex-direction:column;gap:2px;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:10px 2px;color:var(--text);font:inherit;cursor:pointer}.qmsg:first-of-type{border-top:0}.qmsg b{color:var(--ink)}.qmsg:hover b{color:var(--accent)}
+@media (max-width:1100px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tplwrap{display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px;align-items:start}
+.tpllist{display:flex;flex-direction:column;gap:4px;position:sticky;top:16px}.tpllist .tg{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:10px 4px 2px}.tpllist .tg:first-child{margin-top:0}
+.tpli{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;background:none;border:1px solid transparent;border-radius:10px;padding:8px 10px;color:var(--text);font:inherit;cursor:pointer}
+.tpli b{color:var(--ink);font-size:13.5px}.tpli .dim{font-size:12px}.tpli[aria-current="true"]{background:var(--accent-soft);border-color:var(--accent)}.tpli:hover{background:var(--raise)}
+.tpled{display:flex;flex-direction:column;gap:12px}.tpled textarea{font-size:13px;line-height:1.5;resize:vertical}
+.tplprev{border:1px dashed var(--line);border-radius:12px;padding:12px 14px;background:var(--surface-2);display:flex;flex-direction:column;gap:8px}.tplprev b{color:var(--ink)}.tplprev pre{margin:0;white-space:pre-wrap;font:inherit;font-size:13.5px;color:var(--text)}
+@media (max-width:900px){.tplwrap{grid-template-columns:minmax(0,1fr)}.tpllist{position:static}}
 .tabsbar{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:12px}.tabsbar button{border:0;background:none;padding:10px 14px;font:inherit;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;cursor:pointer}.tabsbar button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
 .atags{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}.atag{--ac:#2aa7ff;display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--ink);background:color-mix(in srgb,var(--ac) 14%,transparent);border:1px solid color-mix(in srgb,var(--ac) 45%,transparent);border-radius:999px;padding:2px 9px}
 .atag::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--ac)}
@@ -304,9 +329,9 @@ td.act{white-space:nowrap;text-align:right}
 .gl.warm{border-color:var(--gold);background:var(--gold-soft)}
 .h2s{font-size:16px;color:var(--ink);margin:4px 0 10px}
 .acts{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:10px}
-.act-i{display:grid;grid-template-columns:110px minmax(0,1fr);gap:14px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:12px;padding:12px 14px}
+.act-i{display:grid;grid-template-columns:128px minmax(0,1fr);gap:14px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:12px;padding:12px 14px}
 .act-i.urg{border-left-color:var(--red)}.act-i.wait{border-left-color:var(--gold)}
-.act-t{font-weight:700;color:#1570d6;background:var(--accent-soft);font-size:13px;padding:4px 10px;border-radius:999px;align-self:start;justify-self:start;white-space:nowrap}
+.act-t{white-space:normal!important;text-align:center;line-height:1.25;font-weight:700;color:#1570d6;background:var(--accent-soft);font-size:13px;padding:4px 10px;border-radius:999px;align-self:start;justify-self:start;white-space:nowrap}
 .act-i.urg .act-t{color:var(--red);background:var(--red-soft)}.act-i.wait .act-t{color:var(--gold);background:var(--gold-soft)}
 .act-b{display:flex;flex-direction:column;gap:4px;min-width:0}
 .act-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.act-h .lav{width:28px;height:28px;font-size:11px}.act-h b{color:var(--ink)}
@@ -368,6 +393,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
   .nav{flex-direction:row}
   .nav button{white-space:nowrap;gap:6px}
   .nav .grp{display:none}
+  .nav .grpbox,.nav .grp-items,.nav .grpbox:not(.open) .grp-items{display:contents}
   .side .foot{display:none}
   .conns{grid-template-columns:minmax(0,1fr)}
   .kv{grid-template-columns:minmax(0,1fr)}
@@ -639,16 +665,16 @@ const toCheck = () => S.mails.filter(m=>m.res.state==="warn").length;
 /* menu diviso: il lavoro di ogni giorno, la configurazione, i tutorial */
 const GROUPS = [
   ["Operativo", [["cruscotto","Riepilogo"],["ticket","Ticket"],["messaggi","Messaggi"],["clienti","Anagrafiche"]]],
-  ["Configurazione", [["utenti","Utenti"],["profili","Profili e permessi"],["tecnici","Tecnici"],["aree","Aree di lavoro"],["recap","Recap ai clienti"],["office365","Office 365"],["ai","Assistente AI"],["posta","Posta in arrivo"],["regole","Riconoscimento"],["collegamenti","Collegamenti"],["backup","Backup e ripristino"],["audit","Registro attività"]]],
+  ["Configurazione", [["utenti","Utenti"],["profili","Profili e permessi"],["tecnici","Tecnici"],["aree","Aree di lavoro"],["recap","Recap ai clienti"],["modelli","Modelli dei messaggi"],["office365","Office 365"],["ai","Assistente AI"],["posta","Posta in arrivo"],["regole","Riconoscimento"],["collegamenti","Collegamenti"],["backup","Backup e ripristino"],["audit","Registro attività"]]],
   ["Tutorial", [["tutorial","Casi d'uso"]]]
 ];
 /* profili: v vedere, m creare/modificare, e eliminare (in uso reale arrivano dal backend) */
-const AREE = [["cruscotto","Riepilogo"],["ticket","Ticket e messaggi"],["clienti","Anagrafiche (clienti, fornitori, contatti)"],["utenti","Utenti"],["profili","Profili e permessi"],["tecnici","Tecnici"],["aree","Aree di lavoro"],["recap","Recap ai clienti"],["office365","Office 365"],["ai","Assistente AI"],["posta","Posta in arrivo"],["regole","Riconoscimento"],["collegamenti","Collegamenti"],["backup","Backup e ripristino"],["audit","Registro attività"],["tutorial","Tutorial"]];
+const AREE = [["cruscotto","Riepilogo"],["ticket","Ticket e messaggi"],["clienti","Anagrafiche (clienti, fornitori, contatti)"],["utenti","Utenti"],["profili","Profili e permessi"],["tecnici","Tecnici"],["aree","Aree di lavoro"],["recap","Recap ai clienti"],["modelli","Modelli dei messaggi"],["office365","Office 365"],["ai","Assistente AI"],["posta","Posta in arrivo"],["regole","Riconoscimento"],["collegamenti","Collegamenti"],["backup","Backup e ripristino"],["audit","Registro attività"],["tutorial","Tutorial"]];
 const PP = o => Object.fromEntries(AREE.map(([a])=>[a, o[a]||""]));
 let PROFILES = {
   admin:{nome:"Amministratore", desc:"Tutto, compresa la configurazione", base:true, perm:Object.fromEntries(AREE.map(([a])=>[a,"vme"]))},
-  resp:{nome:"Responsabile service", desc:"Lavoro quotidiano, tecnici, aree e regole; vede utenti e registro", base:true, perm:PP({cruscotto:"v",posta:"vm",ticket:"vme",clienti:"vme",utenti:"v",profili:"v",tecnici:"vme",aree:"vme",recap:"vm",collegamenti:"v",regole:"vm",audit:"v",tutorial:"v"})},
-  agent:{nome:"Agente", desc:"Ufficio: ticket, messaggi, clienti e posta in arrivo delle sue aree di lavoro", base:true, perm:PP({cruscotto:"v",posta:"vm",ticket:"vm",clienti:"vm",tecnici:"v",aree:"v",recap:"v",tutorial:"v"})},
+  resp:{nome:"Responsabile service", desc:"Lavoro quotidiano, tecnici, aree e regole; vede utenti e registro", base:true, perm:PP({cruscotto:"v",posta:"vm",ticket:"vme",clienti:"vme",utenti:"v",profili:"v",tecnici:"vme",aree:"vme",recap:"vm",modelli:"vm",collegamenti:"v",regole:"vm",audit:"v",tutorial:"v"})},
+  agent:{nome:"Agente", desc:"Ufficio: ticket, messaggi, clienti e posta in arrivo delle sue aree di lavoro", base:true, perm:PP({cruscotto:"v",posta:"vm",ticket:"vm",clienti:"vm",tecnici:"v",aree:"v",recap:"v",modelli:"v",tutorial:"v"})},
   op:{nome:"Tecnico", desc:"I suoi interventi, messaggi, ticket e clienti; nessuna configurazione", base:true, perm:PP({cruscotto:"v",ticket:"vm",clienti:"v",tutorial:"v"})},
   cliente:{nome:"Cliente", desc:"Solo i ticket della propria azienda: li vede e ne apre di nuovi", base:true, perm:PP({cruscotto:"v",ticket:"vm"})}
 };
@@ -657,12 +683,24 @@ let ROLE = "op", REAL_ROLE = "admin", BOOTED = false;   /* all'ingresso si vede 
 const can = (area, right) => area==="messaggi" && ROLE==="cliente" ? false : ((PROFILES[ROLE]||{perm:{}}).perm[area==="messaggi"?"ticket":area]||"").includes(right||"v");
 /* nasconde i pulsanti che il profilo non può usare (attributo data-perm="area:diritto") */
 function applyPerms(root){ (root||document).querySelectorAll("[data-perm]").forEach(el=>{ const [a,r] = el.dataset.perm.split(":"); el.hidden = !can(a,r); }); }
+/* menu a gruppi richiudibili: aperto solo il gruppo della sezione in cui sei; gli altri si aprono toccando il titolo */
+let NAV_OPEN = {}, NAV_FOR = "";
 function nav(){
   if(!can(S.view,"v")) S.view = "cruscotto";
-  $("#nav").innerHTML = GROUPS.map(([g,items])=>[g, items.filter(([k])=>can(k,"v"))]).filter(([,items])=>items.length).map(([g,items])=>`<span class="grp">${g}</span>`+items.map(([k,l])=>`<button type="button" data-v="${k}" ${S.view===k?'aria-current="page"':""}>${l}${k==="posta"&&toCheck()?`<span class="n">${toCheck()}</span>`:""}${k==="recap"&&recapProblems()?`<span class="n bad">${recapProblems()}</span>`:""}${k==="tutorial"?`<span class="n">${TUTORIALS.filter(x=>x.for.includes(ROLE)).length}</span>`:""}</button>`).join("")).join("");
-  $("#nav").querySelectorAll("button").forEach(b=>b.onclick=()=>{ S.view=b.dataset.v; S.sel=null; S.tut=null; render(); window.scrollTo(0,0); });
+  if(NAV_FOR !== S.view){ NAV_OPEN = {}; NAV_FOR = S.view; }
+  const badge = k => k==="posta"&&toCheck() ? `<span class="n">${toCheck()}</span>` : k==="recap"&&recapProblems() ? `<span class="n bad">${recapProblems()}</span>` : k==="tutorial" ? `<span class="n">${TUTORIALS.filter(x=>x.for.includes(ROLE)).length}</span>` : "";
+  const groups = GROUPS.map(([g,items])=>[g, items.filter(([k])=>can(k,"v"))]).filter(([,items])=>items.length);
+  $("#nav").innerHTML = groups.map(([g,items])=>{
+    const here = items.some(([k])=>k===S.view), open = NAV_OPEN[g]!==undefined ? NAV_OPEN[g] : here;
+    /* da chiuso, il titolo del gruppo mostra gli avvisi che contiene (es. mail da verificare) */
+    const alerts = items.filter(([k])=>k!=="tutorial").map(([k])=>badge(k)).join("");
+    return `<div class="grpbox${open?" open":""}"><button type="button" class="grp" data-g="${esc(g)}" aria-expanded="${open}"><span>${g}</span><span class="grp-r">${open?"":alerts}<span class="chev" aria-hidden="true"></span></span></button>
+      <div class="grp-items">${items.map(([k,l])=>`<button type="button" data-v="${k}" ${S.view===k?'aria-current="page"':""}>${l}${badge(k)}</button>`).join("")}</div></div>`;
+  }).join("");
+  $("#nav").querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{ S.view=b.dataset.v; S.sel=null; S.tut=null; render(); window.scrollTo(0,0); });
+  $("#nav").querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{ const g = b.dataset.g, box = b.parentNode; NAV_OPEN[g] = !box.classList.contains("open"); nav(); });
 }
-function render(){ nav(); ({cruscotto,posta,ticket,messaggi,clienti,aree:areeView,recap:recapView,utenti,profili,tecnici,office365,ai:assistente,collegamenti,regole,backup,audit,tutorial})[S.view](); applyPerms(); paintRole(); }
+function render(){ nav(); ({cruscotto,posta,ticket,messaggi,clienti,aree:areeView,recap:recapView,modelli:modelliView,utenti,profili,tecnici,office365,ai:assistente,collegamenti,regole,backup,audit,tutorial})[S.view](); applyPerms(); paintRole(); }
 new MutationObserver(()=>applyPerms($("#main"))).observe(document.getElementById("main"), {childList:true, subtree:true});
 /* ---------- ordinamento: ogni tabella si ordina toccando l'intestazione di una colonna (di nuovo = ordine inverso) ---------- */
 const SORTS = {};
@@ -881,22 +919,138 @@ function tutorial(){
 function cruscotto(){
   if(ROLE==="op") return tecnicoHome();
   if(ROLE==="cliente") return clienteHome();
+  if(ROLE==="agent") return agentHome();
+  if(ROLE==="admin") return adminHome();
   return respHome();
 }
-/* ---------- Riepilogo del Cliente: i ticket della sua azienda ---------- */
+/* ---------- Riepiloghi per profilo: stesso schema per tutti (4 numeri, da fare adesso, contesto a destra) ---------- */
+/* numero grande + cosa significa + (facoltativo) dove porta */
+const kpi = (n, label, hint, tone, go, extra) => `<button class="kpi ${tone||""}" type="button" ${go?`data-go="${go}"`:"disabled"} ${extra||""}><b>${n}</b><span>${label}</span>${hint?`<small>${hint}</small>`:""}</button>`;
+const wireKpi = () => document.querySelectorAll(".kpi[data-go]").forEach(b=>b.onclick=()=>{ S.view = b.dataset.go; if(b.dataset.filt) S.filt = b.dataset.filt; if(b.dataset.tf) S.tf = Object.assign(tfReset(), JSON.parse(b.dataset.tf)); render(); });
+const dayLabel = p => p ? (p.day===0?"Oggi ":p.day===1?"Domani ":giornoBreve(p.day)+" ")+p.time : "";
+/* riga di ticket leggibile: etichetta, azienda, persona, richiesta, tecnico, pulsante */
+function tRow(t, label, tone, opts){
+  opts = opts || {};
+  const c = cl(t.client) || {name:t.client}, k = ticketContact(t);
+  return `<li class="act-i ${tone||""}"><span class="act-t">${esc(label)}</span>
+    <div class="act-b"><div class="act-h">${logo(c)}<b>${esc(c.name)}</b>${t.urg?'<span class="pill p-urg">Urgente</span>':""}</div>
+      <span class="dim">${esc(t.id)} · ${esc(t.title)}</span>
+      <span class="dim">${k?"Chiede "+esc(k.n):""}${opts.tech!==false?` · ${t.tech?techTag(t.tech):'<span class="dim">nessun tecnico</span>'}`:""}${t.plan&&!/^(Oggi|Domani)/.test(label)?" · "+dayLabel(t.plan):""}</span>
+      <div class="act-x">${opts.wa&&k&&k.tel?waBtn(k.tel):""}<button class="btn small primary" type="button" data-open="${esc(t.id)}">Apri</button></div></div></li>`;
+}
+const wireOpen = () => document.querySelectorAll("#main [data-open]").forEach(b=>b.onclick=()=>ticketSheet(b.dataset.open));
+const head = (sub) => `<div class="top"><div><h1>Riepilogo</h1><p class="sub">${giorno(0).replace(/^./,x=>x.toUpperCase())}${sub?" · "+sub:""}</p></div></div>`;
+
+/* aree dell'agente: le sue, o (amministratore che guarda «come agente») quelle del primo agente */
+function myAreas(){
+  if(ME && ME.aree && ME.aree.length && REAL_ROLE==="agent") return ME.aree;
+  const ag = USERS_LOCAL.find(u=>u.profilo==="agent" && u.aree && u.aree.length);
+  return ag ? ag.aree : AREE_LIST.filter(a=>!a.eliminato).map(a=>a.id);
+}
+const inAreas = (t, ids) => { const tt = techByIni(t.tech); return !!tt && (tt.aree||[]).some(a=>ids.includes(a)); };
+
+/* AGENTE: smistare, verificare la posta, sollecitare i clienti nelle sue aree */
+function agentHome(){
+  const ids = myAreas(), open = S.tickets.filter(t=>t.state!=="Chiuso");
+  const mine = open.filter(t=>inAreas(t, ids)), unas = open.filter(t=>!t.tech), urgNoPlan = mine.filter(t=>t.urg && !t.plan);
+  const waitCli = mine.filter(t=>t.state==="In attesa cliente"), recapKo = RECAPS.filter(r=>["rifiutata","errore","non consegnata","manca la mail"].includes(r.stato));
+  const msgs = (S.threads||[]).map(th=>({th, last:(th.msgs||[]).slice(-1)[0]})).filter(x=>x.last && x.last.k!=="tf").slice(0,5);
+  $("#main").innerHTML = head("le tue aree: "+ids.map(id=>(AREE_LIST.find(a=>a.id===id)||{}).nome).filter(Boolean).join(", ")) + `
+    <div class="kpis">
+      ${kpi(unas.length, "da smistare", "ticket senza tecnico", unas.length?"warm":"", "ticket", `data-tf='{"tech":"-"}'`)}
+      ${kpi(toCheck(), "mail da verificare", "senza ticket o cliente", toCheck()?"warm":"", "posta", 'data-filt="warn"')}
+      ${kpi(urgNoPlan.length, "urgenti da pianificare", "nelle tue aree", urgNoPlan.length?"hot":"", "ticket")}
+      ${kpi(recapKo.length, "recap da sistemare", "mail ai clienti non arrivate", recapKo.length?"hot":"", "recap")}
+    </div>
+    <div class="riep"><div class="riep-main">
+      <section><h2 class="h2s">Da fare adesso</h2><ol class="acts">
+        ${[...urgNoPlan.map(t=>tRow(t,"Da pianificare","urg")), ...unas.map(t=>tRow(t,"Senza tecnico","new",{tech:false}))].join("") || `<li class="empty-ok">Niente da smistare: ogni ticket ha un tecnico e una data.</li>`}
+      </ol></section>
+      <section><h2 class="h2s">In attesa del cliente <span class="dim">· da sollecitare</span></h2><ol class="acts">
+        ${waitCli.map(t=>tRow(t,"In attesa","wait",{wa:true})).join("") || `<li class="empty-ok">Nessun cliente da sollecitare.</li>`}
+      </ol></section>
+    </div>
+    <aside class="riep-side">
+      <section class="panel"><h2>Ultimi messaggi dai tecnici</h2>
+        ${msgs.map(({th,last})=>{ const c = cl(th.client)||{name:""}; return `<button class="qmsg" type="button" data-th="${esc(th.ticket)}"><b>${esc(c.name)}</b><span class="dim">${esc(th.ticket)} · ${esc(th.tech||"")} · ${esc(last.t||"")}</span><span>${esc(String(last.text).slice(0,90))}${String(last.text).length>90?"…":""}</span></button>`; }).join("") || `<span class="dim">Nessun messaggio.</span>`}
+      </section>
+      <section class="panel"><h2>Tecnici delle tue aree</h2>
+        ${TECHS.filter(t=>alive(t) && (t.aree||[]).some(a=>ids.includes(a))).map(t=>`<div class="qc"><span style="color:${PCOLOR.op}">${picon("op",16)}</span><div><b>${esc(t.ini)} · ${esc(techName(t))}</b><span class="dim">${open.filter(x=>x.tech===t.ini).length} aperti · ${open.filter(x=>x.tech===t.ini && x.plan && x.plan.day===0).length} oggi</span></div></div>`).join("") || `<span class="dim">Nessun tecnico assegnato alle tue aree.</span>`}
+      </section>
+    </aside></div>`;
+  wireKpi(); wireOpen();
+  document.querySelectorAll("[data-th]").forEach(b=>b.onclick=()=>{ S.view="messaggi"; S.thSel=b.dataset.th; render(); });
+}
+
+/* AMMINISTRATORE: lo stato del sistema e cosa va sistemato nella configurazione */
+function adminHome(){
+  const l = limitNow(), open = S.tickets.filter(t=>t.state!=="Chiuso");
+  const recapKo = RECAPS.filter(r=>["rifiutata","errore","non consegnata"].includes(r.stato)).length, miss = recapMissing().length;
+  const usersOn = (LIVE?[]:USERS_LOCAL).filter(alive);
+  const o365 = (SETTINGS && SETTINGS.graph && SETTINGS.graph.tenant && SETTINGS.graph.clientId) || (LIVE && CONN && CONN.some(c=>c.n==="Office 365" && c.ok));
+  const rows = [
+    ["collegamenti", "Sistema dei ticket", SISTEMA+" in uso", true],
+    ["office365", "Office 365 (posta e contatti)", o365?"collegato":"da configurare", !!o365],
+    ["recap", "Recap ai clienti", RECAP_CFG.attivo ? (recapKo||miss ? recapKo+" non arrivati · "+miss+" senza mail" : "attivi, tutto consegnato") : "spenti", RECAP_CFG.attivo && !recapKo && !miss],
+    ["ai", "Assistente AI", AI.enabled ? "acceso"+(AI.keySet||AI.envKey?"":" (senza chiave: risposte di esempio)") : "spento", AI.enabled ? (AI.keySet||AI.envKey) : null],
+    ["utenti", "Limite utenti", l.max ? l.attivi+" su "+l.max+(l.pieno?" · pieno":"") : "nessun limite ("+l.attivi+" attivi)", !l.pieno],
+    ["utenti", "Verifica in due passaggi", ME && ME.twofa ? "attiva sul tuo account" : "non attiva sul tuo account", !!(ME && ME.twofa)]
+  ];
+  const audit = (LIVE ? [] : AUDIT_LOCAL).slice(0,6);
+  $("#main").innerHTML = head("stato del sistema") + `
+    <div class="kpis">
+      ${kpi(l.attivi+(l.max?"/"+l.max:""), "utenti attivi", "console e app", l.pieno?"hot":"", "utenti")}
+      ${kpi(open.length, "ticket aperti", open.filter(t=>!t.tech).length+" senza tecnico", "", "ticket")}
+      ${kpi(recapKo+miss, "recap da sistemare", recapKo+" non arrivati · "+miss+" senza mail", recapKo+miss?"hot":"", "recap")}
+      ${kpi(toCheck(), "mail da verificare", "in Posta in arrivo", toCheck()?"warm":"", "posta", 'data-filt="warn"')}
+    </div>
+    <div class="riep"><div class="riep-main">
+      <section class="panel"><h2>Stato del sistema</h2>
+        ${rows.map(([go,t,v,ok])=>`<button class="srow" type="button" data-go="${go}"><span class="sdot ${ok===true?"ok":ok===false?"ko":"off"}" aria-hidden="true"></span><b>${t}</b><span class="dim">${esc(v)}</span><span class="chev-r" aria-hidden="true">›</span></button>`).join("")}
+      </section>
+      <section class="panel"><h2>Ultime attività</h2>
+        <div id="ad-audit">${audit.map(a=>`<div class="arow"><span class="mono dim">${fmtDate(a.at)}</span><b>${esc(a.azione)}</b><span class="dim">${esc(a.user)}${a.dettaglio?" · "+esc(a.dettaglio):""}</span></div>`).join("") || `<span class="dim">Carico…</span>`}</div>
+        <button class="linkback" type="button" data-go="audit">Tutto il registro ›</button>
+      </section>
+    </div>
+    <aside class="riep-side">
+      <section class="panel"><h2>Persone</h2>
+        ${["admin","resp","agent","op","cliente"].map(k=>`<div class="qc"><span style="color:${PCOLOR[k]}">${picon(k,16)}</span><div><b>${esc((PROFILES[k]||{}).nome||k)}</b><span class="dim">${LIVE?"":(n=>n+(n===1?" utente":" utenti"))(usersOn.filter(u=>u.profilo===k).length)}${k==="op"?" · "+TECHS.filter(alive).length+" tecnici nell'app":""}</span></div></div>`).join("")}
+        <button class="linkback" type="button" data-go="utenti">Gestisci utenti ›</button>
+      </section>
+      <section class="panel"><h2>Il lavoro della squadra</h2><p class="dim" style="margin:0">Per urgenze, carico dei tecnici e ticket da seguire usa «Vedi come» → Responsabile.</p></section>
+    </aside></div>`;
+  wireKpi();
+  document.querySelectorAll("#main [data-go]:not(.kpi)").forEach(b=>b.onclick=()=>{ S.view=b.dataset.go; render(); });
+  if(LIVE) getJ("/api/admin/audit").then(r=>{ const box = $("#ad-audit"); if(!box) return; box.innerHTML = (r.audit||r.items||r||[]).slice(0,6).map(a=>`<div class="arow"><span class="mono dim">${fmtDate(a.at)}</span><b>${esc(a.azione)}</b><span class="dim">${esc(a.user||"")}${a.dettaglio?" · "+esc(a.dettaglio):""}</span></div>`).join("") || `<span class="dim">Nessuna attività.</span>`; }).catch(()=>{ const box = $("#ad-audit"); if(box) box.innerHTML = `<span class="dim">Registro non disponibile.</span>`; });
+}
+
+/* CLIENTE: le sue richieste, chiare */
 function clienteHome(){
   const c = cl(myClientId()) || {name:"", contacts:[]}, mine = S.tickets.filter(t=>t.client===c.id), open = mine.filter(t=>t.state!=="Chiuso");
-  $("#main").innerHTML = `<div class="top"><div><h1>Riepilogo</h1><p class="sub">${esc(c.name)} · ${giorno(0)}</p></div><button class="btn primary" type="button" id="ch-new" data-perm="ticket:m">+ Nuova richiesta</button></div>
-    <div class="glance" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:16px">
-      <div class="gl"><b>${open.length}</b><span>richieste aperte</span></div>
-      <div class="gl"><b>${open.filter(t=>t.plan).length}</b><span>interventi fissati</span></div>
-      <div class="gl"><b>${mine.filter(t=>t.state==="Chiuso").length}</b><span>chiuse</span></div></div>
-    <h2 class="r-h">Le vostre richieste aperte</h2>
-    <ol class="acts">${open.map(t=>`<li class="act-i ${t.urg?"urg":/attesa/i.test(t.state)?"wait":""}"><span class="act-t">${t.plan?(t.plan.day===0?"Oggi ":t.plan.day===1?"Domani ":giorno(t.plan.day)+" ")+t.plan.time:esc(t.state)}</span>
-      <div><b>${esc(t.title)}</b><div class="dim"><span class="mono">${esc(t.id)}</span> · ${esc(t.state)}${t.tech?" · tecnico "+esc(t.tech):""}</div><div class="actions"><button class="btn small primary" type="button" data-open="${esc(t.id)}">Apri</button></div></div></li>`).join("") || `<p class="dim">Nessuna richiesta aperta.</p>`}</ol>`;
-  document.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>ticketSheet(b.dataset.open));
+  const next = open.filter(t=>t.plan).sort((a,b)=>a.plan.day-b.plan.day || a.plan.time.localeCompare(b.plan.time));
+  const waitMe = open.filter(t=>t.state==="In attesa cliente");
+  $("#main").innerHTML = head(esc(c.name)) + `
+    <div class="kpis">
+      ${kpi(open.length, "richieste aperte", "", "", "ticket")}
+      ${kpi(next.length, "interventi fissati", next[0]?"il prossimo: "+dayLabel(next[0].plan).toLowerCase():"", "", "ticket")}
+      ${kpi(waitMe.length, "aspettano una vostra risposta", waitMe.length?"rispondete alla mail del ticket":"", waitMe.length?"warm":"", "ticket")}
+      ${kpi(mine.filter(t=>t.state==="Chiuso").length, "chiuse", "", "", "ticket", `data-tf='{"stato":"Chiuso"}'`)}
+    </div>
+    <div class="actions" style="margin:4px 0 14px"><button class="btn primary" type="button" id="ch-new" data-perm="ticket:m">+ Nuova richiesta</button></div>
+    <div class="riep"><div class="riep-main">
+      ${waitMe.length?`<section><h2 class="h2s">Aspettano una vostra risposta</h2><ol class="acts">${waitMe.map(t=>tRow(t,"Da rispondere","wait")).join("")}</ol></section>`:""}
+      <section><h2 class="h2s">Le vostre richieste aperte</h2><ol class="acts">
+        ${open.filter(t=>!waitMe.includes(t)).map(t=>tRow(t, t.plan?dayLabel(t.plan):t.state, t.urg?"urg":"")).join("") || `<li class="empty-ok">Nessuna richiesta aperta.</li>`}
+      </ol></section>
+    </div>
+    <aside class="riep-side"><section class="panel"><h2>Prossimi interventi</h2>
+      ${next.map(t=>`<div class="qc"><span style="color:${PCOLOR.op}">${picon("op",16)}</span><div><b>${dayLabel(t.plan)}</b><span class="dim">${esc(t.title)}${t.tech?" · tecnico "+esc(t.tech):""}</span></div></div>`).join("") || `<span class="dim">Nessun intervento in programma.</span>`}
+    </section></aside></div>`;
+  wireKpi(); wireOpen();
   $("#ch-new").onclick = ()=>{ S.view = "ticket"; render(); const f = $("#t-form"); if(f){ f.hidden = false; $("#nt-title").focus(); } };
 }
+
 /* ---------- Riepilogo di chi coordina: suggerimenti dell'AI, cosa seguire, carico dei tecnici ---------- */
 function respHome(){
   const open = S.tickets.filter(t=>t.state!=="Chiuso");
@@ -907,6 +1061,12 @@ function respHome(){
   const max = Math.max(1, ...loads.map(x=>x.n));
   const why = t => t.urg && !t.plan ? ["Da pianificare","urg"] : !t.tech ? ["Senza tecnico","new"] : ["In attesa","wait"];
   $("#main").innerHTML = `<div class="top"><div><h1>Riepilogo</h1><p class="sub">${giorno(0).replace(/^./,x=>x.toUpperCase())} · ${open.length} ticket aperti</p></div></div>
+    <div class="kpis">
+          <button class="kpi ${urg.length?"hot":""}" type="button" data-go="ticket"><b>${urg.length}</b><span>urgenti</span><small>${open.filter(t=>t.urg&&!t.plan).length} ancora senza data</small></button>
+          <button class="kpi ${unas.length?"warm":""}" type="button" data-go="ticket"><b>${unas.length}</b><span>senza tecnico</span><small>da assegnare</small></button>
+          <button class="kpi" type="button" data-go="ticket"><b>${today.length}</b><span>interventi oggi</span><small>${open.filter(t=>t.plan&&t.plan.day===1).length} domani</small></button>
+          <button class="kpi" type="button" data-go="posta" data-perm="posta:v"><b>${toCheck()}</b><span>mail da verificare</span><small>senza ticket o cliente</small></button>
+        </div>
     <div class="riep">
       <div class="riep-main">
         <section class="remind${remClosed()?" closed":""}" id="rem"${AI.enabled?"":" hidden"}><div class="rem-h"><span class="rem-i" aria-hidden="true">☀</span><b id="rem-title">Situazione di oggi</b><button class="linkback" type="button" id="rem-again" hidden>Riscrivi</button><button class="linkback" type="button" id="rem-tog">${remClosed()?"Mostra":"Riduci"}</button></div>
@@ -919,15 +1079,16 @@ function respHome(){
               <div class="act-x"><button class="btn small primary" type="button" data-open="${esc(t.id)}">Apri</button></div></div></li>`; }).join("") || `<li class="dim">Niente da seguire: tutto assegnato e pianificato.</li>`}</ol></section>
       </div>
       <aside class="riep-side">
-        <div class="glance">
-          <button class="gl ${urg.length?"hot":""}" type="button" data-go="ticket"><b>${urg.length}</b><span>urgenti</span></button>
-          <button class="gl ${unas.length?"warm":""}" type="button" data-go="ticket"><b>${unas.length}</b><span>senza tecnico</span></button>
-          <button class="gl" type="button" data-go="ticket"><b>${today.length}</b><span>interventi oggi</span></button>
-          <button class="gl" type="button" data-go="posta" data-perm="posta:v"><b>${toCheck()}</b><span>mail da verificare</span></button>
-        </div>
         <section class="panel" data-perm="tecnici:v"><h2>Carico dei tecnici</h2>
           ${loads.map(x=>`<div class="ld"><div class="ld-h"><b>${esc(x.t.ini)}</b><span class="dim">${esc(techName(x.t))} · ${esc(x.t.zona||"")}</span><span class="ld-n">${x.n}</span></div>
             <div class="ld-bar"><i style="width:${x.n/max*100}%"></i></div><span class="dim">${x.u?x.u+" urgent"+(x.u===1?"e":"i")+" · ":""}${x.oggi} oggi</span></div>`).join("")}
+        </section>
+        <section class="panel"><h2>Per area di lavoro</h2>
+          ${AREE_LIST.filter(a=>!a.eliminato).map(a=>{ const ts = open.filter(t=>inAreas(t,[a.id])); return `<div class="ld"><div class="ld-h">${areaTag(a.id)}<span class="ld-n">${ts.length}</span></div><span class="dim">${ts.filter(t=>t.urg).length} urgenti · ${ts.filter(t=>/attesa/i.test(t.state)).length} in attesa</span></div>`; }).join("")}
+        </section>
+        <section class="panel" data-perm="recap:v"><h2>Recap ai clienti</h2>
+          ${(()=>{ const ko = RECAPS.filter(r=>["rifiutata","errore","non consegnata"].includes(r.stato)).length, miss = recapMissing().length;
+            return ko||miss ? `<p style="margin:0"><b style="color:var(--red)">${ko}</b> non arrivati · <b style="color:var(--gold)">${miss}</b> persone senza mail</p><button class="linkback" type="button" data-go="recap">Sistema ›</button>` : `<p style="margin:0" class="dim">Tutti i recap sono stati consegnati.</p>`; })()}
         </section>
       </aside>
     </div>`;
@@ -1141,7 +1302,7 @@ function ticketForm(t){
       if(!body.title){ toast("Scrivi la richiesta"); return; }
       if(d!=="" && !tm){ toast("Indica anche l'ora dell'intervento"); return; }
       if(LIVE) return put("/api/admin/tickets/"+encodeURIComponent(t.id), body).then(()=>{ closeEditor(); toast("Ticket salvato"); load(); }).catch(err=>toast("Non riuscito: "+err.message));
-      const before = {state:t.state, plan:t.plan}; Object.assign(t, body, {upd:"adesso"}); recapAfterEdit(t, before); logLocal("Ticket modificato", t.id+" · "+t.state+(t.tech?" · "+t.tech:""), "ticket");
+      const before = JSON.parse(JSON.stringify(t)); Object.assign(t, body, {upd:"adesso"}); recapAfterEdit(t, before); logLocal("Ticket modificato", t.id+" · "+t.state+(t.tech?" · "+t.tech:""), "ticket");
       closeEditor(); render(); toast("Ticket salvato (prova)");
     });
 }
@@ -1220,6 +1381,7 @@ function messaggi(){
       th.msgs.splice(i,1); paintList(); toast("Messaggio eliminato (prova)"); });
     $("#mf-form").onsubmit = e => { e.preventDefault(); const text = $("#mf-text").value.trim(); if(!text) return;
       if(LIVE) return post("/api/admin/threads/reply", {ticket:th.ticket, techMail:th.techMail, text}).then(r=>{ th.msgs.push(r.msg); paintList(); toast("Inviato a "+th.tech); }).catch(err=>toast("Non inviato: "+err.message));
+      { const tk = S.tickets.find(x=>x.id===th.ticket); if(tk && RECAP_CFG.attivo && RECAP_CFG.messaggio) recapLocal(tk, "messaggio"); }
       th.msgs.push({k:"tf", t:new Date().toLocaleTimeString("it-CH",{hour:"2-digit",minute:"2-digit"}), by:(ME&&ME.nome)||"Ufficio", id:"o"+Date.now().toString(36), text}); logLocal("Messaggio al tecnico", th.ticket+" · "+th.tech, "ticket"); paintList(); toast("Inviato a "+th.tech+" (prova)"); };
   };
   $("#mf-q").oninput = e => { M.q = e.target.value; paintList(); };
@@ -1510,6 +1672,7 @@ function techForm(t){
 
 /* ---------- cruscotto del Tecnico: promemoria del giorno e prossime attività ---------- */
 const OGGI = new Date();
+const giornoBreve = d => { const x = new Date(OGGI); x.setDate(x.getDate()+d); return x.toLocaleDateString("it-CH",{weekday:"short", day:"numeric", month:"numeric"}); };
 const giorno = d => { const x = new Date(OGGI); x.setDate(x.getDate()+d); return x.toLocaleDateString("it-CH",{weekday:"long", day:"numeric", month:"long"}); };
 function myTech(){ return TECHS.find(t=>ME && t.mail===ME.mail) || TECHS.find(t=>t.ini==="MB") || TECHS[0] || {ini:"", zona:""}; }
 const mapsUrl = c => "https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(c.name+" "+(c.city||""));
@@ -1576,13 +1739,19 @@ function tecnicoHome(){
   const rows = [
     ...a.urgent.map(t=>actRow(t, "Da pianificare", "urg")),
     ...a.today.map(t=>actRow(t, "Oggi "+t.plan.time)),
-    ...a.later.map(t=>actRow(t, (t.plan.day===1?"Domani ":giorno(t.plan.day)+" ")+t.plan.time)),
+    ...a.later.map(t=>actRow(t, (t.plan.day===1?"Domani ":giornoBreve(t.plan.day)+" ")+t.plan.time)),
     ...a.waiting.map(t=>actRow(t, "In attesa", "wait")),
     ...a.todo.map(t=>actRow(t, "Da fare"))
   ];
   /* contatti rapidi: i clienti delle attività, una volta sola, con telefono */
   const seen = new Set(), contacts = [...a.urgent, ...a.today, ...a.later, ...a.waiting, ...a.todo].map(t=>({c:cl(t.client), k:ticketContact(t)})).filter(x=>x.c && x.k && !seen.has(x.k.id||x.k.n) && seen.add(x.k.id||x.k.n));
   $("#main").innerHTML = `<div class="top"><div><h1>Riepilogo</h1><p class="sub">${giorno(0).replace(/^./,x=>x.toUpperCase())} · ${esc(a.me.ini||"")} · Zona ${esc(a.me.zona||"")}</p></div></div>
+    <div class="kpis">
+          <button class="kpi ${a.urgent.length?"hot":""}" type="button" data-go="ticket"><b>${a.urgent.length}</b><span>urgenze da pianificare</span><small>chiama il cliente e fissa</small></button>
+          <button class="kpi" type="button" data-go="ticket"><b>${a.today.length}</b><span>interventi oggi</span><small>${a.today.map(t=>t.plan.time).join(" · ")||"nessuno"}</small></button>
+          <button class="kpi" type="button" data-go="ticket"><b>${a.later.length}</b><span>nei prossimi giorni</span><small>già in agenda</small></button>
+          <button class="kpi ${a.waiting.length?"warm":""}" type="button" data-go="ticket"><b>${a.waiting.length}</b><span>in attesa</span><small>ricambio o risposta del cliente</small></button>
+        </div>
     <div class="riep">
       <div class="riep-main">
         <section class="remind${remClosed()?" closed":""}" id="rem"${AI.enabled?"":" hidden"}><div class="rem-h"><span class="rem-i" aria-hidden="true">☀</span><b id="rem-title">Promemoria di oggi</b><button class="linkback" type="button" id="rem-again" hidden>Riscrivi</button><button class="linkback" type="button" id="rem-tog" aria-expanded="${!remClosed()}">${remClosed()?"Mostra":"Riduci"}</button></div>
@@ -1591,12 +1760,6 @@ function tecnicoHome(){
           <ol class="acts">${rows.join("") || `<li class="dim">Nessuna attività aperta: ottimo lavoro.</li>`}</ol></section>
       </div>
       <aside class="riep-side">
-        <div class="glance">
-          <button class="gl ${a.urgent.length?"hot":""}" type="button" data-go="ticket"><b>${a.urgent.length}</b><span>urgenze da pianificare</span></button>
-          <button class="gl" type="button" data-go="ticket"><b>${a.today.length}</b><span>interventi oggi</span></button>
-          <button class="gl" type="button" data-go="ticket"><b>${a.later.length}</b><span>nei prossimi giorni</span></button>
-          <button class="gl ${a.waiting.length?"warm":""}" type="button" data-go="ticket"><b>${a.waiting.length}</b><span>in attesa di ricambi</span></button>
-        </div>
         <section class="panel"><h2>Contatti rapidi</h2>
           ${contacts.map(({c,k})=>`<div class="qc">${logo(c)}<div><b>${esc(k.n)}</b><span class="dim">${esc(c.name)}${k.ruolo?" · "+esc(k.ruolo):""}${k.tel?" · "+esc(k.tel):""}</span></div>${waBtn(k.tel)}</div>`).join("") || `<span class="dim">Nessun cliente da contattare.</span>`}
         </section>
@@ -1771,11 +1934,97 @@ function userForm(u, list){
 }
 
 
+
+/* ---------- Modelli dei messaggi: tutti i testi delle mail e dei messaggi, modificabili ---------- */
+const TPL_DEFAULTS = {
+  firma: { gruppo: "Comune", nome: "Firma in fondo alle mail ai clienti", chi: "Clienti", quando: "In tutte le mail ai clienti, al posto di {firma}", campi: [],
+    testo: "Cordiali saluti\nAssistenza tecnica" },
+  apertura: { gruppo: "Mail ai clienti", nome: "Presa in carico", chi: "La persona che ha chiesto", quando: "Appena si apre un nuovo ticket (console, app, portale, posta)",
+    campi: ["nome", "azienda", "ticket", "titolo", "stato", "intervento", "tecnico", "firma"],
+    oggetto: "{ticket} - {titolo}: abbiamo preso in carico la sua richiesta",
+    testo: "Buongiorno {nome},\n\nabbiamo ricevuto la sua richiesta e l'abbiamo registrata con il numero {ticket}.\n\nRichiesta: {titolo}\nStato: {stato}\nIntervento: {intervento}\n\nPer qualsiasi cosa risponda a questa mail: la risposta resta collegata alla richiesta {ticket}.\n\n{firma}" },
+  aggiornamento: { gruppo: "Mail ai clienti", nome: "Aggiornamento del ticket", chi: "La persona che ha chiesto", quando: "Quando cambia una proprietà del ticket (stato, tecnico, richiesta, urgenza, referente, fornitore)",
+    campi: ["nome", "azienda", "ticket", "titolo", "stato", "intervento", "tecnico", "modifiche", "firma"],
+    oggetto: "{ticket} - {titolo}: aggiornamento",
+    testo: "Buongiorno {nome},\n\nla sua richiesta {ticket} è stata aggiornata:\n{modifiche}\n\nStato: {stato}\nIntervento: {intervento}\n\nPer qualsiasi cosa risponda a questa mail.\n\n{firma}" },
+  intervento: { gruppo: "Mail ai clienti", nome: "Intervento fissato o spostato", chi: "La persona che ha chiesto", quando: "Quando si fissa o si sposta la data dell'intervento",
+    campi: ["nome", "azienda", "ticket", "titolo", "stato", "intervento", "tecnico", "modifiche", "firma"],
+    oggetto: "{ticket} - {titolo}: intervento {intervento}",
+    testo: "Buongiorno {nome},\n\nle confermiamo l'intervento per la richiesta {ticket}: {intervento}.\nTecnico: {tecnico}\n\nSe la data non va bene, risponda a questa mail.\n\n{firma}" },
+  messaggio: { gruppo: "Mail ai clienti", nome: "Nuovo messaggio sul ticket", chi: "La persona che ha chiesto", quando: "Quando il tecnico o l'ufficio aggiungono un messaggio al ticket (il testo delle note interne non viene mai mostrato)",
+    campi: ["nome", "azienda", "ticket", "titolo", "stato", "chi", "firma"],
+    oggetto: "{ticket} - {titolo}: nuovo aggiornamento",
+    testo: "Buongiorno {nome},\n\n{chi} ha aggiunto un aggiornamento alla sua richiesta {ticket} ({titolo}).\nStato attuale: {stato}\n\nNon serve fare nulla: se ci sono novità per lei la ricontattiamo. Per qualsiasi cosa risponda a questa mail.\n\n{firma}" },
+  chiusura: { gruppo: "Mail ai clienti", nome: "Richiesta chiusa", chi: "La persona che ha chiesto", quando: "Quando il ticket passa a «Chiuso»",
+    campi: ["nome", "azienda", "ticket", "titolo", "tecnico", "firma"],
+    oggetto: "{ticket} - {titolo}: richiesta chiusa",
+    testo: "Buongiorno {nome},\n\nla richiesta {ticket} ({titolo}) è stata chiusa.\nSe qualcosa non va, risponda a questa mail e la riapriamo.\n\n{firma}" },
+  settimanale: { gruppo: "Mail ai clienti", nome: "Riepilogo settimanale", chi: "Ogni persona con richieste aperte", quando: "Una volta a settimana, nel giorno e nell'ora scelti in Recap ai clienti",
+    campi: ["nome", "azienda", "elenco", "firma"],
+    oggetto: "Riepilogo settimanale delle sue richieste — {azienda}",
+    testo: "Buongiorno {nome},\n\necco le richieste aperte di {azienda}:\n\n{elenco}\n\nPer qualsiasi richiesta risponda a questa mail.\n\n{firma}" },
+  testo_cliente: { gruppo: "Testi per i tecnici", nome: "Testo da girare al cliente (ticket nuovo)", chi: "Il tecnico, da copiare su WhatsApp", quando: "Nella conversazione dell'app, quando si apre un ticket nuovo",
+    campi: ["nome", "ticket"],
+    testo: "Buongiorno {nome}, abbiamo registrato la sua richiesta con il numero {ticket}. La ricontattiamo al più presto. Grazie." },
+  firma_tecnico: { gruppo: "Testi per i tecnici", nome: "Firma dei messaggi del tecnico al cliente", chi: "Clienti (in copia)", quando: "In fondo a «Messaggio a …» scritto dall'app",
+    campi: ["tecnico", "ticket"],
+    testo: "-- {tecnico}, tecnico Efuture. Rispondendo a questa mail la risposta resta nel ticket {ticket}. --" },
+  codice_app: { gruppo: "Accesso", nome: "Nuovo codice dell'app", chi: "Il tecnico", quando: "Quando un tecnico tocca «Codice dimenticato?»",
+    campi: ["nome", "codice"],
+    oggetto: "Ticket Farm: il tuo nuovo codice",
+    testo: "Ciao {nome},\n\nil tuo nuovo codice per l'app Ticket Farm è: {codice}\n\nIl codice precedente non funziona più. Se non l'hai chiesto tu, avvisa l'ufficio." },
+  reset_password: { gruppo: "Accesso", nome: "Nuova password della console", chi: "L'utente della console", quando: "Quando si tocca «Password dimenticata?»",
+    campi: ["nome", "link"],
+    oggetto: "Ticket Farm: nuova password",
+    testo: "Ciao {nome},\n\nper scegliere una nuova password della console apri questo link entro 30 minuti:\n{link}\n\nSe non l'hai chiesto tu, ignora questa mail: la password resta quella di prima." },
+};
+let TPL_SAVED = (()=>{ try{ return JSON.parse(localStorage.getItem("tf-admin-templates")||"{}"); }catch(e){ return {}; } })();
+let TPL_LIVE = null;
+const tplAll = () => TPL_LIVE || Object.fromEntries(Object.entries(TPL_DEFAULTS).map(([k,d])=>[k, {...d, ...(TPL_SAVED[k]||{}), modificato:!!TPL_SAVED[k], predefinito:{oggetto:d.oggetto, testo:d.testo}}]));
+const TPL_SAMPLE = {nome:"Chiara", azienda:"Pharmalab Mendrisio SA", ticket:"Tck #714845", titolo:"TOC acqua purificata: verifica di idoneità in scadenza", stato:"Pianificato",
+  intervento:"lunedì 16 novembre alle 13:30", tecnico:"Tecnico Zona Sud", modifiche:"• Stato: Aperto → Pianificato\n• Intervento: da fissare → lunedì 16 novembre alle 13:30", chi:"Il tecnico",
+  elenco:"• Tck #714845 — TOC acqua purificata\n  Stato: Pianificato · Intervento: lunedì 16 novembre alle 13:30\n• Tck #714846 — Conducibilità acqua per iniettabili\n  Stato: In attesa cliente · Intervento: da fissare", codice:"482913", link:"https://…/admin/#reset=…"};
+const tplFill = (text, vars) => String(text||"").replace(/\{(\w+)\}/g, (m,k)=> k==="firma" ? (tplAll().firma||{}).testo||"" : vars[k]!==undefined ? vars[k] : m);
+const CAMPO = {nome:"nome di battesimo della persona", azienda:"azienda", ticket:"numero del ticket", titolo:"richiesta", stato:"stato del ticket", intervento:"data e ora dell'intervento", tecnico:"nome del tecnico",
+  modifiche:"elenco di cosa è cambiato", chi:"«Il tecnico» o «L'ufficio»", elenco:"elenco delle richieste aperte", firma:"la firma (modello «Firma»)", codice:"codice dell'app", link:"link per la nuova password"};
+function modelliView(){
+  const edit = can("modelli","m"), all = tplAll(), keys = Object.keys(all);
+  S.tplSel = all[S.tplSel] ? S.tplSel : "apertura";
+  const groups = [...new Set(keys.map(k=>all[k].gruppo))];
+  const t = all[S.tplSel];
+  $("#main").innerHTML = `<div class="top"><div><h1>Modelli dei messaggi</h1><p class="sub">Tutti i testi che il sistema manda o propone: mail ai clienti, testi per i tecnici, mail di accesso. Le parole tra graffe, come {nome}, vengono sostituite all'invio.</p></div></div>
+    <div class="tplwrap">
+      <aside class="panel tpllist">${groups.map(g=>`<span class="tg">${esc(g)}</span>${keys.filter(k=>all[k].gruppo===g).map(k=>`<button type="button" class="tpli" data-tpl="${k}" aria-current="${k===S.tplSel}"><b>${esc(all[k].nome)}</b><span class="dim">${esc(all[k].chi)}</span>${all[k].modificato?'<span class="pill p-new">modificato</span>':""}</button>`).join("")}`).join("")}</aside>
+      <section class="panel tpled">
+        <div class="row-h"><h2>${esc(t.nome)}</h2>${t.modificato?'<span class="pill p-new">modificato</span>':'<span class="pill p-mut">testo predefinito</span>'}</div>
+        <dl class="kv"><dt>A chi va</dt><dd>${esc(t.chi)}</dd><dt>Quando parte</dt><dd>${esc(t.quando)}</dd></dl>
+        ${t.oggetto!==undefined?`<label class="field"><span>Oggetto</span><input class="input" id="tp-o" value="${esc(t.oggetto)}" ${edit?"":"readonly"}></label>`:""}
+        <label class="field"><span>Testo</span><textarea class="input mono" id="tp-t" rows="${Math.min(16, String(t.testo).split("\n").length+3)}" ${edit?"":"readonly"}>${esc(t.testo)}</textarea></label>
+        ${(t.campi||[]).length?`<div class="field"><span>Segnaposto (tocca per inserirlo)</span><div class="chips">${t.campi.map(c=>`<button class="chip" type="button" data-ph="${c}" title="${esc(CAMPO[c]||c)}" ${edit?"":"disabled"}>{${c}}</button>`).join("")}</div></div>`:""}
+        <div class="actions" data-perm="modelli:m"><button class="btn primary" type="button" id="tp-save">Salva</button>${t.modificato?`<button class="btn" type="button" id="tp-reset">Ripristina il testo predefinito</button>`:""}</div>
+        <div class="field"><span>Anteprima con dati di esempio</span><div class="tplprev">${t.oggetto!==undefined?`<b id="tp-po"></b>`:""}<pre id="tp-pt"></pre></div></div>
+      </section>
+    </div>`;
+  const prev = () => { if($("#tp-po")) $("#tp-po").textContent = tplFill($("#tp-o").value, TPL_SAMPLE); $("#tp-pt").textContent = tplFill($("#tp-t").value, TPL_SAMPLE); };
+  prev(); if($("#tp-o")) $("#tp-o").oninput = prev; $("#tp-t").oninput = prev;
+  let last = $("#tp-t"); document.querySelectorAll("#tp-o,#tp-t").forEach(el=>el.onfocus=()=>{ last = el; });
+  document.querySelectorAll("[data-ph]").forEach(b=>b.onclick=()=>{ const el = last, ins = "{"+b.dataset.ph+"}", a = el.selectionStart ?? el.value.length, z = el.selectionEnd ?? el.value.length;
+    el.value = el.value.slice(0,a)+ins+el.value.slice(z); el.focus(); el.setSelectionRange(a+ins.length, a+ins.length); prev(); });
+  document.querySelectorAll("[data-tpl]").forEach(b=>b.onclick=()=>{ S.tplSel = b.dataset.tpl; modelliView(); });
+  $("#tp-save").onclick = () => { const body = {testo:$("#tp-t").value}; if($("#tp-o")) body.oggetto = $("#tp-o").value;
+    if(!body.testo.trim() || (t.oggetto!==undefined && !String(body.oggetto).trim())){ toast("Oggetto e testo non possono essere vuoti"); return; }
+    if(LIVE) return put("/api/admin/templates/"+S.tplSel, body).then(r=>{ TPL_LIVE[S.tplSel] = r.modello; toast("Modello salvato"); modelliView(); }).catch(err=>toast("Non salvato: "+err.message));
+    TPL_SAVED[S.tplSel] = body; try{ localStorage.setItem("tf-admin-templates", JSON.stringify(TPL_SAVED)); }catch(e){} logLocal("Modello modificato", t.nome, "modelli"); toast("Modello salvato (prova)"); modelliView(); };
+  if($("#tp-reset")) $("#tp-reset").onclick = e => { if(!confirmInline(e.currentTarget)) return;
+    if(LIVE) return del("/api/admin/templates/"+S.tplSel).then(r=>{ TPL_LIVE[S.tplSel] = r.modello; toast("Testo predefinito ripristinato"); modelliView(); }).catch(err=>toast("Non riuscito: "+err.message));
+    delete TPL_SAVED[S.tplSel]; try{ localStorage.setItem("tf-admin-templates", JSON.stringify(TPL_SAVED)); }catch(e){} toast("Testo predefinito ripristinato (prova)"); modelliView(); };
+  if(LIVE && !TPL_LIVE) getJ("/api/admin/templates").then(r=>{ TPL_LIVE = r.modelli; modelliView(); }).catch(err=>toast("Modelli non disponibili: "+err.message));
+}
 /* ---------- Recap ai clienti ---------- */
 const RSTATO = {"accettata":["p-ok","Accettata dal server"], "letta":["p-ok","Letta"], "preparata":["p-new","Preparata (prova)"], "manca la mail":["p-warn","Manca la mail"], "rifiutata":["p-urg","Rifiutata"], "errore":["p-urg","Errore di invio"], "non consegnata":["p-urg","Non consegnata"]};
-const RKIND = {apertura:"Presa in carico", intervento:"Intervento fissato", chiusura:"Chiusura", settimanale:"Riepilogo settimanale", prova:"Prova"};
+const RKIND = {apertura:"Presa in carico", aggiornamento:"Aggiornamento", intervento:"Intervento fissato", messaggio:"Nuovo messaggio", chiusura:"Chiusura", settimanale:"Riepilogo settimanale", prova:"Prova"};
 const isMailAddr = v => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(v||""));
-let RECAP_CFG = {attivo:true, apertura:true, intervento:true, chiusura:true, settimanale:true, giorno:1, ora:8, conferma:true};
+let RECAP_CFG = {attivo:true, apertura:true, aggiornamento:true, intervento:true, messaggio:true, chiusura:true, settimanale:true, giorno:1, ora:8, conferma:true};
 let RECAPS = [
   {id:"r1", kind:"chiusura", ticket:"Tck #714849", client:"tlr", contatto:"tlr-1", nome:"Ivan Bassi", to:"i.bassi@tlr-bellinzona.ch", subj:"Tck #714849 - pH acqua di reintegro: sostituzione elettrodo: richiesta chiusa", at:new Date(Date.now()-86400000*2).toISOString(), stato:"letta", dettaglio:"Conferma di lettura ricevuta.", tentativi:1},
   {id:"r2", kind:"intervento", ticket:"Tck #714845", client:"pha", contatto:"pha-1", nome:"Chiara Lepori", to:"c.lepori@pharmalab-mendrisio.ch", subj:"Tck #714845 - TOC acqua purificata: intervento fissato", at:new Date(Date.now()-86400000).toISOString(), stato:"accettata", dettaglio:"Il server di posta l'ha presa in carico (250 OK).", tentativi:1},
@@ -1796,14 +2045,16 @@ function recapMissing(){
 /* nella prova: registra il recap come farebbe il backend */
 function recapLocal(t, kind){
   const k = ticketContact(t), ok = k && isMailAddr(k.mail), c = cl(t.client)||{};
-  const e = {id:"r"+Date.now().toString(36), kind, ticket:t.id, client:t.client, contatto:k?k.id:"", nome:k?k.n:"", to:ok?k.mail:"", subj:t.id+" - "+t.title+": "+(RKIND[kind]||kind).toLowerCase(), at:new Date().toISOString(),
+  const e = {id:"r"+Date.now().toString(36), kind, ticket:t.id, client:t.client, contatto:k?k.id:"", nome:k?k.n:"", to:ok?k.mail:"", subj:(tplAll()[kind]&&tplAll()[kind].oggetto ? tplFill(tplAll()[kind].oggetto, {ticket:t.id, titolo:t.title, intervento:t.plan?dayLabel(t.plan):"da fissare", azienda:c.name||""}) : t.id+" - "+t.title+": "+(RKIND[kind]||kind).toLowerCase()), at:new Date().toISOString(),
     stato: ok?"preparata":"manca la mail", dettaglio: ok?"Versione di prova: con il backend collegato parte davvero a "+k.mail+".":(k?k.n:c.name)+" non ha un indirizzo mail: aggiungilo in Anagrafiche.", tentativi:ok?1:0};
   RECAPS.unshift(e); return e;
 }
 function recapAfterEdit(t, before){
   if(LIVE || !RECAP_CFG.attivo) return;
-  if(t.state==="Chiuso" && before.state!=="Chiuso" && RECAP_CFG.chiusura) recapLocal(t, "chiusura");
-  else if(t.plan && JSON.stringify(t.plan)!==JSON.stringify(before.plan||null) && t.state!=="Chiuso" && RECAP_CFG.intervento) recapLocal(t, "intervento");
+  const ch = ["state","tech","title","urg","contatto","fornitore"].some(k=>String(t[k]||"")!==String(before[k]||"")), planCh = JSON.stringify(t.plan||null)!==JSON.stringify(before.plan||null);
+  if(t.state==="Chiuso" && before.state!=="Chiuso"){ if(RECAP_CFG.chiusura) recapLocal(t, "chiusura"); }
+  else if(planCh && t.plan && t.state!=="Chiuso"){ if(RECAP_CFG.intervento) recapLocal(t, "intervento"); }
+  else if(ch || planCh){ if(RECAP_CFG.aggiornamento) recapLocal(t, "aggiornamento"); }
 }
 const rstato = st => `<span class="pill ${(RSTATO[st]||["p-mut"])[0]}">${esc((RSTATO[st]||[0,st])[1])}</span>`;
 function recapView(){
@@ -1811,7 +2062,7 @@ function recapView(){
   const miss = recapMissing();
   const n = st => RECAPS.filter(r=>r.stato===st).length;
   const draw = () => {
-  $("#main").innerHTML = `<div class="top"><div><h1>Recap ai clienti</h1><p class="sub">Una mail alla persona che ha chiesto, quando il ticket viene preso in carico, quando si fissa l'intervento e quando si chiude, più un riepilogo settimanale. Qui vedi l'esito di ogni invio.</p></div></div>
+  $("#main").innerHTML = `<div class="top"><div><h1>Recap ai clienti</h1><p class="sub">Una mail alla persona che ha chiesto: presa in carico del ticket nuovo, ogni modifica, ogni nuovo messaggio, la chiusura e un riepilogo settimanale. I testi si cambiano in Modelli dei messaggi. Qui vedi l'esito di ogni invio.</p></div></div>
     <div class="glance rglance">
       <div class="gl"><b>${n("accettata")+n("letta")}</b><span>consegnate al server${n("letta")?" · "+n("letta")+" lette":""}</span></div>
       <div class="gl ${n("preparata")?"":""}"><b>${n("preparata")}</b><span>preparate (prova)</span></div>
@@ -1824,7 +2075,9 @@ function recapView(){
       <form class="panel" id="rc-form"><h2>Quando partono</h2>
         <label class="check big"><button class="switch" type="button" role="switch" id="rc-on" aria-checked="${C.attivo}" ${edit?"":"disabled"} aria-label="Recap attivi"></button> Recap ai clienti attivi</label>
         <label class="check"><input type="checkbox" id="rc-ap" ${C.apertura?"checked":""} ${edit?"":"disabled"}> Quando il ticket viene preso in carico</label>
+        <label class="check"><input type="checkbox" id="rc-ag" ${C.aggiornamento?"checked":""} ${edit?"":"disabled"}> Quando cambia una proprietà del ticket (stato, tecnico, richiesta, urgenza, referente, fornitore)</label>
         <label class="check"><input type="checkbox" id="rc-in" ${C.intervento?"checked":""} ${edit?"":"disabled"}> Quando si fissa o si sposta l'intervento</label>
+        <label class="check"><input type="checkbox" id="rc-ms" ${C.messaggio?"checked":""} ${edit?"":"disabled"}> Quando il tecnico o l'ufficio aggiungono un messaggio (senza mai mostrare le note interne)</label>
         <label class="check"><input type="checkbox" id="rc-ch" ${C.chiusura?"checked":""} ${edit?"":"disabled"}> Quando il ticket si chiude</label>
         <label class="check"><input type="checkbox" id="rc-se" ${C.settimanale?"checked":""} ${edit?"":"disabled"}> Riepilogo settimanale delle richieste aperte, ogni
           <select class="input inl" id="rc-g" ${edit?"":"disabled"}>${["domenica","lunedì","martedì","mercoledì","giovedì","venerdì","sabato"].map((g,i)=>`<option value="${i}" ${+C.giorno===i?"selected":""}>${g}</option>`).join("")}</select> alle
@@ -1863,7 +2116,7 @@ function recapView(){
   document.querySelectorAll("[data-rst]").forEach(b=>b.onclick=()=>{ F.stato = b.dataset.rst; draw(); });
   $("#rc-on").onclick = e => { const b = e.currentTarget; b.setAttribute("aria-checked", String(b.getAttribute("aria-checked")!=="true")); };
   $("#rc-form").onsubmit = e => { e.preventDefault();
-    const body = {attivo:$("#rc-on").getAttribute("aria-checked")==="true", apertura:$("#rc-ap").checked, intervento:$("#rc-in").checked, chiusura:$("#rc-ch").checked, settimanale:$("#rc-se").checked, giorno:+$("#rc-g").value, ora:+$("#rc-o").value, conferma:$("#rc-cf").checked};
+    const body = {attivo:$("#rc-on").getAttribute("aria-checked")==="true", apertura:$("#rc-ap").checked, aggiornamento:$("#rc-ag").checked, intervento:$("#rc-in").checked, messaggio:$("#rc-ms").checked, chiusura:$("#rc-ch").checked, settimanale:$("#rc-se").checked, giorno:+$("#rc-g").value, ora:+$("#rc-o").value, conferma:$("#rc-cf").checked};
     if(LIVE) return post("/api/admin/recap/settings", body).then(r=>{ RECAP_CFG = r.recap; toast("Impostazioni salvate"); }).catch(err=>toast("Non salvate: "+err.message));
     RECAP_CFG = body; logLocal("Impostazioni dei recap", body.attivo?"attivi":"spenti", "recap"); toast("Impostazioni salvate (prova)"); };
   $("#rc-week").onclick = () => {

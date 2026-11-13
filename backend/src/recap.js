@@ -11,10 +11,13 @@
 const store = require("./store");
 const settings = require("./settings");
 const mail = require("./mail");
+const tpl = require("./templates");
 
 const KIND = {
   apertura: "Abbiamo preso in carico la sua richiesta",
   intervento: "Intervento fissato",
+  aggiornamento: "Aggiornamento del ticket",
+  messaggio: "Nuovo messaggio sul ticket",
   chiusura: "Richiesta chiusa",
   settimanale: "Riepilogo settimanale delle sue richieste",
   prova: "Mail di prova dei recap",
@@ -32,28 +35,15 @@ function personOf(t, clients) {
   return { c, k: live.find(k => k.id === t.contatto) || live.find(k => isMail(k.mail)) || live[0] || null };
 }
 
-function ticketText(t, k, kind, tech) {
-  const nome = k ? String(k.n).split(" ")[0] : "";
-  const righe = [
-    "Buongiorno" + (nome ? " " + nome : "") + ",", "",
-    kind === "apertura" ? "abbiamo ricevuto la sua richiesta e l'abbiamo registrata con il numero " + t.id + "." :
-    kind === "intervento" ? "le confermiamo l'intervento per la richiesta " + t.id + ": " + when(t.plan) + "." :
-    "la richiesta " + t.id + " è stata chiusa. Se qualcosa non va, risponda a questa mail e la riapriamo.", "",
-    "Richiesta: " + t.title,
-    "Stato: " + t.state,
-    "Intervento: " + when(t.plan),
-  ];
-  if (tech) righe.push("Tecnico: " + tech);
-  righe.push("", "Per qualsiasi cosa risponda a questa mail: la risposta resta collegata alla richiesta " + t.id + ".", "", "Cordiali saluti", "Assistenza tecnica");
-  return righe.join("\n");
+/* testi presi dai Modelli dei messaggi (Configurazione) */
+function varsFor(t, k, c, tech, extra) {
+  return { nome: k ? String(k.n).split(" ")[0] : "", azienda: (c && c.name) || "", ticket: t.id, titolo: t.title, stato: t.state, intervento: when(t.plan), tecnico: tech || "da assegnare", ...(extra || {}) };
 }
-function weeklyText(c, k, tickets) {
-  const nome = k ? String(k.n).split(" ")[0] : "";
-  return ["Buongiorno" + (nome ? " " + nome : "") + ",", "", "ecco le richieste aperte di " + c.name + ":", "",
-    ...tickets.map(t => "• " + t.id + " — " + t.title + "\n  Stato: " + t.state + " · Intervento: " + when(t.plan)), "",
-    "Per qualsiasi richiesta risponda a questa mail.", "", "Cordiali saluti", "Assistenza tecnica"].join("\n");
+function ticketMail(t, k, c, kind, tech, extra) { return tpl.render(kind, varsFor(t, k, c, tech, extra)); }
+function weeklyMail(c, k, tickets) {
+  const elenco = tickets.map(t => "• " + t.id + " — " + t.title + "\n  Stato: " + t.state + " · Intervento: " + when(t.plan)).join("\n");
+  return tpl.render("settimanale", { nome: k ? String(k.n).split(" ")[0] : "", azienda: c.name, elenco });
 }
-
 function build(entry, text, t) {
   const sup = settings.support();
   const headers = { "X-TicketFarm-Recap": entry.id, "X-TicketFarm-Recap-Tipo": entry.kind };
@@ -79,16 +69,17 @@ async function deliver(entry, msg) {
   return entry;
 }
 
-/* recap di un ticket: kind = apertura | intervento | chiusura */
-async function forTicket(t, clients, kind, techName, force) {
+/* recap di un ticket: kind = apertura | aggiornamento | intervento | messaggio | chiusura; extra: {modifiche, chi} */
+async function forTicket(t, clients, kind, techName, force, extra) {
   const cfgR = settings.recap();
   if (!force && (!cfgR.attivo || !cfgR[kind])) return null;
   const { c, k } = personOf(t, clients);
   const entry = { id: "r" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), kind, ticket: t.id, client: c.id || t.client, contatto: k ? k.id : "",
-    nome: k ? k.n : "", to: k && isMail(k.mail) ? k.mail : "", subj: t.id + " - " + t.title + ": " + KIND[kind].toLowerCase(), at: now(), stato: "", tentativi: 0 };
+    nome: k ? k.n : "", to: k && isMail(k.mail) ? k.mail : "", subj: "", at: now(), stato: "", tentativi: 0, extra: extra || null };
+  const m = ticketMail(t, k, c, kind, techName, extra); entry.subj = m.oggetto;
   list().unshift(entry); store.load().recaps = list().slice(0, 1000);
   if (!entry.to) { entry.stato = "manca la mail"; entry.dettaglio = k ? k.n + " non ha un indirizzo mail: aggiungilo in Anagrafiche." : "Nessun contatto per questo cliente."; store.save(); return entry; }
-  return deliver(entry, build(entry, ticketText(t, k, kind, techName), t));
+  return deliver(entry, build(entry, m.testo, t));
 }
 
 /* riepilogo settimanale: una mail per persona con le sue richieste aperte */
@@ -102,10 +93,11 @@ async function weekly(clients, tickets) {
   }
   for (const { c, k, tickets: ts } of groups.values()) {
     const entry = { id: "r" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), kind: "settimanale", ticket: ts.map(t => t.id).join(", "), client: c.id, contatto: k ? k.id : "",
-      nome: k ? k.n : "", to: k && isMail(k.mail) ? k.mail : "", subj: KIND.settimanale + " — " + c.name, at: now(), stato: "", tentativi: 0 };
+      nome: k ? k.n : "", to: k && isMail(k.mail) ? k.mail : "", subj: "", at: now(), stato: "", tentativi: 0 };
+    const wm = weeklyMail(c, k, ts); entry.subj = wm.oggetto;
     list().unshift(entry);
     if (!entry.to) { entry.stato = "manca la mail"; entry.dettaglio = (k ? k.n : c.name) + " non ha un indirizzo mail."; out.push(entry); continue; }
-    out.push(await deliver(entry, build(entry, weeklyText(c, k, ts), null)));
+    out.push(await deliver(entry, build(entry, wm.testo, null)));
   }
   const st = store.load(); st.recaps = list().slice(0, 1000); st.recapWeek = weekKey(); store.save();
   return out;
@@ -123,9 +115,9 @@ async function test(to) {
 async function retry(clients, tickets, id) {
   const todo = list().filter(e => (id ? e.id === id : true) && ["errore", "rifiutata"].includes(e.stato) && (id || e.tentativi < 3));
   for (const e of todo) {
-    if (e.kind === "settimanale" || e.kind === "prova") { await deliver(e, build(e, e.kind === "prova" ? "Mail di prova dei recap." : weeklyText(clients.find(c => c.id === e.client) || { name: "" }, { n: e.nome }, tickets.filter(t => e.ticket.split(", ").includes(t.id))), null)); continue; }
+    if (e.kind === "settimanale" || e.kind === "prova") { await deliver(e, build(e, e.kind === "prova" ? "Mail di prova dei recap." : weeklyMail(clients.find(c => c.id === e.client) || { name: "" }, { n: e.nome }, tickets.filter(t => e.ticket.split(", ").includes(t.id))).testo, null)); continue; }
     const t = tickets.find(x => x.id === e.ticket); if (!t) continue;
-    await deliver(e, build(e, ticketText(t, { n: e.nome }, e.kind, ""), t));
+    await deliver(e, build(e, ticketMail(t, { n: e.nome }, clients.find(c => c.id === t.client), e.kind, "", e.extra).testo, t));
   }
   return todo;
 }

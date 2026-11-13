@@ -732,6 +732,12 @@ function drawDest(){
   box.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{ f.contatto=b.dataset.k; drawDest(); });
   const r = $("#f-rem"); if(r) r.onchange = e => f.remember = e.target.checked;
 }
+/* testo da girare al cliente: il modello «Testo da girare al cliente» (Configurazione → Modelli dei messaggi) */
+function testoCliente(nome, ticket){
+  let t = "Buongiorno {nome}, abbiamo registrato la sua richiesta con il numero {ticket}. La ricontattiamo al più presto. Grazie.";
+  try{ const m = JSON.parse(localStorage.getItem("tf-admin-templates")||"{}").testo_cliente; if(m && m.testo) t = m.testo; }catch(e){}
+  return t.replace(/\{nome\}/g, nome).replace(/\{ticket\}/g, ticket).replace(/ ,/g, ",").replace(/\s{2,}/g, " ");
+}
 function send(){
   const f = S.f;
   if(!f.msgs.length){ toast("Incolla il messaggio del cliente o allega una foto"); return; }
@@ -756,7 +762,7 @@ function send(){
     th = {ticket:id, client:c.id, contatto:f.contatto||"", clientMail:fwd.mailFrom||"", unread:false, msgs:[fwd]}; S.threads.unshift(th);
     c.open.unshift({id, contatto:f.contatto||"", t:body.slice(0,46)+(body.length>46?"…":""), state:"Aperto"});
     answer = {k:"tf", t:"", text:"Nuovo ticket "+id+".",
-      forClient:"Buongiorno"+(pk?" "+pk.k.n.split(" ")[0]:"")+", abbiamo registrato la sua richiesta con il numero "+id+". La ricontattiamo al più presto. Grazie."};
+      forClient:testoCliente(pk?pk.k.n.split(" ")[0]:"", id)};
   } else {
     const id = "TF-"+(++S.seq);
     th = {ticket:id, client:null, unread:false, msgs:[fwd]}; S.threads.unshift(th);
