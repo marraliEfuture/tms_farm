@@ -202,6 +202,19 @@ textarea.input{min-height:96px;resize:vertical}
 .msg.out.toc{border:1px solid var(--accent)}
 .composer .cc{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted)}.composer .cc b{color:var(--ink);overflow-wrap:anywhere}.composer .cc span{min-width:0}.composer .cc input{flex:0 0 18px;width:18px;height:18px;accent-color:var(--accent)}
 .composer .line{display:flex;gap:8px;align-items:flex-end}
+.ctools{display:flex;gap:6px}
+.cbtn{width:40px;height:40px;flex:0 0 40px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);display:grid;place-items:center;cursor:pointer;text-decoration:none}
+.cbtn:hover{border-color:var(--accent)}.cbtn.on{background:var(--red);border-color:var(--red);color:#fff;animation:pulse 1.2s infinite}
+@keyframes pulse{50%{opacity:.7}}
+.chead .cbtn{width:38px;height:38px;flex-basis:38px;border-radius:50%}
+.atts{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.att{display:flex;align-items:center;gap:6px;flex:0 0 auto;max-width:220px;border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:4px 6px;font-size:12px}
+.att img{width:34px;height:34px;object-fit:cover;border-radius:6px}.att b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);font-weight:600}.att small{color:var(--muted);white-space:nowrap}
+.att button{border:0;background:none;color:var(--muted);font-size:14px;cursor:pointer;padding:2px 4px}
+.mfiles{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.mimg img{display:block;max-width:220px;max-height:220px;border-radius:10px;background:var(--surface-2)}
+.mvid{max-width:240px;border-radius:10px;background:#000}
+.mdoc{display:flex;align-items:center;gap:8px;background:var(--surface-2);border-radius:10px;padding:8px 10px;color:var(--ink);text-decoration:none;font-size:13px}.mdoc small{color:var(--muted);margin-left:auto}
 .composer textarea{min-height:44px;height:44px;flex:1}
 .typing{font-size:12px;color:var(--muted);align-self:flex-start;font-style:italic}
 
@@ -556,43 +569,136 @@ function renderMessaggi(){
 
 const ICO_TEC = '<svg class="pic" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-label="Tecnico"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3.6 17.2a1.6 1.6 0 0 0 2.3 2.3l5.7-5.7a4 4 0 0 0 5.2-5.4l-2.4 2.4-2.1-.6-.6-2.1z"/></svg>';
 const ICO_AGE = '<svg class="pic" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-label="Agente"><path d="M4 13v-1a8 8 0 0 1 16 0v1"/><rect x="3" y="13" width="4" height="6" rx="1.5"/><rect x="17" y="13" width="4" height="6" rx="1.5"/><path d="M19 19a3 3 0 0 1-3 3h-3"/></svg>';
+/* allegati nei messaggi: foto e video si vedono nella chat, i documenti si aprono toccandoli */
+const fmtSize = n => n>1048576 ? (n/1048576).toFixed(1).replace(".",",")+" MB" : Math.max(1, Math.round(n/1024))+" kB";
+const fileIco = t => /^image\//.test(t) ? "🖼️" : /^video\//.test(t) ? "🎬" : /pdf/.test(t) ? "📄" : /sheet|excel/.test(t) ? "📊" : "📎";
+function filesHTML(list){
+  return (list||[]).length ? `<div class="mfiles">${list.map(f=>{ const src = f.url || "", dat = f.url ? "" : ` data-fid="${esc(f.id||"")}"`;
+    if(/^image\//.test(f.type)) return `<a class="mimg" href="${esc(src)||"#"}" target="_blank" rel="noopener"${dat}><img alt="${esc(f.name)}" src="${esc(src)}"${dat}></a>`;
+    if(/^video\//.test(f.type)) return `<video class="mvid" controls preload="metadata" src="${esc(src)}"${dat}></video>`;
+    return `<a class="mdoc" href="${esc(src)||"#"}" target="_blank" rel="noopener" download="${esc(f.name)}"${dat}><span>${fileIco(f.type)}</span><b>${esc(f.name)}</b><small>${f.size?fmtSize(f.size):""}</small></a>`; }).join("")}</div>` : "";
+}
+/* con il backend gli allegati si scaricano con l'accesso del tecnico */
+const FILE_URLS = {};
+function loadFiles(box){
+  box.querySelectorAll("[data-fid]").forEach(el=>{ const id = el.dataset.fid; if(!id || !API) return;
+    const set = u => { if(el.tagName==="A") el.href = u; else el.src = u; el.removeAttribute("data-fid"); };
+    if(FILE_URLS[id]) return set(FILE_URLS[id]);
+    fetch(API+"/api/app/file/"+id, {headers:{Authorization:"Bearer "+TOKEN}}).then(r=>r.ok ? r.blob() : Promise.reject()).then(b=>{ FILE_URLS[id] = URL.createObjectURL(b); set(FILE_URLS[id]); }).catch(()=>{}); });
+}
 function msgHTML(m, i){
   if(m.k==="fwd") return `<div class="msg fwd"><small>${m.kind==="mail"?"Mail":"WhatsApp"}${m.from?" di "+esc(m.from):" del cliente"} · ${esc(m.t)}</small>${m.lines?m.lines.map(l=>`<q><span class="mono">${esc(l.time)}</span> ${esc(l.text)}</q>`).join(""):`<q>${esc(m.text)}</q>`}${m.photos?`<small style="margin-top:6px">${m.photos} foto allegate</small>`:""}</div>`;
-  if(m.k==="me") return `<div class="msg out${m.cc?" toc":""}"><small><span class="who-tec" title="Tecnico">${ICO_TEC}</span> ${m.cc?"Messaggio a "+esc((personOf(S.threads[S.openThread]||{})||{n:m.cc}).n):"Nota interna"} · ${esc(m.t)}</small>${esc(m.text)}</div>`;
+  if(m.k==="me") return `<div class="msg out${m.cc?" toc":""}"><small><span class="who-tec" title="Tecnico">${ICO_TEC}</span> ${m.cc?"Messaggio a "+esc((personOf(S.threads[S.openThread]||{})||{n:m.cc}).n):"Nota interna"} · ${esc(m.t)}</small>${esc(m.text)}${filesHTML(m.files)}</div>`;
   return `<div class="msg in"><small><span class="who-age" title="Ufficio · agente">${ICO_AGE}</span> Ufficio · ${esc(m.t)}</small>${esc(m.text)}${m.forClient?`<div class="copybox"><span class="lbl">Da mandare a ${esc(firstName(personOf(S.threads[S.openThread]||{})))}</span><p id="cb-${i}">${esc(m.forClient)}</p><div class="cb-act"><button class="btn small primary" data-copy="${i}" type="button">Copia negli appunti</button>${waBtn(curTel, m.forClient, "Apri chat cliente")}</div></div>`:""}</div>`;
+}
+const ICO_CALL = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>`;
+const ICO_VIDEO = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg>`;
+const ICO_CLIP = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m20 11-8 8a5 5 0 0 1-7-7l8-8a3.5 3.5 0 0 1 5 5l-8 8a2 2 0 0 1-3-3l7-7"/></svg>`;
+const ICO_CAM = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>`;
+const ICO_REC = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h11v10H4z"/><path d="m15 11 5-3v8l-5-3"/><circle cx="8" cy="12" r="1.5" fill="currentColor"/></svg>`;
+const ICO_MIC = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>`;
+/* allegati in preparazione: le foto si rimpiccioliscono, video e documenti partono così come sono (max 12 MB) */
+const MAX_ATT = 12*1024*1024;
+function addAtts(list){
+  S.att = S.att || [];
+  for(const file of [...(list||[])]){
+    if(S.att.length >= 10){ toast("Massimo 10 allegati per messaggio"); break; }
+    if(!/^image\//.test(file.type) && file.size > MAX_ATT){ toast("«"+file.name+"» supera 12 MB: mandalo su WhatsApp o per mail"); continue; }
+    const a = {name:file.name || "allegato", type:file.type || "application/octet-stream", size:file.size, busy:true, url:URL.createObjectURL(file)};
+    S.att.push(a);
+    const done = (data, type, name, size) => { a.data = data; if(type) a.type = type; if(name) a.name = name; if(size) a.size = size; a.busy = false; paintAtts(); };
+    if(/^image\/(jpeg|png|webp|heic|heif)/.test(file.type)) shrink(file).then(r=>r ? done(r.data, r.type, r.name, Math.round(r.data.length*0.75)) : done(null));
+    else { const fr = new FileReader(); fr.onload = ()=>done(String(fr.result).split(",")[1]); fr.onerror = ()=>done(null); fr.readAsDataURL(file); }
+  }
+  paintAtts();
+}
+function paintAtts(){
+  const box = $("#c-atts"); if(!box) return; const list = S.att || [];
+  box.hidden = !list.length;
+  box.innerHTML = list.map((a,i)=>`<span class="att">${/^image\//.test(a.type)&&a.url?`<img src="${esc(a.url)}" alt="">`:`<span>${fileIco(a.type)}</span>`}<b>${esc(a.name)}</b><small>${a.busy?"preparo…":fmtSize(a.size||0)}</small><button type="button" data-attx="${i}" aria-label="Togli ${esc(a.name)}">✕</button></span>`).join("");
+  box.querySelectorAll("[data-attx]").forEach(b=>b.onclick=()=>{ S.att.splice(+b.dataset.attx,1); paintAtts(); });
+}
+/* dettatura: il riconoscimento vocale del telefono scrive nel campo del messaggio */
+let REC = null;
+function stopMic(){ if(REC){ try{ REC.stop(); }catch(e){} } }
+function toggleMic(field, btn){
+  if(REC){ stopMic(); return; }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){ toast("Dettatura non disponibile qui: usa il tasto del microfono sulla tastiera del telefono"); field.focus(); return; }
+  const r = new SR(), base = field.value ? field.value.replace(/\s*$/," ") : "";
+  r.lang = "it-IT"; r.interimResults = true; r.continuous = true;
+  let fin = "";
+  r.onresult = e => { let tmp = ""; for(let i=e.resultIndex; i<e.results.length; i++){ const t = e.results[i][0].transcript; if(e.results[i].isFinal) fin += t; else tmp += t; } field.value = base + fin + tmp; };
+  r.onerror = e => toast(e.error==="not-allowed" ? "Permetti l'uso del microfono per dettare" : "Dettatura interrotta");
+  r.onend = () => { REC = null; btn.setAttribute("aria-pressed","false"); btn.classList.remove("on"); };
+  try{ r.start(); REC = r; btn.setAttribute("aria-pressed","true"); btn.classList.add("on"); toast("Parla: scrivo io. Tocca di nuovo il microfono per finire"); }catch(e){ toast("Dettatura non disponibile"); }
+}
+/* videochiamata: una stanza Jitsi Meet per il ticket, senza account; il link si manda al cliente */
+function videoCall(th, k, cm){
+  const room = "TicketFarm-"+String(th.ticket).replace(/\D/g,"")+"-"+Math.random().toString(36).slice(2,8);
+  const url = "https://meet.jit.si/"+room, nome = k ? firstName(k) : "il cliente", tel = (k&&k.tel) || firstTel(cl(th.client));
+  const txt = "Buongiorno, per il ticket "+th.ticket+" possiamo vederci in videochiamata qui: "+url;
+  const root = $("#sheet-root");
+  root.innerHTML = `<div class="sheet-bg" id="sb"><div class="sheet" role="dialog" aria-label="Videochiamata"><div class="grab"></div>
+    <div class="client">Videochiamata con ${esc(k?k.n:"il cliente")}</div>
+    <span class="sub">Si apre nel browser, senza account. Manda il link a ${esc(nome)} e entra anche tu.</span>
+    <span class="mono" style="font-size:12.5px;overflow-wrap:anywhere">${esc(url)}</span>
+    ${cm?`<button class="btn primary block" id="vc-chat" type="button">Manda il link a ${esc(nome)} nel ticket</button>`:""}
+    ${tel?`<a class="btn block" href="${esc(waUrl(tel, txt))}" target="_blank" rel="noopener" id="vc-wa">Manda il link su WhatsApp</a>`:""}
+    <a class="btn block ${cm?"":"primary"}" href="${esc(url)}" target="_blank" rel="noopener" id="vc-open">Entra nella videochiamata</a>
+    <button class="btn block" id="vc-x" type="button">Chiudi</button></div></div>`;
+  const close = ()=>{ root.innerHTML = ""; };
+  $("#sb").onclick = e => { if(e.target.id==="sb") close(); }; $("#vc-x").onclick = close;
+  if($("#vc-chat")) $("#vc-chat").onclick = ()=>{ close(); const ch = $("#chat"); ch.querySelectorAll(".mseg [data-mode]").forEach(x=>x.setAttribute("aria-checked", String(x.dataset.mode==="cliente"))); $("#c-text").value = txt; $("#c-send").click(); window.open(url, "_blank", "noopener"); };
 }
 function openChat(i){
   S.openThread = i; const th = S.threads[i]; if(th.unread && API) api("/api/app/read", {ticket:th.ticket}).catch(()=>{}); th.unread = false;
   const c = cl(th.client), cm = clientMailOf(th), k = th.client ? personOf(th) : null;
   const ch = $("#chat"); ch.hidden = false;
   ch.innerHTML = `<div class="chead"><button class="back" id="c-back" aria-label="Indietro">‹</button>
-      ${c?logo(c,36):""}<div style="min-width:0;flex:1"><div class="client">${esc(k?k.n:(c?c.name:"Cliente da identificare"))}</div><div class="row" style="justify-content:flex-start;gap:6px"><span class="sub" style="font-size:12.5px">${c?esc(c.name)+(k&&k.ruolo?" · "+esc(k.ruolo):""):""}</span></div><span class="mono" style="font-size:11.5px">${esc(th.ticket)}</span></div>${waBtn(k?k.tel:firstTel(c))}</div>
+      ${c?logo(c,36):""}<div style="min-width:0;flex:1"><div class="client">${esc(k?k.n:(c?c.name:"Cliente da identificare"))}</div><div class="row" style="justify-content:flex-start;gap:6px"><span class="sub" style="font-size:12.5px">${c?esc(c.name)+(k&&k.ruolo?" · "+esc(k.ruolo):""):""}</span></div><span class="mono" style="font-size:11.5px">${esc(th.ticket)}</span></div>
+      ${(k&&k.tel)||firstTel(c)?`<a class="cbtn" href="tel:${esc(String((k&&k.tel)||firstTel(c)).replace(/[^+\d]/g,""))}" title="Chiama ${esc(k?k.n:"")}" aria-label="Chiama">${ICO_CALL}</a>`:""}
+      <button class="cbtn" type="button" id="c-video" title="Videochiamata" aria-label="Videochiamata">${ICO_VIDEO}</button>${waBtn(k?k.tel:firstTel(c))}</div>
     <div class="msgs" id="msgs"></div>
     <div class="composer">
       <div class="mseg" role="radiogroup" aria-label="Tipo di messaggio"><button type="button" role="radio" data-mode="nota" aria-checked="${!cm}">Nota interna</button><button type="button" role="radio" data-mode="cliente" aria-checked="${!!cm}" ${cm?"":"disabled title=\"Questo contatto non ha una mail\""}>Messaggio a ${esc(firstName(k))}</button></div>
+      <div class="atts" id="c-atts" hidden></div>
+      <div class="ctools">
+        <label class="cbtn" title="Allega foto, video o documento" aria-label="Allega file">${ICO_CLIP}<input type="file" id="c-file" multiple accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.odt,.ods,.txt,.zip" hidden></label>
+        <label class="cbtn" title="Scatta una foto" aria-label="Scatta una foto">${ICO_CAM}<input type="file" id="c-cam" accept="image/*" capture="environment" hidden></label>
+        <label class="cbtn" title="Registra un video" aria-label="Registra un video">${ICO_REC}<input type="file" id="c-vid" accept="video/*" capture="environment" hidden></label>
+        <button class="cbtn" type="button" id="c-mic" title="Detta il messaggio" aria-label="Detta il messaggio" aria-pressed="false">${ICO_MIC}</button>
+      </div>
       <div class="line"><textarea class="input" id="c-text" placeholder="${cm?"Scrivi a "+esc(firstName(k))+"…":"Scrivi una nota interna…"}"></textarea><button class="btn primary" id="c-send" type="button">Invia</button></div>
       <button class="linkbtn" id="c-fwd" type="button">+ Inoltra un altro messaggio del cliente su questo ticket</button>
     </div>`;
   drawMsgs();
-  $("#c-back").onclick = ()=>{ ch.hidden = true; S.openThread = null; renderMessaggi(); };
+  $("#c-back").onclick = ()=>{ stopMic(); ch.hidden = true; S.openThread = null; renderMessaggi(); };
   $("#c-send").onclick = ()=>{
-    const v = $("#c-text").value.trim(); if(!v){ toast("Scrivi prima il messaggio"); return; }
+    const v = $("#c-text").value.trim(), att = S.att || []; if(!v && !att.length){ toast("Scrivi prima il messaggio o allega un file"); return; }
+    if(att.some(a=>a.busy)){ toast("Attendi: sto preparando gli allegati"); return; }
+    stopMic();
     const cc = cm && ch.querySelector('.mseg [data-mode="cliente"]').getAttribute("aria-checked")==="true" ? cm : "";
     if(API){ const b=$("#c-send"); b.disabled=true;
-      api("/api/app/note", {ticket:th.ticket, text:v, cc:!!cc}).then(r=>{ applyData(r.data); reopen(th.ticket); toast(cc?"Messaggio inviato a "+(k?k.n:"cliente"):"Nota salvata"); })
+      api("/api/app/note", {ticket:th.ticket, text:v, cc:!!cc, files:att.map(({name,type,data})=>({name,type,data}))}).then(r=>{ S.att = []; applyData(r.data); reopen(th.ticket); toast(cc?"Messaggio inviato a "+(k?k.n:"cliente"):"Nota salvata"); })
         .catch(e=>{ b.disabled=false; toast("Invio non riuscito: "+e.message+". Riprova."); }); return; }
-    th.msgs.push({k:"me", t:nowStr(), text:v, cc}); $("#c-text").value=""; drawMsgs(); renderMessaggi();
+    th.msgs.push({k:"me", t:nowStr(), text:v, cc, files:att.length ? att.map(({name,type,size,url})=>({name,type,size,url})) : undefined}); S.att = []; paintAtts(); $("#c-text").value=""; drawMsgs(); renderMessaggi();
     toast(cc?"Messaggio inviato a "+(k?k.n:"cliente")+" (prova)":"Nota salvata (prova)");
   };
   ch.querySelectorAll(".mseg [data-mode]").forEach(b=>b.onclick=()=>{ if(b.disabled) return;
     ch.querySelectorAll(".mseg [data-mode]").forEach(x=>x.setAttribute("aria-checked", String(x===b)));
     $("#c-text").placeholder = b.dataset.mode==="cliente" ? "Scrivi a "+firstName(k)+"…" : "Scrivi una nota interna…"; $("#c-text").focus(); });
-  $("#c-fwd").onclick = ()=>{ ch.hidden = true; S.openThread = null; S.f = blankForm(); if(c){ S.f.client=c.id; S.f.dest=th.ticket; } show("inoltra"); };
+  S.att = []; paintAtts();
+  ["#c-file","#c-cam","#c-vid"].forEach(id=>$(id).onchange = e => { addAtts(e.target.files); e.target.value = ""; });
+  $("#c-mic").onclick = ()=>toggleMic($("#c-text"), $("#c-mic"));
+  $("#c-video").onclick = ()=>videoCall(th, k, cm);
+  $("#c-fwd").onclick = ()=>{ stopMic(); ch.hidden = true; S.openThread = null; S.f = blankForm(); if(c){ S.f.client=c.id; S.f.dest=th.ticket; } show("inoltra"); };
   updateCount();
 }
 function drawMsgs(){
   const th = S.threads[S.openThread]; const tc = cl(th.client); curSys = tc ? tc.sys : ""; curTel = (personOf(th)||{}).tel || firstTel(tc); const box = $("#msgs"); if(!box) return;
   box.innerHTML = th.msgs.map(msgHTML).join("") + (th.typing?`<div class="typing">Ticket Farm sta rispondendo…</div>`:"");
+  loadFiles(box);
   box.scrollTop = box.scrollHeight;
   box.querySelectorAll("[data-copy]").forEach(b=>b.onclick=()=>{
     const i = +b.dataset.copy, text = th.msgs[i].forClient;

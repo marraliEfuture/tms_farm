@@ -139,6 +139,8 @@ tbody tr.sel td{background:var(--accent-soft)}
 .p-urg{background:var(--red-soft);color:var(--red)}
 .p-mut{background:var(--raise);color:var(--muted)}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
+.mf-tools{display:flex;flex-direction:column;gap:6px}.mf-atts{display:flex;flex-wrap:wrap;gap:6px}
+.bub-files{display:flex;flex-direction:column;gap:6px;margin:6px 0}.bub-files img{display:block;max-width:260px;max-height:220px;border-radius:10px;background:var(--surface-2)}.bub-files video{max-width:300px;border-radius:10px;background:#000}.bub-doc{display:inline-block;background:var(--surface-2);border-radius:8px;padding:6px 10px;color:var(--ink);text-decoration:none;font-weight:600;font-size:13px}
 .msgs{display:grid;grid-template-columns:340px minmax(0,1fr);gap:16px;align-items:start}
 .msg-l{display:flex;flex-direction:column;gap:10px;position:sticky;top:16px}
 .msg-list{display:flex;flex-direction:column;gap:6px;max-height:calc(100vh - 260px);overflow:auto}
@@ -1329,12 +1331,36 @@ function askTicket(b){ b.onclick=()=>{
 /* ---------- Messaggi: le conversazioni dei tecnici con Ticket Farm, ticket per ticket ---------- */
 /* conferma con un secondo tocco sullo stesso pulsante */
 function confirmInline(b){ if(b.dataset.sure){ return true; } b.dataset.sure = "1"; const t = b.textContent; b.textContent = "Sicuro? Tocca di nuovo"; b.classList.add("warnb"); setTimeout(()=>{ delete b.dataset.sure; b.textContent = t; b.classList.remove("warnb"); }, 3000); return false; }
+/* allegati dei messaggi (foto, video, documenti mandati dall'app): si scaricano con l'accesso della console */
+const AFILE = {};
+const afiles = list => (list||[]).length ? `<div class="bub-files">${list.map(f=>/^image\//.test(f.type) ? `<a href="#" data-afid="${esc(f.id||"")}" target="_blank" rel="noopener"><img alt="${esc(f.name)}" data-afid="${esc(f.id||"")}" src="${esc(f.url||"")}"></a>`
+  : /^video\//.test(f.type) ? `<video controls preload="metadata" data-afid="${esc(f.id||"")}" src="${esc(f.url||"")}"></video>` : `<a class="bub-doc" href="${esc(f.url||"#")}" data-afid="${esc(f.id||"")}" download="${esc(f.name)}">📎 ${esc(f.name)}</a>`).join("")}</div>` : "";
+/* dettatura con il riconoscimento vocale del browser (Chrome, Edge, Safari) */
+let DREC = null;
+function dictate(field, btn){
+  if(DREC){ try{ DREC.stop(); }catch(e){} return; }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){ toast("Dettatura non disponibile in questo browser: usa Chrome o Edge"); return; }
+  const r = new SR(), base = field.value ? field.value.replace(/\s*$/," ") : ""; let fin = "";
+  r.lang = "it-IT"; r.interimResults = true; r.continuous = true;
+  r.onresult = e => { let tmp = ""; for(let i=e.resultIndex; i<e.results.length; i++){ const t = e.results[i][0].transcript; if(e.results[i].isFinal) fin += t; else tmp += t; } field.value = base + fin + tmp; };
+  r.onerror = e => toast(e.error==="not-allowed" ? "Permetti l'uso del microfono per dettare" : "Dettatura interrotta");
+  r.onend = () => { DREC = null; btn.setAttribute("aria-pressed","false"); btn.classList.remove("primary"); };
+  try{ r.start(); DREC = r; btn.setAttribute("aria-pressed","true"); btn.classList.add("primary"); toast("Parla: scrivo io. Clicca di nuovo 🎤 per finire"); }catch(e){ toast("Dettatura non disponibile"); }
+}
+function loadAfiles(box){
+  if(!LIVE) return;
+  box.querySelectorAll("[data-afid]").forEach(el=>{ const id = el.dataset.afid; if(!id) return;
+    const set = u => { if(el.tagName==="A") el.href = u; else el.src = u; };
+    if(AFILE[id]) return set(AFILE[id]);
+    fetch("/api/admin/file/"+id, {headers:H()}).then(r=>r.ok?r.blob():Promise.reject()).then(b=>{ AFILE[id] = URL.createObjectURL(b); set(AFILE[id]); }).catch(()=>{}); });
+}
 const bubbles = (th, tools) => (th.msgs||[]).map((m, i)=>{
   const who0 = m.k==="fwd" ? (m.from||"Cliente")+" · inoltrato da "+(th.tech||"tecnico") : m.k==="me" ? (m.cc?"Messaggio a "+(((th.contatto&&contactById(th.contatto))||{k:{n:m.cc}}).k.n):"Nota interna")+" · tecnico "+(th.tech||"") : (m.by ? m.by+" · ufficio" : "Ufficio");
   const ico = m.k==="tf" ? `<span style="color:${PCOLOR.agent}" title="Ufficio">${picon("agent",12)}</span> ` : m.k==="me" ? `<span style="color:${PCOLOR.op}" title="Tecnico">${picon("op",12)}</span> ` : "";
   const who = who0;
   const mine = tools && m.k==="tf" && m.by;
-  return `<div class="bub ${m.k}"><span class="bub-w">${ico}${esc(who)}</span><p>${esc(m.text)}</p>${m.forClient?`<div class="bub-fc"><b>Testo per il cliente</b>${esc(m.forClient)}</div>`:""}<span class="bub-t">${esc(m.t||"")}${m.mod?" · modificato":""}</span>${mine?`<span class="bub-x"><button class="linkback" type="button" data-medit="${i}" data-perm="ticket:m">Modifica</button><button class="linkback" type="button" data-mdel="${i}" data-perm="ticket:e">Elimina</button></span>`:""}</div>`;
+  return `<div class="bub ${m.k}"><span class="bub-w">${ico}${esc(who)}</span><p>${esc(m.text)}</p>${afiles(m.files)}${m.forClient?`<div class="bub-fc"><b>Testo per il cliente</b>${esc(m.forClient)}</div>`:""}<span class="bub-t">${esc(m.t||"")}${m.mod?" · modificato":""}</span>${mine?`<span class="bub-x"><button class="linkback" type="button" data-medit="${i}" data-perm="ticket:m">Modifica</button><button class="linkback" type="button" data-mdel="${i}" data-perm="ticket:e">Elimina</button></span>`:""}</div>`;
 }).join("") || `<p class="dim">Nessun messaggio.</p>`;
 function myThreads(){ const mine = ROLE==="op" ? myTech().ini : ""; return (S.threads||[]).filter(th=>!mine || th.tech===mine); }
 function messaggi(){
@@ -1373,8 +1399,9 @@ function messaggi(){
     box.innerHTML = `<div class="msg-h"><div>${logo(c)}<div><b>${esc(kk?kk.n:c.name)}</b>${kk&&kk.ruolo?` <span class="dim">· ${esc(kk.ruolo)}</span>`:""}<div class="dim">${esc(c.name)} · <span class="mono">${esc(th.ticket)}</span>${t?" · "+esc(t.title)+" · "+esc(t.state):""} · tecnico ${esc(th.tech||"")}</div></div></div>
         <button class="btn small primary" type="button" id="mf-open">Apri ticket</button></div>
       <div class="chatbox" id="mf-bub">${bubbles(th, true)}</div>
-      <form class="msg-f" id="mf-form" data-perm="ticket:m"><textarea class="input" id="mf-text" rows="2" placeholder="Scrivi al tecnico ${esc(th.tech||"")}: lo riceve nell'app" required></textarea><button class="btn primary" type="submit">Invia</button></form>`;
-    const bb = $("#mf-bub"); bb.scrollTop = bb.scrollHeight;
+      <div class="mf-atts" id="mf-atts" hidden></div>
+      <form class="msg-f" id="mf-form" data-perm="ticket:m"><div class="mf-tools"><label class="btn small" title="Allega foto, video o documento">📎<input type="file" id="mf-file" multiple accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.odt,.ods,.txt,.zip" hidden></label><button class="btn small" type="button" id="mf-mic" title="Detta il messaggio" aria-pressed="false">🎤</button></div><textarea class="input" id="mf-text" rows="2" placeholder="Scrivi al tecnico ${esc(th.tech||"")}: lo riceve nell'app"></textarea><button class="btn primary" type="submit">Invia</button></form>`;
+    const bb = $("#mf-bub"); loadAfiles(bb); bb.scrollTop = bb.scrollHeight;
     $("#mf-open").onclick = ()=>ticketSheet(th.ticket);
     const ref = i => ({ticket:th.ticket, techMail:th.techMail, id:th.msgs[i].id});
     box.querySelectorAll("[data-medit]").forEach(b=>b.onclick=()=>{ const i = +b.dataset.medit, m = th.msgs[i];
@@ -1387,10 +1414,17 @@ function messaggi(){
       if(!confirmInline(b)) return;
       if(LIVE) return fetch("/api/admin/threads/msg", {method:"DELETE", headers:{"Content-Type":"application/json", ...H()}, body:JSON.stringify(ref(i))}).then(r=>r.ok?r.json():Promise.reject(new Error("non riuscito"))).then(()=>{ th.msgs.splice(i,1); paintList(); toast("Messaggio eliminato"); }).catch(err=>toast(err.message));
       th.msgs.splice(i,1); paintList(); toast("Messaggio eliminato (prova)"); });
-    $("#mf-form").onsubmit = e => { e.preventDefault(); const text = $("#mf-text").value.trim(); if(!text) return;
-      if(LIVE) return post("/api/admin/threads/reply", {ticket:th.ticket, techMail:th.techMail, text}).then(r=>{ th.msgs.push(r.msg); paintList(); toast("Inviato a "+th.tech); }).catch(err=>toast("Non inviato: "+err.message));
+    S.matt = []; const paintAtt = () => { const b = $("#mf-atts"); b.hidden = !S.matt.length; b.innerHTML = S.matt.map((a,i)=>`<span class="pill">${a.busy?"⏳":"📎"} ${esc(a.name)} <button class="linkback" type="button" data-max="${i}" aria-label="Togli">✕</button></span>`).join(" ");
+      b.querySelectorAll("[data-max]").forEach(x=>x.onclick=()=>{ S.matt.splice(+x.dataset.max,1); paintAtt(); }); };
+    $("#mf-file").onchange = e => { for(const f of [...e.target.files]){ if(f.size > 12*1024*1024){ toast("«"+f.name+"» supera 12 MB"); continue; }
+      const a = {name:f.name, type:f.type||"application/octet-stream", size:f.size, busy:true, url:URL.createObjectURL(f)}; S.matt.push(a);
+      const fr = new FileReader(); fr.onload = ()=>{ a.data = String(fr.result).split(",")[1]; a.busy = false; paintAtt(); }; fr.readAsDataURL(f); } e.target.value = ""; paintAtt(); };
+    $("#mf-mic").onclick = ()=>dictate($("#mf-text"), $("#mf-mic"));
+    $("#mf-form").onsubmit = e => { e.preventDefault(); const text = $("#mf-text").value.trim(), att = S.matt; if(!text && !att.length){ toast("Scrivi il messaggio o allega un file"); return; }
+      if(att.some(a=>a.busy)){ toast("Attendi: sto preparando gli allegati"); return; }
+      if(LIVE) return post("/api/admin/threads/reply", {ticket:th.ticket, techMail:th.techMail, text, files:att.map(({name,type,data})=>({name,type,data}))}).then(r=>{ th.msgs.push(r.msg); paintList(); toast("Inviato a "+th.tech); }).catch(err=>toast("Non inviato: "+err.message));
       { const tk = S.tickets.find(x=>x.id===th.ticket); if(tk && RECAP_CFG.attivo && RECAP_CFG.messaggio) recapLocal(tk, "messaggio"); }
-      th.msgs.push({k:"tf", t:new Date().toLocaleTimeString("it-CH",{hour:"2-digit",minute:"2-digit"}), by:(ME&&ME.nome)||"Ufficio", id:"o"+Date.now().toString(36), text}); logLocal("Messaggio al tecnico", th.ticket+" · "+th.tech, "ticket"); paintList(); toast("Inviato a "+th.tech+" (prova)"); };
+      th.msgs.push({k:"tf", t:new Date().toLocaleTimeString("it-CH",{hour:"2-digit",minute:"2-digit"}), by:(ME&&ME.nome)||"Ufficio", id:"o"+Date.now().toString(36), text, files:att.length?att.map(({name,type,size,url})=>({name,type,size,url})):undefined}); logLocal("Messaggio al tecnico", th.ticket+" · "+th.tech, "ticket"); paintList(); toast("Inviato a "+th.tech+" (prova)"); };
   };
   $("#mf-q").oninput = e => { M.q = e.target.value; paintList(); };
   $("#mf-ord").value = M.ord || "rec"; $("#mf-ord").onchange = e => { M.ord = e.target.value; paintList(); };

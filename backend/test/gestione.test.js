@@ -166,3 +166,18 @@ test("la console non riceve i segreti dei tecnici; l'ufficio può azzerare la si
   assert.equal((await call("PUT", "/api/admin/techs/lc%40efuture.it", ad, { azzeraSicurezza: true })).status, 200);
   assert.ok((await call("POST", "/api/app/login", null, { mail: "lc@efuture.it", code: "123456" })).json.token);
 });
+
+test("app: messaggio con allegato (foto) salvato e scaricabile", async () => {
+  const tk = (await call("POST", "/api/app/login", null, { mail: "mb@efuture.it", code: "123456" })).json.token;
+  const d = (await call("GET", "/api/app/data", tk)).json;
+  const ticket = d.threads[0].ticket;
+  const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+  assert.equal((await call("POST", "/api/app/note", tk, { ticket, text: "", files: [{ name: "x.exe", type: "application/x-msdownload", data: png }] })).status, 400, "tipo non ammesso");
+  const r = await call("POST", "/api/app/note", tk, { ticket, text: "", files: [{ name: "display.png", type: "image/png", data: png }] });
+  assert.equal(r.status, 200);
+  const m = r.json.data.threads.find(t => t.ticket === ticket).msgs.slice(-1)[0];
+  assert.equal(m.files[0].name, "display.png");
+  const f = await fetch(base + "/api/app/file/" + m.files[0].id, { headers: { Authorization: "Bearer " + tk } });
+  assert.equal(f.status, 200); assert.equal(f.headers.get("content-type"), "image/png");
+  assert.equal((await fetch(base + "/api/app/file/" + m.files[0].id)).status, 401, "serve l'accesso");
+});

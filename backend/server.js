@@ -9,6 +9,7 @@ const store = require("./src/store");
 const auth = require("./src/auth");
 const recap = require("./src/recap");
 const tpl = require("./src/templates");
+const files = require("./src/files");
 const sources = require("./src/connectors");
 const mail = require("./src/mail");
 const { recognize } = require("./src/recognize");
@@ -169,6 +170,10 @@ app.post("/api/app/passkey/register/verify", auth.requireTech, async (req, res) 
   } catch (e) { res.status(400).json({ error: "passkey non salvata: " + e.message }); }
 });
 app.delete("/api/app/passkey/:id", auth.requireTech, (req, res) => { if (!auth.techRemovePk(req.tech, req.params.id)) return res.status(404).json({ error: "passkey non trovata" }); res.json(auth.techSecurity(req.tech)); });
+/* allegati: solo per chi ha accesso (tecnico dall'app, ufficio dalla console) */
+const sendFile = (req, res) => { const f = files.get(req.params.id); if (!f) return res.sendStatus(404);
+  res.set("Content-Type", f.meta.type).set("Content-Disposition", (/^(image|video|audio)\//.test(f.meta.type) || f.meta.type === "application/pdf" ? "inline" : "attachment") + "; filename*=UTF-8''" + encodeURIComponent(f.meta.name)).set("X-Content-Type-Options", "nosniff").sendFile(f.file); };
+app.get("/api/app/file/:id", auth.requireTech, sendFile);
 app.get("/api/app/data", auth.requireTech, async (req, res, next) => { try { res.json(await appData(req.tech)); } catch (e) { next(e); } });
 /* promemoria e ordine delle attività per il tecnico collegato all'app */
 app.get("/api/app/ai/agenda", auth.requireTech, async (req, res, next) => { try { res.json(await aiAgenda(req.tech.ini, req.query.fresh === "1")); } catch (e) { next(e); } });
@@ -229,7 +234,9 @@ app.post("/api/app/note", auth.requireTech, async (req, res, next) => {
   try {
     const st = store.load(), tech = req.tech, text = String(req.body.text || "").trim();
     const th = (st.threads[tech.mail] || []).find(t => t.ticket === req.body.ticket);
-    if (!th || !text) return res.status(400).json({ error: "conversazione o testo mancante" });
+    const att = files.save(req.body.files);
+    if (att.error) return res.status(400).json({ error: att.error });
+    if (!th || (!text && !att.saved.length)) return res.status(400).json({ error: "conversazione o testo mancante" });
     const { tickets, clients } = await sources.data(); clientsCache = clients;
     const t = tickets.find(x => x.id === th.ticket);
     if (!th.contatto && t && t.contatto) th.contatto = t.contatto;
@@ -237,11 +244,11 @@ app.post("/api/app/note", auth.requireTech, async (req, res, next) => {
     const cc = req.body.cc ? clientMailOf(th, st, tech) : "";
     const msg = mail.buildMessage({ tech, client: null, ticket: th.ticket, isNew: false, subject: "Re: " + th.ticket + (t ? " - " + t.title : ""), cc,
       text: text + (cc ? "\n\n" + tpl.render("firma_tecnico", { tecnico: tech.nome || tech.mail, ticket: th.ticket }).testo : "\n\n-- Nota del tecnico inviata con l'app Ticket Farm --"),
-      inReplyTo: t ? (t.msgIds || []).slice(-1)[0] || "" : "", time: "", origin: cc ? "risposta del tecnico al cliente" : "nota del tecnico" });
+      inReplyTo: t ? (t.msgIds || []).slice(-1)[0] || "" : "", time: "", origin: cc ? "risposta del tecnico al cliente" : "nota del tecnico", files: att.mail });
     const sent = await mail.send(msg);
     await logMail(msg, sent);
     if (cc) audit.add(tech.mail, "Risposta al cliente dall'app", th.ticket + " · copia a " + cc, "app");
-    th.msgs.push({ k: "me", t: now(), text, cc: cc || undefined });
+    th.msgs.push({ k: "me", t: now(), text, cc: cc || undefined, files: att.saved.length ? att.saved : undefined });
     /* nota interna: il cliente riceve solo l'avviso che c'è un aggiornamento (mai il testo); il messaggio al cliente gli arriva già in copia */
     if (!cc && t) await sendRecap(t, "messaggio", { chi: "Il tecnico" });
     store.save();
@@ -312,6 +319,7 @@ app.post("/api/admin/passkey/login/verify", async (req, res) => {
   } catch (e) { res.status(401).json({ error: "passkey non valida: " + e.message }); }
 });
 app.use("/api/admin", auth.requireAdmin);
+app.get("/api/admin/file/:id", sendFile);
 /* permessi del profilo: v vedere, m creare/modificare, e eliminare */
 const need = (area, right) => (req, res, next) => settings.can(req.admin.profilo || "admin", area, right) ? next() : res.status(403).json({ error: "il tuo profilo non ha questo permesso" });
 const log = (req, azione, dettaglio, area) => audit.add(req.admin && req.admin.user, azione, dettaglio, area);
@@ -394,8 +402,11 @@ app.get("/api/admin/state", async (req, res, next) => {
 app.post("/api/admin/threads/reply", need("ticket", "m"), (req, res) => {
   const st = store.load(), text = String(req.body.text || "").trim().slice(0, 2000), m = String(req.body.techMail || "");
   const th = (st.threads[m] || []).find(t => t.ticket === req.body.ticket);
-  if (!th || !text) return res.status(400).json({ error: "conversazione o testo mancante" });
+  const att = files.save(req.body.files);
+  if (att.error) return res.status(400).json({ error: att.error });
+  if (!th || (!text && !att.saved.length)) return res.status(400).json({ error: "conversazione o testo mancante" });
   const msg = { k: "tf", t: now(), text: text, by: req.admin.nome || req.admin.user || "Ufficio", id: "o" + Date.now().toString(36) };
+  if (att.saved.length) msg.files = att.saved;
   if (req.body.forClient) msg.forClient = String(req.body.forClient).slice(0, 2000);
   th.msgs.push(msg); th.unread = true; store.save();
   log(req, "Messaggio al tecnico", th.ticket + " · " + m, "ticket");
