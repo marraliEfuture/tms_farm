@@ -69,12 +69,17 @@ async function clientsWithOpen() {
   }));
 }
 async function appData(tech) {
-  const st = store.load();
+  const st = store.load(), all = (await sources.data()).tickets, strip = ({ msgIds, ...t }) => t;
+  const canZona = (settings.profiles().op.perm.zona || "").includes("v");
+  const mieAree = tech.aree || [], colleghi = auth.techs().filter(x => x.ini !== tech.ini && (x.aree || []).some(a => mieAree.includes(a))).map(x => x.ini);
+  const inZona = t => t.state !== "Chiuso" && (!t.tech || colleghi.includes(t.tech));
   if (!st.threads[tech.mail]) { st.threads[tech.mail] = JSON.parse(JSON.stringify((cfg.mode === "demo" && sources.demo.seedThreads[tech.mail]) || [])); store.save(); }
   return { me: { mail: tech.mail, ini: tech.ini, zona: tech.zona, nome: tech.nome }, support: settings.support(), mode: cfg.mode,
     clients: await clientsWithOpen(), threads: st.threads[tech.mail],
     /* i suoi ticket, anche chiusi, per la schermata Ticket dell'app */
-    tickets: (await sources.data()).tickets.filter(t => t.tech === tech.ini).map(({ msgIds, ...t }) => t) };
+    tickets: all.filter(t => t.tech === tech.ini).map(strip),
+    /* con il permesso "zona" del profilo Tecnico: anche i ticket dei colleghi della stessa area e quelli da assegnare */
+    canZona, zoneTickets: canZona ? all.filter(t => t.tech !== tech.ini && inZona(t)).map(strip) : [] };
 }
 /* registra la mail nel registro della console, con il riconoscimento che ne farebbe il backend */
 async function logMail(msg, sent) {

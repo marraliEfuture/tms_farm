@@ -337,9 +337,11 @@ a.btn{text-decoration:none}
   function play(cb){
     after = cb || null; done = false; el.hidden = false; el.classList.remove("out");
     try{ v.currentTime = 0; }catch(e){}
-    if(still){ v.pause(); timer = setTimeout(end, 1500); return; }
-    var p = v.play(); if(p && p.catch) p.catch(function(){ setTimeout(end, 1500); });
-    timer = setTimeout(end, 9000);
+    if(still){ v.pause(); timer = setTimeout(end, 1000); return; }
+    /* intro breve: il video del logo va a velocità 2,5× e dura al massimo 3,5 secondi */
+    try{ v.defaultPlaybackRate = 2.5; v.playbackRate = 2.5; }catch(e){}
+    var p = v.play(); if(p && p.catch) p.catch(function(){ setTimeout(end, 1200); });
+    timer = setTimeout(end, 3500);
   }
   document.getElementById("splash-skip").onclick = end;
   el.addEventListener("click", function(e){ if(e.target === el) end(); });
@@ -856,6 +858,15 @@ function actionSheet(id){
 }
 /* ---------- TICKET: i ticket del tecnico, con ricerca e stato ---------- */
 const DEMO_CLOSED = [{id:"Tck #714121", contatto:"che-1", client:"che", title:"Bilancia di precisione: verifica metrica", state:"Chiuso", opened:"2026-10-17"}];
+/* ticket dei colleghi della stessa zona (solo con il permesso «Ticket della propria zona»); in prova due esempi */
+const DEMO_ZONA = [{id:"Tck #714852", contatto:"cen-2", client:"cen", title:"Conducibilità: taratura della cella di misura", state:"Aperto", tech:"RT", opened:"2026-11-12"},
+  {id:"Tck #714855", contatto:"lab-1", client:"lab", title:"pH-metro: elettrodo da sostituire", state:"Aperto", tech:"", opened:"2026-11-13"}];
+function zoneTickets(){
+  const src = API ? (S.zoneTickets||[]) : DEMO_ZONA;
+  return src.map(t=>({...t, zona:true, c:cl(t.client), sys:(cl(t.client)||{}).sys})).filter(t=>t.c);
+}
+const canZona = () => API ? !!S.canZona : true;
+const anyTicket = id => myTickets().find(x=>x.id===id) || zoneTickets().find(x=>x.id===id);
 function myTickets(){
   if(S.tickets) return S.tickets.map(t=>({...t, c:cl(t.client)})).filter(t=>t.c);
   return [...CLIENTS.flatMap(c=>(c.open||[]).map(o=>({id:o.id, title:o.t, state:o.state||"Aperto", urg:o.urg, plan:o.plan, contatto:o.contatto, fornitore:o.fornitore, sys:c.sys, client:c.id, c}))),
@@ -874,28 +885,30 @@ function sortTickets(list, by){
 function renderTicket(){
   const el = $("#s-ticket"); S.tq = S.tq || ""; S.ts = S.ts || "aperti";
   S.tord = S.tord || "prio";
-  el.innerHTML = `<div class="row"><div><h2 class="sec">Ticket</h2><p class="sub">I tuoi ticket, aperti e chiusi</p></div><button class="btn small primary" type="button" id="tk-new">+ Nuovo</button></div>
+  el.innerHTML = `<div class="row"><div><h2 class="sec">Ticket</h2><p class="sub">${S.tscope==="zona"?"I ticket della tua zona: colleghi e da assegnare":"I tuoi ticket, aperti e chiusi"}</p></div><button class="btn small primary" type="button" id="tk-new">+ Nuovo</button></div>
+    ${canZona()?`<div class="mseg" role="radiogroup" aria-label="Quali ticket" id="tk-scope"><button type="button" role="radio" data-sc="" aria-checked="${!S.tscope}">I miei</button><button type="button" role="radio" data-sc="zona" aria-checked="${S.tscope==="zona"}">Della mia zona</button></div>`:""}
     <input class="input" id="tk-q" type="search" placeholder="Numero, cliente o richiesta" value="${esc(S.tq)}">
     <label class="sortsel">Ordina per <select class="input" id="tk-ord"><option value="prio">priorità</option><option value="int">data intervento</option><option value="new">più recenti</option><option value="cli">cliente A–Z</option><option value="stato">stato</option><option value="num">numero</option></select></label>
     <div class="tchips" id="tk-st"></div><div class="list" id="tk-list"></div>`;
   const paint = () => {
-    const q = S.tq.toLowerCase().replace(/[^a-z0-9]/g,""), all = myTickets().filter(t=>!q || [t.id, t.title, t.c.name].some(v=>String(v).toLowerCase().replace(/[^a-z0-9]/g,"").includes(q)));
+    const q = S.tq.toLowerCase().replace(/[^a-z0-9]/g,""), all = (S.tscope==="zona" ? zoneTickets() : myTickets()).filter(t=>!q || [t.id, t.title, t.c.name].some(v=>String(v).toLowerCase().replace(/[^a-z0-9]/g,"").includes(q)));
     $("#tk-st").innerHTML = TST.map(([k,l,f])=>`<button class="tchip" type="button" data-s="${k}" aria-pressed="${S.ts===k}">${l} <b>${all.filter(f).length}</b></button>`).join("");
     const f = (TST.find(x=>x[0]===S.ts)||TST[0])[2], list = sortTickets(all.filter(f), S.tord);
     $("#tk-list").innerHTML = list.map(t=>`<button class="item tk" type="button" data-t="${esc(t.id)}">
       <div class="row"><span class="nm who-row">${logo(t.c)}${esc(t.c.name)}</span>${t.urg?'<span class="pill p-urg">Urgente</span>':""}</div>
-      <div class="row" style="justify-content:flex-start;gap:8px"><span class="mono">${esc(t.id)}</span>${badge(t.sys)}<span class="tstate ${t.state==="Chiuso"?"off":/attesa/i.test(t.state)?"wait":""}">${esc(t.state)}</span></div>
+      <div class="row" style="justify-content:flex-start;gap:8px"><span class="mono">${esc(t.id)}</span>${badge(t.sys)}<span class="tstate ${t.state==="Chiuso"?"off":/attesa/i.test(t.state)?"wait":""}">${esc(t.state)}</span>${t.zona?`<span class="tstate ${t.tech?"":"wait"}">${t.tech?"di "+esc(t.tech):"da assegnare"}</span>`:""}</div>
       <span class="pv">${personOf(t)?esc(personOf(t).n)+" · ":""}${esc(t.title)}${t.plan?` · <b>${t.plan.day===0?"oggi":t.plan.day===1?"domani":dayName(t.plan.day)} ${esc(t.plan.time)}</b>`:""}</span></button>`).join("") || `<div class="empty">Nessun ticket.</div>`;
     $("#tk-list").querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>ticketSheet(b.dataset.t));
   };
   $("#tk-q").oninput = e => { S.tq = e.target.value; paint(); };
+  if($("#tk-scope")) $("#tk-scope").onclick = e => { const b = e.target.closest("[data-sc]"); if(b){ S.tscope = b.dataset.sc; if(S.tscope==="zona" && S.ts==="chiusi") S.ts = "aperti"; renderTicket(); } };
   $("#tk-ord").value = S.tord; $("#tk-ord").onchange = e => { S.tord = e.target.value; paint(); };
   $("#tk-st").onclick = e => { const b = e.target.closest("[data-s]"); if(b){ S.ts = b.dataset.s; paint(); } };
   $("#tk-new").onclick = ()=>{ S.f = blankForm(); show("inoltra"); };
   paint();
 }
 function ticketSheet(id){
-  const t = myTickets().find(x=>x.id===id); if(!t) return; const c = t.c, root = $("#sheet-root");
+  const t = anyTicket(id); if(!t) return; const c = t.c, root = $("#sheet-root");
   root.innerHTML = `<div class="sheet-bg" id="sb"><div class="sheet" role="dialog" aria-label="${esc(t.id)}">
     <div class="grab"></div>
     <div class="row"><div class="client who-row">${logo(c,40)}${esc(c.name)}</div>${badge(t.sys)}</div>
@@ -1145,7 +1158,7 @@ function api(path, body){
 }
 function applyData(d){
   if(!d) return;
-  CLIENTS = d.clients; S.threads = d.threads; SUPPORT = d.support; ME = d.me.mail; S.tickets = d.tickets || null;
+  CLIENTS = d.clients; S.threads = d.threads; SUPPORT = d.support; ME = d.me.mail; S.tickets = d.tickets || null; S.zoneTickets = d.zoneTickets || []; S.canZona = !!d.canZona;
   $("#who-zona").textContent = "Zona "+d.me.zona; $("#who-ini").textContent = d.me.ini;
   updateCount();
 }

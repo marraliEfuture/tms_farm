@@ -118,3 +118,20 @@ test("app: il messaggio al contatto parte in copia proprio a quella persona", as
   const n = await call("POST", "/api/app/note", tok, { ticket: "Tck #714139", text: "Vi mando il rapporto in giornata.", cc: true });
   assert.equal(n.json.data.threads.find(x => x.ticket === "Tck #714139").msgs.filter(m => m.k === "me").pop().cc, "l.rossi@caseificiovalle.ch");
 });
+
+test("il tecnico vede i suoi ticket; quelli della zona solo con il permesso", async () => {
+  const ad = await login("admin", "admin123");
+  const tk = (await call("POST", "/api/app/login", null, { mail: "mb@efuture.it", code: "123456" })).json.token;
+  let d = (await call("GET", "/api/app/data", tk)).json;
+  assert.ok(d.tickets.every(t => t.tech === "MB"));
+  assert.equal(d.canZona, false); assert.equal(d.zoneTickets.length, 0);
+  const p = (await call("GET", "/api/admin/state", ad)).json.profiles;
+  const body = Object.fromEntries(Object.entries(p).filter(([k]) => k !== "admin").map(([k, v]) => [k, v.perm]));
+  body.op.zona = "v";
+  assert.equal((await call("POST", "/api/admin/profiles", ad, body)).status, 200);
+  d = (await call("GET", "/api/app/data", tk)).json;
+  assert.equal(d.canZona, true);
+  assert.ok(d.zoneTickets.every(t => t.tech !== "MB" && t.state !== "Chiuso"));
+  assert.ok(d.zoneTickets.some(t => !t.tech), "vede anche quelli da assegnare");
+  assert.ok(!d.zoneTickets.some(t => t.tech === "LC"), "non quelli di un'altra zona");
+});

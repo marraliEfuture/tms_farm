@@ -52,15 +52,16 @@ function update(body) {
   s.graph = g; save(s);
   return { ok: true, settings: publicView() };
 }
-/* profili e permessi: per ogni area, v = vedere, m = creare/modificare, e = eliminare */
-const AREE = ["cruscotto", "posta", "ticket", "clienti", "utenti", "profili", "tecnici", "aree", "recap", "modelli", "office365", "ai", "collegamenti", "regole", "backup", "audit", "tutorial"];
+/* profili e permessi: per ogni area, v = vedere, m = creare/modificare, e = eliminare.
+   "zona": vedere anche i ticket dei colleghi della stessa area di lavoro (per i tecnici è spento di base) */
+const AREE = ["cruscotto", "posta", "ticket", "zona", "clienti", "utenti", "profili", "tecnici", "aree", "recap", "modelli", "office365", "ai", "collegamenti", "regole", "backup", "audit", "tutorial"];
 const P = o => Object.fromEntries(AREE.map(a => [a, o[a] || ""]));
 const DEFAULT_PROFILES = {
   admin: { nome: "Amministratore", desc: "Tutto, compresa la configurazione", base: true, perm: Object.fromEntries(AREE.map(a => [a, "vme"])) },
   resp: { nome: "Responsabile service", desc: "Lavoro quotidiano, tecnici, aree e regole; vede utenti e registro", base: true, perm: P({
-    cruscotto: "v", posta: "vm", ticket: "vme", clienti: "vme", utenti: "v", profili: "v", tecnici: "vme", aree: "vme", recap: "vm", modelli: "vm", collegamenti: "v", regole: "vm", audit: "v", tutorial: "v" }) },
+    cruscotto: "v", posta: "vm", ticket: "vme", zona: "v", clienti: "vme", utenti: "v", profili: "v", tecnici: "vme", aree: "vme", recap: "vm", modelli: "vm", collegamenti: "v", regole: "vm", audit: "v", tutorial: "v" }) },
   agent: { nome: "Agente", desc: "Ufficio: ticket, messaggi, clienti e posta in arrivo delle sue aree di lavoro", base: true, perm: P({
-    cruscotto: "v", posta: "vm", ticket: "vm", clienti: "vm", tecnici: "v", aree: "v", recap: "v", modelli: "v", tutorial: "v" }) },
+    cruscotto: "v", posta: "vm", ticket: "vm", zona: "v", clienti: "vm", tecnici: "v", aree: "v", recap: "v", modelli: "v", tutorial: "v" }) },
   op: { nome: "Tecnico", desc: "I suoi interventi, messaggi, ticket e clienti; nessuna configurazione", base: true, perm: P({
     cruscotto: "v", ticket: "vm", clienti: "v", tutorial: "v" }) },
   cliente: { nome: "Cliente", desc: "Solo i ticket della propria azienda: li vede e ne apre di nuovi", base: true, perm: P({ cruscotto: "v", ticket: "vm" }) },

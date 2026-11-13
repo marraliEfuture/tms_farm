@@ -671,12 +671,12 @@ const GROUPS = [
   ["Tutorial", [["tutorial","Casi d'uso"]]]
 ];
 /* profili: v vedere, m creare/modificare, e eliminare (in uso reale arrivano dal backend) */
-const AREE = [["cruscotto","Riepilogo"],["ticket","Ticket e messaggi"],["clienti","Anagrafiche (clienti, fornitori, contatti)"],["utenti","Utenti"],["profili","Profili e permessi"],["tecnici","Tecnici"],["aree","Aree di lavoro"],["recap","Recap ai clienti"],["modelli","Modelli dei messaggi"],["office365","Office 365"],["ai","Assistente AI"],["posta","Posta in arrivo"],["regole","Riconoscimento"],["collegamenti","Collegamenti"],["backup","Backup e ripristino"],["audit","Registro attività"],["tutorial","Tutorial"]];
+const AREE = [["cruscotto","Riepilogo"],["ticket","Ticket e messaggi"],["zona","Ticket della propria zona (solo vedere)"],["clienti","Anagrafiche (clienti, fornitori, contatti)"],["utenti","Utenti"],["profili","Profili e permessi"],["tecnici","Tecnici"],["aree","Aree di lavoro"],["recap","Recap ai clienti"],["modelli","Modelli dei messaggi"],["office365","Office 365"],["ai","Assistente AI"],["posta","Posta in arrivo"],["regole","Riconoscimento"],["collegamenti","Collegamenti"],["backup","Backup e ripristino"],["audit","Registro attività"],["tutorial","Tutorial"]];
 const PP = o => Object.fromEntries(AREE.map(([a])=>[a, o[a]||""]));
 let PROFILES = {
   admin:{nome:"Amministratore", desc:"Tutto, compresa la configurazione", base:true, perm:Object.fromEntries(AREE.map(([a])=>[a,"vme"]))},
-  resp:{nome:"Responsabile service", desc:"Lavoro quotidiano, tecnici, aree e regole; vede utenti e registro", base:true, perm:PP({cruscotto:"v",posta:"vm",ticket:"vme",clienti:"vme",utenti:"v",profili:"v",tecnici:"vme",aree:"vme",recap:"vm",modelli:"vm",collegamenti:"v",regole:"vm",audit:"v",tutorial:"v"})},
-  agent:{nome:"Agente", desc:"Ufficio: ticket, messaggi, clienti e posta in arrivo delle sue aree di lavoro", base:true, perm:PP({cruscotto:"v",posta:"vm",ticket:"vm",clienti:"vm",tecnici:"v",aree:"v",recap:"v",modelli:"v",tutorial:"v"})},
+  resp:{nome:"Responsabile service", desc:"Lavoro quotidiano, tecnici, aree e regole; vede utenti e registro", base:true, perm:PP({cruscotto:"v",posta:"vm",ticket:"vme",zona:"v",clienti:"vme",utenti:"v",profili:"v",tecnici:"vme",aree:"vme",recap:"vm",modelli:"vm",collegamenti:"v",regole:"vm",audit:"v",tutorial:"v"})},
+  agent:{nome:"Agente", desc:"Ufficio: ticket, messaggi, clienti e posta in arrivo delle sue aree di lavoro", base:true, perm:PP({cruscotto:"v",posta:"vm",ticket:"vm",zona:"v",clienti:"vm",tecnici:"v",aree:"v",recap:"v",modelli:"v",tutorial:"v"})},
   op:{nome:"Tecnico", desc:"I suoi interventi, messaggi, ticket e clienti; nessuna configurazione", base:true, perm:PP({cruscotto:"v",ticket:"vm",clienti:"v",tutorial:"v"})},
   cliente:{nome:"Cliente", desc:"Solo i ticket della propria azienda: li vede e ne apre di nuovi", base:true, perm:PP({cruscotto:"v",ticket:"vm"})}
 };
@@ -1195,6 +1195,7 @@ function ticket(){
       <h2>Nuovo ticket</h2>
       <div class="formgrid">
         <label class="field" ${ROLE==="cliente"?"hidden":""}><span>Cliente</span><select class="input" id="nt-client" required><option value="">Scegli il cliente…</option>${liveClients().filter(alive).map(c=>`<option value="${c.id}" ${ROLE==="cliente"&&c.id===myClientId()?"selected":""}>${esc(c.name)}</option>`).join("")}</select></label>
+        <label class="field" id="tf-scope-w" hidden><span>Quali ticket</span><select class="input" id="tf-scope"><option value="">I miei</option><option value="zona">Della mia zona</option></select></label>
         <label class="field" id="nt-k-w"><span>Chi lo chiede</span><select class="input" id="nt-k"><option value="">Scegli prima il cliente</option></select></label>
         <label class="field" ${ROLE==="cliente"?"hidden":""}><span>Fornitore coinvolto (facoltativo)</span><select class="input" id="nt-forn"><option value="">Nessuno</option>${liveSuppliers().map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select></label>
         <label class="field" ${ROLE==="cliente"?"hidden":""}><span>Tecnico</span><select class="input" id="nt-tech"><option value="">Da assegnare</option>${TECHS.filter(alive).map(t=>`<option value="${t.ini}">${t.ini} · ${esc(t.name||t.nome||"")}</option>`).join("")}</select></label>
@@ -1221,7 +1222,10 @@ function ticket(){
     <p class="f-count" id="tf-n" aria-live="polite"></p>
     <div class="tbl"><table><thead><tr><th>Ticket</th><th>Cliente</th><th>Richiesta</th><th>Stato</th><th>Tecnico</th><th>Origine</th><th>Aperto</th><th>Agg.</th><th><span class="sr">Azioni</span></th></tr></thead><tbody id="tf-body"></tbody></table></div>`;
   const F = S.tf, mine = ROLE==="op" ? myTech().ini : "";
-  if(mine){ F.tech = mine; $("#tf-tech-w").hidden = true; $("#tf-n").dataset.mine = "1"; }
+  /* il tecnico vede i suoi; con il permesso «Ticket della propria zona» può passare a quelli dei colleghi della stessa area */
+  const myAree = mine ? (myTech().aree||[]) : [], inZona = t => t.tech===mine || (t.state!=="Chiuso" && (!t.tech || ((techByIni(t.tech)||{}).aree||[]).some(a=>myAree.includes(a))));
+  if(mine){ F.tech = F.scope==="zona" ? "" : mine; $("#tf-tech-w").hidden = true; $("#tf-n").dataset.mine = "1";
+    if(can("zona")){ $("#tf-scope-w").hidden = false; $("#tf-scope").value = F.scope||""; $("#tf-scope").onchange = e => { F.scope = e.target.value; ticket(); }; } else F.scope = ""; }
   const own = ROLE==="cliente" ? myClientId() : "";
   if(own){ F.client = own; $("#tf-client-w").hidden = true; $("#tf-tech-w").hidden = true; $("#tf-area-w").hidden = true; }
   ["client","tech","origin","per","area"].forEach(k=>$("#tf-"+k).value = F[k]||"");
@@ -1229,6 +1233,7 @@ function ticket(){
   const norm = x => String(x||"").toLowerCase().replace(/[^a-z0-9]/g,"");
   const base = t => {
     if(F.client && t.client!==F.client) return false;
+    if(mine && F.scope==="zona" && !inZona(t)) return false;
     if(F.tech==="-" ? t.tech : F.tech && t.tech!==F.tech) return false;
     if(F.sys && t.sys!==F.sys) return false;
     if(F.origin && t.origin!==F.origin) return false;
@@ -1247,7 +1252,7 @@ function ticket(){
     const pre = S.tickets.filter(t=>!own || t.client===own).filter(base), st = STATI.find(x=>x[0]===F.stato) || STATI[0];
     $("#tf-stato").innerHTML = STATI.map(([k,l,f])=>`<button class="chip" type="button" data-st="${k}" aria-pressed="${F.stato===k}">${l} <span class="dim">${pre.filter(f).length}</span></button>`).join("");
     const list = pre.filter(st[2]).sort((a,b)=>(b.opened||"").localeCompare(a.opened||""));
-    $("#tf-n").textContent = (F.contatto&&contactById(F.contatto)?"Richiesti da "+contactById(F.contatto).k.n+" · ":"")+(F.forn&&cl(F.forn)?"Con il fornitore "+cl(F.forn).name+" · ":"")+(mine?"I tuoi ticket · ":own?"I ticket della tua azienda · ":"")+list.length+" di "+S.tickets.filter(t=>(!mine||t.tech===mine)&&(!own||t.client===own)).length;
+    $("#tf-n").textContent = (F.contatto&&contactById(F.contatto)?"Richiesti da "+contactById(F.contatto).k.n+" · ":"")+(F.forn&&cl(F.forn)?"Con il fornitore "+cl(F.forn).name+" · ":"")+(mine?(F.scope==="zona"?"I ticket della tua zona · ":"I tuoi ticket · "):own?"I ticket della tua azienda · ":"")+list.length+" di "+S.tickets.filter(t=>(!mine||(F.scope==="zona"?inZona(t):t.tech===mine))&&(!own||t.client===own)).length;
     $("#tf-body").innerHTML = list.map(t=>{ const c=cl(t.client); return `<tr><td><button class="tlink mono strong" type="button" data-open="${esc(t.id)}">${esc(t.id)}</button><div>${badge(t.sys)}</div></td><td>${c?clientTag(c):esc(t.client)}${(()=>{ const k = ticketContact(t); return k?`<div class="dim">${esc(k.n)}</div>`:""; })()}${t.fornitore&&cl(t.fornitore)?`<div class="dim">Fornitore: ${esc(cl(t.fornitore).name)}</div>`:""}</td><td>${esc(t.title)}${t.urg?' <span class="pill p-urg">Urgente</span>':""}</td>
         <td data-sort="${["Aperto","In lavorazione","Pianificato","In attesa cliente","In attesa ricambio","Chiuso"].indexOf(t.state)}"><span class="pill ${t.state==="Chiuso"?"p-mut":t.state==="Aperto"?"p-new":t.state.startsWith("In attesa")?"p-warn":"p-ok"}">${esc(t.state)}</span></td>
         <td>${techTag(t.tech)}</td><td class="dim">${esc(t.origin)}</td><td class="mono" data-sort="${esc(t.opened||"")}">${t.opened?esc(t.opened.split("-").reverse().join("/")):"—"}</td><td class="mono">${esc(t.upd)}</td>
@@ -2183,7 +2188,7 @@ function areaForm(a){
 function profili(){
   const edit = can("profili","m"), keys = Object.keys(PROFILES);
   const cell = (k,a) => { const v = PROFILES[k].perm[a]||""; const lock = k==="admin" || !edit;
-    return `<span class="perm-cell">${[["v","Vede"],["m","Modifica"],["e","Elimina"]].map(([r,l])=>`<label><input type="checkbox" data-p="${k}" data-a="${a}" data-r="${r}" ${v.includes(r)?"checked":""} ${lock?"disabled":""}>${l}</label>`).join("")}</span>`; };
+    return `<span class="perm-cell">${(a==="zona"?[["v","Vede"]]:[["v","Vede"],["m","Modifica"],["e","Elimina"]]).map(([r,l])=>`<label><input type="checkbox" data-p="${k}" data-a="${a}" data-r="${r}" ${v.includes(r)?"checked":""} ${lock?"disabled":""}>${l}</label>`).join("")}</span>`; };
   const users = LIVE ? null : USERS_LOCAL;
   $("#main").innerHTML = `<div class="top"><div><h1>Profili e permessi</h1><p class="sub">Ogni utente ha un profilo; il profilo decide quali sezioni vede e cosa può creare, modificare o eliminare.</p></div>
       <button class="btn primary" type="button" id="pr-add" data-perm="profili:m">+ Nuovo profilo</button></div>
@@ -2196,7 +2201,7 @@ function profili(){
     <div class="actions"><button class="btn primary" type="button" id="pr-save" data-perm="profili:m">Salva permessi</button><span class="note">L'amministratore ha sempre tutti i permessi. «Modifica» o «Elimina» senza «Vede» non hanno effetto. «Ticket e messaggi» vale anche per la sezione Messaggi.</span></div>`;
   $("#pr-save").onclick = ()=>{
     const next = {};
-    for(const k of keys.filter(k=>k!=="admin")){ next[k] = {}; for(const [a] of AREE){ next[k][a] = ["v","m","e"].filter(r=>document.querySelector(`[data-p="${k}"][data-a="${a}"][data-r="${r}"]`).checked).join(""); if(next[k][a] && !next[k][a].includes("v")) next[k][a] = "v"+next[k][a]; } }
+    for(const k of keys.filter(k=>k!=="admin")){ next[k] = {}; for(const [a] of AREE){ next[k][a] = ["v","m","e"].filter(r=>{ const x = document.querySelector(`[data-p="${k}"][data-a="${a}"][data-r="${r}"]`); return x && x.checked; }).join(""); if(next[k][a] && !next[k][a].includes("v")) next[k][a] = "v"+next[k][a]; } }
     if(LIVE){ post("/api/admin/profiles", next).then(r=>{ PROFILES = r.profiles; toast("Permessi salvati"); render(); }).catch(err=>toast("Non salvati: "+err.message)); return; }
     for(const k of Object.keys(next)) PROFILES[k].perm = next[k];
     logLocal("Permessi dei profili aggiornati", "", "profili"); toast("Permessi salvati (prova): prova a cambiare vista in alto"); render();
