@@ -1190,7 +1190,7 @@ function wireFix(m){
 /* ---------- Ticket ---------- */
 function ticket(){
   $("#main").innerHTML = `<div class="top"><div><h1>Ticket</h1><p class="sub">Tutti i ticket, con ricerca e filtri.</p></div>
-      <button class="btn primary" type="button" id="t-new" data-perm="ticket:m">+ Nuovo ticket</button></div>
+      <div class="actions" style="margin:0"><button class="btn" type="button" id="t-rep">Scarica report</button><button class="btn primary" type="button" id="t-new" data-perm="ticket:m">+ Nuovo ticket</button></div></div>
     <form class="panel" id="t-form" hidden>
       <h2>Nuovo ticket</h2>
       <div class="formgrid">
@@ -1270,6 +1270,7 @@ function ticket(){
   const form = $("#t-form");
   const fillK = () => { const c = cl($("#nt-client").value); $("#nt-k").innerHTML = c ? liveContacts(c).map(k=>`<option value="${esc(k.id)}" ${ME&&k.mail&&ME.mail===k.mail?"selected":""}>${esc(k.n)}${k.ruolo?" · "+esc(k.ruolo):""}</option>`).join("") || `<option value="">Nessun contatto: aggiungilo in Anagrafiche</option>` : `<option value="">Scegli prima il cliente</option>`; };
   $("#nt-client").onchange = fillK; fillK();
+  $("#t-rep").onclick = ()=>reportDialog(F.client || (S.tickets[0]||{}).client);
   $("#t-new").onclick = ()=>{ form.hidden = false; $("#nt-client").focus(); };
   $("#nt-x").onclick = ()=>{ form.hidden = true; form.reset(); };
   form.onsubmit = e => {
@@ -1413,6 +1414,62 @@ function messaggi(){
 /* ---------- Anagrafiche: aziende clienti, fornitori e contatti (le persone) ---------- */
 const anagTabs = () => { const t = S.anag || "clienti"; return `<div class="tabsbar" role="tablist">${[["clienti","Clienti",liveClients().length],["fornitori","Fornitori",liveSuppliers().length],["contatti","Contatti",CLIENTS.filter(c=>!c.eliminato).reduce((a,c)=>a+liveContacts(c).length,0)]].map(([k,l,n])=>`<button type="button" role="tab" data-anag="${k}" aria-selected="${t===k}">${l} <span class="dim">${n}</span></button>`).join("")}</div>`; };
 const wireTabs = () => document.querySelectorAll("[data-anag]").forEach(b=>b.onclick=()=>{ S.anag = b.dataset.anag; clienti(); });
+/* ---------- report dei ticket di un cliente: Excel (CSV) o PDF (pagina da stampare/salvare) ---------- */
+function reportDialog(clientId){
+  const own = ROLE==="cliente" ? myClientId() : "";
+  const opts = CLIENTS.filter(c=>!c.eliminato && c.tipo!=="fornitore");
+  openEditor(`<h2>Report dei ticket</h2>
+    <div class="formgrid">
+      <label class="field wide"><span>Cliente</span><select class="input" id="rp-c" ${own?"disabled":""}>${opts.map(c=>`<option value="${esc(c.id)}" ${c.id===(own||clientId)?"selected":""}>${esc(c.name)}</option>`).join("")}</select></label>
+      <label class="field"><span>Periodo</span><select class="input" id="rp-p"><option value="30">Ultimi 30 giorni</option><option value="90">Ultimi 3 mesi</option><option value="365" selected>Ultimo anno</option><option value="">Tutto</option></select></label>
+      <label class="field"><span>Ticket</span><select class="input" id="rp-s"><option value="">Tutti</option><option value="aperti">Solo aperti</option><option value="chiusi">Solo chiusi</option></select></label>
+    </div>
+    <label class="check"><input type="checkbox" id="rp-m" checked> Includi i messaggi scambiati con il cliente</label>
+    <div class="actions"><button class="btn primary" type="submit" data-fmt="pdf">Scarica PDF</button><button class="btn" type="button" id="rp-xls">Scarica Excel</button><button class="btn" type="button" data-close>Annulla</button></div>`, ()=>makeReport("pdf"));
+  $("#rp-xls").onclick = ()=>makeReport("xls");
+}
+function reportData(){
+  const cid = $("#rp-c").value, c = cl(cid), days = $("#rp-p").value, only = $("#rp-s").value;
+  const from = days ? dago(+days) : "";
+  const list = S.tickets.filter(t=>t.client===cid && (!from || !t.opened || t.opened>=from) && (only==="aperti" ? t.state!=="Chiuso" : only==="chiusi" ? t.state==="Chiuso" : true))
+    .sort((a,b)=>(b.opened||"").localeCompare(a.opened||""));
+  /* solo quello che il cliente ha visto: i suoi messaggi e le risposte mandate a lui (mai le note interne) */
+  const msgs = t => !$("#rp-m").checked ? [] : (S.threads||[]).filter(th=>th.ticket===t.id).flatMap(th=>(th.msgs||[]).flatMap(m=>
+    m.k==="fwd" ? [{by:m.from||"Cliente", t:m.t, text:m.text}] : m.k==="me" && m.cc ? [{by:"Tecnico "+(th.tech||""), t:m.t, text:m.text}] : m.forClient ? [{by:"Assistenza", t:m.t, text:m.forClient}] : []));
+  return {c, list, days, only, msgs};
+}
+const plainDate = d => d ? new Date(d+(d.length===10?"T12:00":"")).toLocaleDateString("it-CH") : "";
+const planTxt = t => t.plan ? giornoBreve(t.plan.day)+" "+t.plan.time : "";
+function makeReport(fmt){
+  const {c, list, days, only, msgs} = reportData(); if(!c) return;
+  const per = days ? "ultimi "+(days==="365"?"12 mesi":days+" giorni") : "tutto lo storico";
+  const name = "Report ticket "+c.name.replace(/[^\w ]+/g,"").trim()+" "+new Date().toISOString().slice(0,10);
+  const who = t => { const k = ticketContact(t); return k ? k.n : ""; };
+  if(fmt==="xls"){
+    const q = v => '"'+String(v==null?"":v).replace(/"/g,'""')+'"';
+    const rows = [["Ticket","Aperto il","Richiesta","Chi lo chiede","Stato","Urgente","Tecnico","Intervento","Origine","Messaggi"]].concat(list.map(t=>[t.id, plainDate(t.opened), t.title, who(t), t.state, t.urg?"sì":"", t.tech||"da assegnare", planTxt(t), t.origin||"", msgs(t).map(m=>(m.by||"")+": "+m.text).join(" | ")]));
+    const blob = new Blob(["\ufeff"+rows.map(r=>r.map(q).join(";")).join("\r\n")], {type:"text/csv;charset=utf-8"});
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name+".csv"; document.body.appendChild(a); a.click(); a.remove();
+    logLocal("Report scaricato (Excel)", c.name, "clienti"); closeEditor(); toast("Report Excel scaricato"); return;
+  }
+  const n = f => list.filter(f).length;
+  const html = `<!doctype html><html lang="it"><head><meta charset="utf-8"><title>${esc(name)}</title><style>
+    body{font:13px/1.45 Poppins,system-ui,sans-serif;color:#0b1622;margin:28px}h1{font-size:20px;margin:0}.sub{color:#5a6a7b;margin:2px 0 16px}
+    .k{display:flex;gap:10px;margin:0 0 16px}.k div{border:1px solid #d6dfe9;border-radius:10px;padding:8px 14px}.k b{display:block;font-size:20px}
+    table{width:100%;border-collapse:collapse}th,td{text-align:left;border-bottom:1px solid #d6dfe9;padding:6px 8px;vertical-align:top}th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#5a6a7b}
+    .m{color:#26364a;font-size:12px;margin-top:4px;padding-left:8px;border-left:2px solid #1aa0e8}.u{color:#c63f2b;font-weight:700}.top{display:flex;justify-content:space-between;align-items:flex-start}
+    .bar{margin:0 0 18px}@media print{.bar{display:none}body{margin:12mm}}</style></head><body>
+    <div class="bar"><button onclick="print()">Stampa o salva come PDF</button></div>
+    <div class="top"><div><h1>Report ticket · ${esc(c.name)}</h1><p class="sub">${esc(c.city||"")} · periodo: ${per}${only?" · solo "+only:""} · creato il ${new Date().toLocaleDateString("it-CH")}</p></div><b>Ticket Farm</b></div>
+    <div class="k"><div><b>${list.length}</b>ticket</div><div><b>${n(t=>t.state!=="Chiuso")}</b>aperti</div><div><b>${n(t=>t.state==="Chiuso")}</b>chiusi</div><div><b>${n(t=>t.urg)}</b>urgenti</div></div>
+    <table><thead><tr><th>Ticket</th><th>Aperto</th><th>Richiesta</th><th>Chi lo chiede</th><th>Stato</th><th>Tecnico</th><th>Intervento</th></tr></thead><tbody>
+    ${list.map(t=>`<tr><td>${esc(t.id)}</td><td>${plainDate(t.opened)}</td><td>${esc(t.title)}${t.urg?' <span class="u">urgente</span>':""}${msgs(t).map(m=>`<div class="m"><b>${esc(m.by||"")}</b> ${esc(m.t||"")}: ${esc(m.text)}</div>`).join("")}</td><td>${esc(who(t))}</td><td>${esc(t.state)}</td><td>${esc(t.tech||"da assegnare")}</td><td>${esc(planTxt(t))}</td></tr>`).join("") || `<tr><td colspan="7">Nessun ticket nel periodo.</td></tr>`}
+    </tbody></table><script>setTimeout(()=>print(),400)<\/script></body></html>`;
+  const w = window.open("", "_blank");
+  if(w){ w.document.write(html); w.document.close(); }
+  else { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([html], {type:"text/html"})); a.download = name+".html"; document.body.appendChild(a); a.click(); a.remove(); }
+  logLocal("Report scaricato (PDF)", c.name, "clienti"); closeEditor(); toast(w ? "Report aperto: scegli «Salva come PDF»" : "Report scaricato");
+}
 function clienti(){
   if(S.anag==="contatti") return contatti();
   const TIPO = S.anag==="fornitori" ? "fornitore" : "cliente", FORN = TIPO==="fornitore";
@@ -1454,8 +1511,9 @@ function clienti(){
     $("#cl-body").innerHTML = list.map(c=>{ const o = openOf(c); return `<tr><td><div style="display:flex;gap:10px;align-items:center">${logo(c)}<div><span class="strong">${clientTag(c)}</span><div class="dim">${esc(c.city||"")}</div></div></div></td>
         <td>${o.length?`<button class="tlink strong" type="button" data-tk="${esc(c.id)}">${o.length} ${FORN?"in attesa":"aperti"}</button>${o.some(t=>t.urg)?' <span class="pill p-urg">Urgente</span>':""}`:`<span class="dim">nessuno</span>`}</td><td class="mono">${c.dom?"@"+esc(c.dom):"—"}</td>
         <td>${liveContacts(c).map(k=>`<div class="contact"><div>${personLine(k)}<div class="dim">${esc(k.mail||"")}${k.tel?" · "+esc(k.tel):""}</div></div>${waBtn(k.tel)}</div>`).join("") || `<span class="dim">Nessun contatto</span>`}<button class="linkback" type="button" data-addk="${esc(c.id)}" data-perm="clienti:m">+ Contatto</button></td>
-        <td class="act" data-row="${esc(c.id)}">${c.eliminato ? `<button class="btn small" type="button" data-rest="${esc(c.id)}" data-perm="clienti:m">Ripristina</button>` : `<button class="btn small" type="button" data-edit="${esc(c.id)}" data-perm="clienti:m">Modifica</button> <button class="btn small" type="button" data-onoff="${esc(c.id)}" data-perm="clienti:m">${c.attivo===false?"Riattiva":"Disattiva"}</button> <button class="btn small danger" type="button" data-ask="${esc(c.id)}" data-perm="clienti:e">Elimina</button>`}</td></tr>`; }).join("") || `<tr><td colspan="5" class="dim">Nessun cliente con questi filtri</td></tr>`;
+        <td class="act" data-row="${esc(c.id)}">${c.eliminato ? `<button class="btn small" type="button" data-rest="${esc(c.id)}" data-perm="clienti:m">Ripristina</button>` : `${FORN?"":`<button class="btn small" type="button" data-rep="${esc(c.id)}" title="Scarica il report dei ticket">Report</button> `}<button class="btn small" type="button" data-edit="${esc(c.id)}" data-perm="clienti:m">Modifica</button> <button class="btn small" type="button" data-onoff="${esc(c.id)}" data-perm="clienti:m">${c.attivo===false?"Riattiva":"Disattiva"}</button> <button class="btn small danger" type="button" data-ask="${esc(c.id)}" data-perm="clienti:e">Elimina</button>`}</td></tr>`; }).join("") || `<tr><td colspan="5" class="dim">Nessun cliente con questi filtri</td></tr>`;
     $("#cl-body").querySelectorAll("[data-tk]").forEach(b=>b.onclick=()=>{ S.view="ticket"; S.tf = Object.assign(tfReset(), FORN ? {forn:b.dataset.tk, stato:"aperti"} : {client:b.dataset.tk}); render(); });
+    $("#cl-body").querySelectorAll("[data-rep]").forEach(b=>b.onclick=()=>reportDialog(b.dataset.rep));
     $("#cl-body").querySelectorAll("[data-addk]").forEach(b=>b.onclick=()=>contactForm(null, b.dataset.addk));
     $("#cl-body").querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>clientForm(cl(b.dataset.edit)));
     $("#cl-body").querySelectorAll("[data-onoff]").forEach(b=>b.onclick=()=>{ const c = cl(b.dataset.onoff), on = c.attivo===false;
