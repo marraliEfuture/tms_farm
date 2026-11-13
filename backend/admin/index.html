@@ -245,6 +245,10 @@ td.act{white-space:nowrap;text-align:right}
 .topbar{display:flex;justify-content:flex-end;align-items:center;gap:12px;padding-top:16px;padding-left:max(16px, min(4vw,36px));padding-right:max(16px, env(safe-area-inset-right, 0px), min(4vw,36px))}
 .topbar + main{padding-top:8px}
 .mewrap{position:relative}
+.mewho{display:flex;flex-direction:column;align-items:flex-end;line-height:1.25}.mewho b{font-size:13.5px;color:var(--ink)}.mewho span span{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600}
+.me{position:relative}.me-dot{position:absolute;right:-7px;bottom:-7px;width:19px;height:19px;border-radius:50%;border:2px solid var(--bg);display:grid;place-items:center;color:#fff}
+.menu-head #me-prof span{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;margin:2px 0}
+@media (max-width:640px){.mewho b{display:none}}
 .me{width:36px;height:36px;border-radius:50%;border:0;background:var(--grad);color:#fff;font-weight:700;font-size:13px;cursor:pointer}
 .me:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .menu{position:absolute;right:0;top:44px;z-index:30;min-width:230px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 40px rgba(0,0,0,.25);padding:6px;display:flex;flex-direction:column}
@@ -382,9 +386,9 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
   <div class="content">
     <header class="topbar">
       <button class="sw-a" id="theme" type="button" role="switch" aria-checked="false" aria-label="Tema scuro"><svg class="ic s" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g></svg><svg class="ic m" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z" fill="currentColor"/></svg><span class="knob"></span></button>
-      <div class="mewrap"><button class="me" id="me" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Il tuo profilo">AD</button>
+      <div class="mewho" id="mewho" aria-hidden="true"><b id="mewho-n"></b><span id="mewho-p"></span></div><div class="mewrap"><button class="me" id="me" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Il tuo profilo"><span id="me-ini">AD</span><span class="me-dot" id="me-dot"></span></button>
         <div class="menu" id="me-menu" role="menu" hidden>
-          <div class="menu-head"><b id="me-name">Amministratore</b><span id="me-mail"></span></div>
+          <div class="menu-head"><b id="me-name">Amministratore</b><span id="me-prof"></span><span id="me-mail"></span></div>
           <div class="rolesw" id="rolesw" role="group" aria-label="Vedi la console come">
             <span class="rl">Vedi come</span>
             <button type="button" data-role="op"><span class="ri" style="color:#1aa0e8"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3.6 17.2a1.6 1.6 0 0 0 2.3 2.3l5.7-5.7a4 4 0 0 0 5.2-5.4l-2.4 2.4-2.1-.6-.6-2.1z"/></svg></span>Tecnico</button><button type="button" data-role="agent"><span class="ri" style="color:#8b5cf6"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13v-1a8 8 0 0 1 16 0v1"/><rect x="3" y="13" width="4" height="6" rx="1.5"/><rect x="17" y="13" width="4" height="6" rx="1.5"/><path d="M19 19a3 3 0 0 1-3 3h-3"/></svg></span>Agente</button><button type="button" data-role="resp"><span class="ri" style="color:#13a37a"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h6v3H9z"/><path d="M8 5H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2"/><path d="m9 14 2 2 4-4"/></svg></span>Responsabile</button><button type="button" data-role="cliente"><span class="ri" style="color:#d38b1f"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V7l6-3v17"/><path d="M10 9h10v12"/><path d="M7 9v.01M7 13v.01M7 17v.01M14 13h2M14 17h2"/></svg></span>Cliente</button><button type="button" data-role="admin"><span class="ri" style="color:#e0565b"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><circle cx="12" cy="11" r="2"/><path d="M12 13v3"/></svg></span>Amministratore</button>
@@ -1644,6 +1648,14 @@ function fillAI(a, fresh){
 /* ---------- profili: cambio vista e default per profilo ---------- */
 function paintRole(){
   document.querySelectorAll("#rolesw [data-role]").forEach(b=>b.setAttribute("aria-pressed", String(b.dataset.role===ROLE)));
+  /* in alto a destra: nome e profilo con la sua icona, e l'icona del profilo sul pulsante (variante B) */
+  const k = PICON[ROLE] ? ROLE : "altro", nome = (PROFILES[ROLE]||{}).nome || ROLE, col = PCOLOR[k];
+  const view = ROLE!==REAL_ROLE && REAL_ROLE==="admin" ? " (vista)" : "";
+  $("#mewho-n").textContent = (ME && (ME.nome || ME.user)) || "Amministratore";
+  $("#mewho-p").innerHTML = `<span style="color:${col}">${picon(k,13)} ${esc(nome)}${view}</span>`;
+  $("#me-dot").innerHTML = picon(k,11); $("#me-dot").style.background = col;
+  $("#me-prof").innerHTML = `<span style="color:${col}">${picon(k,13)} ${esc(nome)}${view}</span>`;
+  $("#me").setAttribute("aria-label", "Il tuo profilo: "+nome);
   /* in uso reale solo un amministratore può provare gli altri profili */
   $("#rolesw").hidden = BACKEND && LIVE && REAL_ROLE !== "admin";
 }
@@ -2331,7 +2343,7 @@ function landing(){
   S.view = can(h,"v") ? h : "cruscotto";
 }
 function initials(n){ return String(n||"?").trim().split(/\s+/).slice(0,2).map(w=>w[0]).join("").toUpperCase() || "AD"; }
-function paintMe(){ if(!ME) return; $("#me").textContent = initials(ME.nome || ME.user); $("#me-name").textContent = ME.nome || ME.user; $("#me-mail").textContent = (ME.user ? ME.user+" · " : "")+(ME.mail||""); }
+function paintMe(){ if(!ME) return; $("#me-ini").textContent = initials(ME.nome || ME.user); $("#mewho-n").textContent = ME.nome || ME.user; paintRole(); $("#me-name").textContent = ME.nome || ME.user; $("#me-mail").textContent = (ME.user ? ME.user+" · " : "")+(ME.mail||""); }
 function showLogin(hint){
   $("#login").hidden = false; $("#me-menu").hidden = true;
   $("#login-hint").innerHTML = hint ? `<div class="hint">Modalità prova: utente = ${esc(hint.user)}, password = ${esc(hint.password)}<button type="button" id="lg-fill">Compila e accedi</button></div>` : "";
