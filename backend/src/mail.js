@@ -52,8 +52,12 @@ async function send(msg) {
     file = path.join(cfg.outboxDir, new Date().toISOString().replace(/[:.]/g, "-") + ".eml");
     fs.writeFileSync(file, info.message);
   }
-  return { messageId: info.messageId, file, real: !!cfg.smtp.host };
+  /* accepted/rejected: cosa ha detto il server di posta per ogni destinatario */
+  return { messageId: info.messageId, file, real: !!cfg.smtp.host || !!testTransport, accepted: (info.accepted || []).map(String), rejected: (info.rejected || []).map(String), response: info.response || "" };
 }
+/* solo per i test: un trasporto finto che accetta o rifiuta */
+let testTransport = null;
+function setTransport(t) { testTransport = t; transport = t; }
 
 /* testo leggibile della mail: il messaggio del cliente, poi l'eventuale nota del tecnico */
 function bodyText(o) {
@@ -63,4 +67,4 @@ function bodyText(o) {
   const lines = o.lines && o.lines.length ? o.lines.map(l => (l.time ? "[" + l.time + "] " : "") + l.text).join("\n") : o.body;
   return head + "\n\n" + lines + (o.note ? "\n\n-- Nota del tecnico --\n" + o.note : "") + "\n\nInviato con l'app Ticket Farm.";
 }
-module.exports = { buildMessage, send, bodyText };
+module.exports = { buildMessage, send, bodyText, setTransport };

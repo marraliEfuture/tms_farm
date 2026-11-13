@@ -169,6 +169,8 @@ textarea.input{min-height:96px;resize:vertical}
 .copybox p{margin:0;white-space:pre-wrap;user-select:text}
 .composer{background:var(--surface);border-top:1px solid var(--line);padding:10px 12px 16px;display:flex;flex-direction:column;gap:8px}
 .tchips.wrap{flex-wrap:wrap;overflow:visible}.tchip b{font-weight:500}.row.pers{justify-content:space-between;gap:8px;font-size:13.5px}
+.pic{vertical-align:-1px}.who-tec{color:#1aa0e8}.who-age{color:#8b5cf6}
+.sortsel{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}.sortsel .input{width:auto;flex:1;padding:8px 10px}
 .tchips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}.tchip{flex:0 0 auto;border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:999px;padding:6px 11px;font:inherit;font-size:13px;font-weight:600}
 .tchip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}.tchip b{opacity:.75;font-weight:700;margin-left:2px}
 .tstate{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}.tstate.wait{background:var(--gold-soft,rgba(217,171,69,.15));color:var(--gold,#b88424)}.tstate.off{background:var(--surface-2);color:var(--muted)}
@@ -377,6 +379,12 @@ const CLIENTS_BASE = [
    open:[{id:"Tck #714799", contatto:"far-1", fornitore:"sta", t:"Bilancia analitica: guasto", state:"In attesa ricambio", plan:null}]},
   {id:"vin", tipo:"cliente", lat:46.059, lng:8.931, name:"Vini Collina SA", city:"Taverne", sys:"ITSM",
    contacts:[{id:"vin-1", n:"Paolo Ghirlanda", ruolo:"Cantina", mail:"p.ghirlanda@vinicollina.ch", tel:"+41 76 300 14 59"}], open:[]},
+  {"id": "cen", "tipo": "cliente", "lat": 46.378, "lng": 8.906, "name": "Termocentrale Leventina SA", "city": "Bodio", "sys": "ITSM", "contacts": [{"id": "cen-1", "n": "Fabio Martinoli", "ruolo": "Capo turno chimica", "mail": "f.martinoli@termoleventina.ch", "tel": "+41 91 873 40 10"}, {"id": "cen-2", "n": "Nadia Pedrini", "ruolo": "Responsabile manutenzione", "mail": "n.pedrini@termoleventina.ch", "tel": "+41 79 640 18 22"}], "open": [{"id": "Tck #714840", "contatto": "cen-1", "t": "Analizzatore di silice: valori fuori scala sul vapore surriscaldato", "urg": true, "state": "Aperto", "plan": null}, {"id": "Tck #714841", "contatto": "cen-2", "t": "Conducibilità acqua alimento caldaia: deriva della cella", "state": "Pianificato", "plan": {"day": 2, "time": "08:30"}}]},
+  {"id": "acl", "tipo": "cliente", "lat": 46.012, "lng": 8.952, "name": "Consorzio Acqua Potabile Luganese", "city": "Lugano", "sys": "ITSM", "contacts": [{"id": "acl-1", "n": "Silvia Guidotti", "ruolo": "Responsabile qualità acqua", "mail": "s.guidotti@acqualuganese.ch", "tel": "+41 91 800 77 31"}], "open": []},
+  {"id": "tlr", "tipo": "cliente", "lat": 46.19, "lng": 9.015, "name": "Teleriscaldamento Bellinzona SA", "city": "Bellinzona", "sys": "ITSM", "contacts": [{"id": "tlr-1", "n": "Ivan Bassi", "ruolo": "Manutenzione impianti", "mail": "i.bassi@tlr-bellinzona.ch", "tel": "+41 79 455 61 03"}], "open": []},
+  {"id": "pha", "tipo": "cliente", "lat": 45.877, "lng": 8.976, "name": "Pharmalab Mendrisio SA", "city": "Mendrisio", "sys": "ITSM", "contacts": [{"id": "pha-1", "n": "Chiara Lepori", "ruolo": "QA acqua purificata", "mail": "c.lepori@pharmalab-mendrisio.ch", "tel": "+41 91 640 22 90"}, {"id": "pha-2", "n": "Mattia Ferrari", "ruolo": "Utilities", "mail": "m.ferrari@pharmalab-mendrisio.ch", "tel": "+41 79 302 55 14"}], "open": [{"id": "Tck #714845", "contatto": "pha-1", "t": "TOC acqua purificata: verifica di idoneità in scadenza", "state": "Pianificato", "plan": {"day": 1, "time": "13:30"}}, {"id": "Tck #714846", "contatto": "pha-2", "t": "Conducibilità acqua per iniettabili: certificato di taratura", "state": "In attesa cliente", "plan": null}]},
+  {"id": "sem", "tipo": "cliente", "lat": 46.032, "lng": 8.921, "name": "Microchip Ticino SA", "city": "Manno", "sys": "ITSM", "contacts": [{"id": "sem-1", "n": "Roberto Pini", "ruolo": "Impianto acqua ultrapura", "mail": "r.pini@microchip-ticino.ch", "tel": "+41 91 610 88 40"}], "open": [{"id": "Tck #714847", "contatto": "sem-1", "fornitore": "sta", "t": "Monitor di sodio acqua ultrapura: reagente in esaurimento", "state": "In attesa ricambio", "plan": null}]},
+  {"id": "dep", "tipo": "cliente", "lat": 45.972, "lng": 8.931, "name": "Depuratore Consortile Pian Scairolo", "city": "Grancia", "sys": "ITSM", "contacts": [{"id": "dep-1", "n": "Elisa Rota", "ruolo": "Capo impianto", "mail": "", "tel": "+41 79 512 40 77"}], "open": []},
   {id:"sta", tipo:"fornitore", name:"Strumenti Analitici SA", city:"Manno", sys:"ITSM",
    contacts:[{id:"sta-1", n:"Pietro Galli", ruolo:"Ufficio ricambi", mail:"p.galli@strumentianalitici.ch", tel:"+41 91 610 55 20"},
              {id:"sta-2", n:"Chiara Fumagalli", ruolo:"Assistenza tecnica", mail:"c.fumagalli@strumentianalitici.ch", tel:"+41 79 880 41 07"}], open:[]},
@@ -475,22 +483,35 @@ const firstName = k => k ? String(k.n).split(" ")[0] : "cliente";
 function clientMailOf(th){ const k = personOf(th); if(k && k.mail) return k.mail; if(th.clientMail) return th.clientMail; const m = [...th.msgs].reverse().find(x=>x.k==="fwd" && x.mailFrom); return m ? m.mailFrom : ""; }
 function lastOf(th){ return th.msgs[th.msgs.length-1]; }
 function updateCount(){ const n = S.threads.filter(t=>t.unread).length; const c=$("#count"); c.hidden = !n; c.textContent = n; }
+/* ordine delle conversazioni: restituisce gli indici, così openChat(i) resta giusto */
+function msgOrder(){
+  const idx = S.threads.map((_,i)=>i), by = S.mord || "rec";
+  const per = i => { const th = S.threads[i]; return (th.client && personOf(th) || {n:"~"}).n; }, cli = i => (cl(S.threads[i].client)||{name:"~"}).name;
+  if(by==="unr") return idx.sort((a,b)=>(S.threads[b].unread?1:0)-(S.threads[a].unread?1:0));
+  if(by==="per") return idx.sort((a,b)=>per(a).localeCompare(per(b),"it"));
+  if(by==="cli") return idx.sort((a,b)=>cli(a).localeCompare(cli(b),"it"));
+  return idx;
+}
 function renderMessaggi(){
   const el = $("#s-messaggi");
   el.innerHTML = (API ? "" : `<div class="banner">Modalità prova: nessuna mail parte davvero. Per collegare l'app al backend imposta backendUrl in config.js.</div>`) + `<div><h2 class="sec">Messaggi</h2><p class="sub">Le conversazioni con i tuoi clienti, ticket per ticket</p></div>
-    <div class="list">${S.threads.map((th,i)=>{ const c=cl(th.client)||{name:"Cliente da identificare",sys:"ITSM"}; const l=lastOf(th);
+    <label class="sortsel">Ordina per <select class="input" id="m-ord"><option value="rec">più recenti</option><option value="unr">da leggere prima</option><option value="per">persona A–Z</option><option value="cli">azienda A–Z</option></select></label>
+    <div class="list">${msgOrder().map(i=>{ const th = S.threads[i]; const c=cl(th.client)||{name:"Cliente da identificare",sys:"ITSM"}; const l=lastOf(th);
       return `<button class="item${th.unread?" unread":""}" data-i="${i}">
         <div class="row"><span class="nm who-row">${th.client?logo(c):""}${esc(th.client&&personOf(th)?personOf(th).n:c.name)}</span><span class="tm">${esc(l.t)}</span></div>
         <div class="row" style="justify-content:flex-start;gap:6px"><span class="sub" style="font-size:12.5px">${th.client?esc(c.name):""}</span><span class="mono">${esc(th.ticket)}</span></div>
         <span class="pv">${l.k==="tf"?"Ufficio: ":l.k==="fwd"?esc(firstName(personOf(th)))+": ":"Tu: "}${esc(l.text)}</span></button>`;}).join("")}</div>`;
   el.querySelectorAll(".item").forEach(b=>b.onclick=()=>openChat(+b.dataset.i));
+  $("#m-ord").value = S.mord || "rec"; $("#m-ord").onchange = e => { S.mord = e.target.value; renderMessaggi(); };
   updateCount();
 }
 
+const ICO_TEC = '<svg class="pic" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-label="Tecnico"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3.6 17.2a1.6 1.6 0 0 0 2.3 2.3l5.7-5.7a4 4 0 0 0 5.2-5.4l-2.4 2.4-2.1-.6-.6-2.1z"/></svg>';
+const ICO_AGE = '<svg class="pic" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-label="Agente"><path d="M4 13v-1a8 8 0 0 1 16 0v1"/><rect x="3" y="13" width="4" height="6" rx="1.5"/><rect x="17" y="13" width="4" height="6" rx="1.5"/><path d="M19 19a3 3 0 0 1-3 3h-3"/></svg>';
 function msgHTML(m, i){
   if(m.k==="fwd") return `<div class="msg fwd"><small>${m.kind==="mail"?"Mail":"WhatsApp"}${m.from?" di "+esc(m.from):" del cliente"} · ${esc(m.t)}</small>${m.lines?m.lines.map(l=>`<q><span class="mono">${esc(l.time)}</span> ${esc(l.text)}</q>`).join(""):`<q>${esc(m.text)}</q>`}${m.photos?`<small style="margin-top:6px">${m.photos} foto allegate</small>`:""}</div>`;
-  if(m.k==="me") return `<div class="msg out${m.cc?" toc":""}"><small>${m.cc?"Messaggio a "+esc((personOf(S.threads[S.openThread]||{})||{n:m.cc}).n):"Nota interna"} · ${esc(m.t)}</small>${esc(m.text)}</div>`;
-  return `<div class="msg in"><small>Ufficio · ${esc(m.t)}</small>${esc(m.text)}${m.forClient?`<div class="copybox"><span class="lbl">Da mandare a ${esc(firstName(personOf(S.threads[S.openThread]||{})))}</span><p id="cb-${i}">${esc(m.forClient)}</p><div class="cb-act"><button class="btn small primary" data-copy="${i}" type="button">Copia negli appunti</button>${waBtn(curTel, m.forClient, "Apri chat cliente")}</div></div>`:""}</div>`;
+  if(m.k==="me") return `<div class="msg out${m.cc?" toc":""}"><small><span class="who-tec" title="Tecnico">${ICO_TEC}</span> ${m.cc?"Messaggio a "+esc((personOf(S.threads[S.openThread]||{})||{n:m.cc}).n):"Nota interna"} · ${esc(m.t)}</small>${esc(m.text)}</div>`;
+  return `<div class="msg in"><small><span class="who-age" title="Ufficio · agente">${ICO_AGE}</span> Ufficio · ${esc(m.t)}</small>${esc(m.text)}${m.forClient?`<div class="copybox"><span class="lbl">Da mandare a ${esc(firstName(personOf(S.threads[S.openThread]||{})))}</span><p id="cb-${i}">${esc(m.forClient)}</p><div class="cb-act"><button class="btn small primary" data-copy="${i}" type="button">Copia negli appunti</button>${waBtn(curTel, m.forClient, "Apri chat cliente")}</div></div>`:""}</div>`;
 }
 function openChat(i){
   S.openThread = i; const th = S.threads[i]; if(th.unread && API) api("/api/app/read", {ticket:th.ticket}).catch(()=>{}); th.unread = false;
@@ -750,15 +771,18 @@ function send(){
 /* ---------- CLIENTI ---------- */
 function renderClienti(){
   const el = $("#s-clienti"), q = S.csearch.toLowerCase(), T = S.ctipo || "cliente";
+  S.cord = S.cord || "nome";
   const list = CLIENTS.filter(c => (c.tipo||"cliente")===T && (!q || (c.name+" "+c.city+" "+c.contacts.map(k=>k.n+" "+(k.ruolo||"")+" "+k.tel).join(" ")).toLowerCase().includes(q)));
   el.innerHTML = `<div><h2 class="sec">Anagrafiche</h2><p class="sub">Aziende e persone con cui parli</p></div>
     <div class="tchips"><button class="tchip" type="button" data-ct="cliente" aria-pressed="${T==="cliente"}">Clienti</button><button class="tchip" type="button" data-ct="fornitore" aria-pressed="${T==="fornitore"}">Fornitori</button></div>
     <input class="input" id="c-q" type="search" placeholder="Cerca azienda, persona o numero" value="${esc(S.csearch)}">
-    <div class="list">${list.length ? list.map(c=>`<div class="item" data-c="${c.id}" role="button" tabindex="0">
+    <label class="sortsel">Ordina per <select class="input" id="c-ord"><option value="nome">nome A–Z</option><option value="citta">città</option>${T==="cliente"?`<option value="tk">più ticket aperti</option>`:""}</select></label>
+    <div class="list">${list.length ? list.sort((a,b)=> S.cord==="citta" ? String(a.city).localeCompare(String(b.city),"it") || a.name.localeCompare(b.name,"it") : S.cord==="tk" ? (b.open||[]).length-(a.open||[]).length : a.name.localeCompare(b.name,"it")).map(c=>`<div class="item" data-c="${c.id}" role="button" tabindex="0">
       <div class="row"><span class="nm who-row">${logo(c)}${esc(c.name)}</span><span class="sub">${esc(c.city)}</span></div>
       ${c.contacts.map(k=>`<div class="row pers"><span><b>${esc(k.n)}</b>${k.ruolo?` <span class="sub">· ${esc(k.ruolo)}</span>`:""}</span>${waBtn(k.tel)}</div>`).join("")}
       ${T==="cliente"?`<span class="pv">${c.open.length} ticket aperti</span>`:""}</div>`).join("") : `<div class="empty">Nessuna azienda trovata</div>`}</div>`;
   el.querySelectorAll("[data-ct]").forEach(b=>b.onclick=()=>{ S.ctipo = b.dataset.ct; renderClienti(); });
+  $("#c-ord").value = S.cord; $("#c-ord").onchange = e => { S.cord = e.target.value; renderClienti(); };
   const qi = $("#c-q"); qi.oninput = ()=>{ S.csearch = qi.value; const p = qi.selectionStart; renderClienti(); const n=$("#c-q"); n.focus(); n.setSelectionRange(p,p); };
   el.querySelectorAll(".item").forEach(b=>{ b.onclick=e=>{ if(e.target.closest("a")) return; clientSheet(b.dataset.c); }; b.onkeydown=e=>{ if(e.key==="Enter") clientSheet(b.dataset.c); }; });
 }
@@ -770,15 +794,26 @@ function myTickets(){
     ...DEMO_CLOSED.map(t=>({...t, c:cl(t.client), sys:(cl(t.client)||{}).sys}))].filter(t=>t.c);
 }
 const TST = [["aperti","Aperti",t=>t.state!=="Chiuso"],["plan","Pianificati",t=>!!t.plan && t.state!=="Chiuso"],["attesa","In attesa",t=>/attesa/i.test(t.state)],["chiusi","Chiusi",t=>t.state==="Chiuso"],["tutti","Tutti",()=>true]];
+/* ordinamenti dei ticket nell'app */
+const STATI_ORD = ["Aperto","In lavorazione","Pianificato","In attesa cliente","In attesa ricambio","Chiuso"];
+const planKey = t => t.plan ? t.plan.day*1440 + (+t.plan.time.slice(0,2))*60 + (+t.plan.time.slice(3,5)) : 1e9;
+function sortTickets(list, by){
+  const n = t => String(t.id).replace(/\D/g,"");
+  const f = { prio:(a,b)=>(b.urg?1:0)-(a.urg?1:0) || planKey(a)-planKey(b), int:(a,b)=>planKey(a)-planKey(b), new:(a,b)=>String(b.opened||n(b)).localeCompare(String(a.opened||n(a)),"it",{numeric:true}),
+    cli:(a,b)=>a.c.name.localeCompare(b.c.name,"it"), stato:(a,b)=>STATI_ORD.indexOf(a.state)-STATI_ORD.indexOf(b.state), num:(a,b)=>n(a).localeCompare(n(b),"it",{numeric:true}) }[by] || (()=>0);
+  return list.slice().sort(f);
+}
 function renderTicket(){
   const el = $("#s-ticket"); S.tq = S.tq || ""; S.ts = S.ts || "aperti";
+  S.tord = S.tord || "prio";
   el.innerHTML = `<div class="row"><div><h2 class="sec">Ticket</h2><p class="sub">I tuoi ticket, aperti e chiusi</p></div><button class="btn small primary" type="button" id="tk-new">+ Nuovo</button></div>
     <input class="input" id="tk-q" type="search" placeholder="Numero, cliente o richiesta" value="${esc(S.tq)}">
+    <label class="sortsel">Ordina per <select class="input" id="tk-ord"><option value="prio">priorità</option><option value="int">data intervento</option><option value="new">più recenti</option><option value="cli">cliente A–Z</option><option value="stato">stato</option><option value="num">numero</option></select></label>
     <div class="tchips" id="tk-st"></div><div class="list" id="tk-list"></div>`;
   const paint = () => {
     const q = S.tq.toLowerCase().replace(/[^a-z0-9]/g,""), all = myTickets().filter(t=>!q || [t.id, t.title, t.c.name].some(v=>String(v).toLowerCase().replace(/[^a-z0-9]/g,"").includes(q)));
     $("#tk-st").innerHTML = TST.map(([k,l,f])=>`<button class="tchip" type="button" data-s="${k}" aria-pressed="${S.ts===k}">${l} <b>${all.filter(f).length}</b></button>`).join("");
-    const f = (TST.find(x=>x[0]===S.ts)||TST[0])[2], list = all.filter(f);
+    const f = (TST.find(x=>x[0]===S.ts)||TST[0])[2], list = sortTickets(all.filter(f), S.tord);
     $("#tk-list").innerHTML = list.map(t=>`<button class="item tk" type="button" data-t="${esc(t.id)}">
       <div class="row"><span class="nm who-row">${logo(t.c)}${esc(t.c.name)}</span>${t.urg?'<span class="pill p-urg">Urgente</span>':""}</div>
       <div class="row" style="justify-content:flex-start;gap:8px"><span class="mono">${esc(t.id)}</span>${badge(t.sys)}<span class="tstate ${t.state==="Chiuso"?"off":/attesa/i.test(t.state)?"wait":""}">${esc(t.state)}</span></div>
@@ -786,6 +821,7 @@ function renderTicket(){
     $("#tk-list").querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>ticketSheet(b.dataset.t));
   };
   $("#tk-q").oninput = e => { S.tq = e.target.value; paint(); };
+  $("#tk-ord").value = S.tord; $("#tk-ord").onchange = e => { S.tord = e.target.value; paint(); };
   $("#tk-st").onclick = e => { const b = e.target.closest("[data-s]"); if(b){ S.ts = b.dataset.s; paint(); } };
   $("#tk-new").onclick = ()=>{ S.f = blankForm(); show("inoltra"); };
   paint();

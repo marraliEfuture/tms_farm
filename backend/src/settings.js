@@ -53,14 +53,14 @@ function update(body) {
   return { ok: true, settings: publicView() };
 }
 /* profili e permessi: per ogni area, v = vedere, m = creare/modificare, e = eliminare */
-const AREE = ["cruscotto", "posta", "ticket", "clienti", "utenti", "profili", "tecnici", "aree", "office365", "ai", "collegamenti", "regole", "backup", "audit", "tutorial"];
+const AREE = ["cruscotto", "posta", "ticket", "clienti", "utenti", "profili", "tecnici", "aree", "recap", "office365", "ai", "collegamenti", "regole", "backup", "audit", "tutorial"];
 const P = o => Object.fromEntries(AREE.map(a => [a, o[a] || ""]));
 const DEFAULT_PROFILES = {
   admin: { nome: "Amministratore", desc: "Tutto, compresa la configurazione", base: true, perm: Object.fromEntries(AREE.map(a => [a, "vme"])) },
   resp: { nome: "Responsabile service", desc: "Lavoro quotidiano, tecnici, aree e regole; vede utenti e registro", base: true, perm: P({
-    cruscotto: "v", posta: "vm", ticket: "vme", clienti: "vme", utenti: "v", profili: "v", tecnici: "vme", aree: "vme", collegamenti: "v", regole: "vm", audit: "v", tutorial: "v" }) },
+    cruscotto: "v", posta: "vm", ticket: "vme", clienti: "vme", utenti: "v", profili: "v", tecnici: "vme", aree: "vme", recap: "vm", collegamenti: "v", regole: "vm", audit: "v", tutorial: "v" }) },
   agent: { nome: "Agente", desc: "Ufficio: ticket, messaggi, clienti e posta in arrivo delle sue aree di lavoro", base: true, perm: P({
-    cruscotto: "v", posta: "vm", ticket: "vm", clienti: "vm", tecnici: "v", aree: "v", tutorial: "v" }) },
+    cruscotto: "v", posta: "vm", ticket: "vm", clienti: "vm", tecnici: "v", aree: "v", recap: "v", tutorial: "v" }) },
   op: { nome: "Tecnico", desc: "I suoi interventi, messaggi, ticket e clienti; nessuna configurazione", base: true, perm: P({
     cruscotto: "v", ticket: "vm", clienti: "v", tutorial: "v" }) },
   cliente: { nome: "Cliente", desc: "Solo i ticket della propria azienda: li vede e ne apre di nuovi", base: true, perm: P({ cruscotto: "v", ticket: "vm" }) },
@@ -107,17 +107,23 @@ function removeProfile(key, inUse) {
   delete custom[key]; delete s.profiles[key]; save(s); return { ok: true, profiles: profiles() };
 }
 /* aree di lavoro: si associano a tecnici e agenti; eliminate restano nello storico */
-function aree() { return (load().aree || []).map(a => ({ attivo: true, ...a })); }
+/* in prova, finché non se ne crea una, tre aree per settore di clienti (analisi di acqua e vapore) */
+const DEMO_AREE = [
+  { id: "a-ene", nome: "Centrali e teleriscaldamento", desc: "Ciclo acqua-vapore: silice, sodio, conducibilità, ossigeno", colore: "#2aa7ff" },
+  { id: "a-acq", nome: "Acque potabili e reflue", desc: "Acquedotti e depuratori: cloro, torbidità, ammonio, fosfato", colore: "#22aa66" },
+  { id: "a-pha", nome: "Farmaceutico e acqua ultrapura", desc: "Acqua purificata e per iniettabili, semiconduttori: TOC, conducibilità", colore: "#d9ab45" },
+];
+function aree() { const s = load(); return (s.aree || (cfg.mode === "demo" ? DEMO_AREE : [])).map(a => ({ attivo: true, ...a })); }
 function addArea({ nome, desc, colore }) {
   nome = String(nome || "").trim().slice(0, 50);
   if (!nome) return { error: "dai un nome all'area" };
-  const s = load(); s.aree = s.aree || [];
+  const s = load(); s.aree = s.aree || (cfg.mode === "demo" ? JSON.parse(JSON.stringify(DEMO_AREE)) : []);
   if (s.aree.some(a => !a.eliminato && a.nome.toLowerCase() === nome.toLowerCase())) return { error: "esiste già un'area con questo nome" };
   const a = { id: "a" + Date.now().toString(36), nome, desc: String(desc || "").slice(0, 200), colore: /^#[0-9a-f]{6}$/i.test(colore || "") ? colore : "#2aa7ff", attivo: true };
   s.aree.push(a); save(s); return { ok: true, area: a };
 }
 function editArea(id, { nome, desc, colore, attivo }) {
-  const s = load(), a = (s.aree || []).find(x => x.id === id && !x.eliminato);
+  const s = load(); if (!s.aree && cfg.mode === "demo") s.aree = JSON.parse(JSON.stringify(DEMO_AREE)); const a = s.aree.find(x => x.id === id && !x.eliminato);
   if (!a) return { error: "area non trovata" };
   if (nome !== undefined) { nome = String(nome).trim().slice(0, 50); if (!nome) return { error: "dai un nome all'area" }; a.nome = nome; }
   if (desc !== undefined) a.desc = String(desc).slice(0, 200);
@@ -126,7 +132,7 @@ function editArea(id, { nome, desc, colore, attivo }) {
   save(s); return { ok: true, area: a };
 }
 function removeArea(id) {
-  const s = load(), a = (s.aree || []).find(x => x.id === id && !x.eliminato);
+  const s = load(); if (!s.aree && cfg.mode === "demo") s.aree = JSON.parse(JSON.stringify(DEMO_AREE)); const a = s.aree.find(x => x.id === id && !x.eliminato);
   if (!a) return { error: "area non trovata" };
   a.eliminato = new Date().toISOString(); a.attivo = false; save(s); return { ok: true };
 }
@@ -134,6 +140,16 @@ function removeArea(id) {
 const SISTEMI = ["ITSM", "Halo"];
 function sistema() { const v = load().sistema; return SISTEMI.includes(v) ? v : "ITSM"; }
 function setSistema(v) { if (!SISTEMI.includes(v)) return { error: "sistema non valido" }; const s = load(); s.sistema = v; save(s); return { ok: true, sistema: v }; }
+/* recap ai clienti: mail al contatto del ticket a ogni passaggio importante e riepilogo settimanale */
+const RECAP_DEF = { attivo: true, apertura: true, intervento: true, chiusura: true, settimanale: true, giorno: 1, ora: 8, conferma: true };
+function recap() { return { ...RECAP_DEF, ...(load().recap || {}) }; }
+function updateRecap(b) {
+  const r = recap();
+  for (const k of ["attivo", "apertura", "intervento", "chiusura", "settimanale", "conferma"]) if (b[k] !== undefined) r[k] = !!b[k];
+  if (b.giorno !== undefined) r.giorno = Math.max(0, Math.min(6, Math.floor(Number(b.giorno) || 0)));
+  if (b.ora !== undefined) r.ora = Math.max(0, Math.min(23, Math.floor(Number(b.ora) || 0)));
+  const s = load(); s.recap = r; save(s); return { ok: true, recap: r };
+}
 /* limite di utenti attivi (console + tecnici dell'app); 0 = nessun limite */
 function limiti() { const l = load().limiti || {}; return { maxUtenti: Number(l.maxUtenti) > 0 ? Math.floor(Number(l.maxUtenti)) : 0 }; }
 function updateLimiti({ maxUtenti }) {
@@ -160,4 +176,4 @@ function restoreData(b) {
   }
   return { ok: true, created: b.created };
 }
-module.exports = { ai, aiPublic, updateAi, support, graph, publicView, update, AREE, profiles, updateProfiles, addProfile, editProfile, removeProfile, aree, addArea, editArea, removeArea, limiti, updateLimiti, sistema, setSistema, SISTEMI, can, backupData, restoreData };
+module.exports = { ai, aiPublic, updateAi, support, graph, publicView, update, AREE, profiles, updateProfiles, addProfile, editProfile, removeProfile, aree, addArea, editArea, removeArea, limiti, updateLimiti, recap, updateRecap, sistema, setSistema, SISTEMI, can, backupData, restoreData };

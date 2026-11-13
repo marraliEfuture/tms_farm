@@ -7,8 +7,8 @@ const settings = require("./settings");
 
 const TECH_FILE = path.join(cfg.dataDir, "tecnici.json");
 const DEMO_TECHS = [
-  { mail: "mb@efuture.it", nome: "Tecnico Zona Sud", ini: "MB", zona: "Sud", codice: "123456" },
-  { mail: "lc@efuture.it", nome: "Tecnico Zona Centro", ini: "LC", zona: "Centro", codice: "123456" },
+  { mail: "mb@efuture.it", nome: "Tecnico Zona Sud", ini: "MB", zona: "Sud", codice: "123456", aree: ["a-ene", "a-pha"] },
+  { mail: "lc@efuture.it", nome: "Tecnico Zona Centro", ini: "LC", zona: "Centro", codice: "123456", aree: ["a-acq", "a-ene"] },
 ];
 
 function hashCode(mail, code) { return crypto.scryptSync(String(code), String(mail).toLowerCase(), 32).toString("hex"); }
@@ -72,7 +72,7 @@ function users() {
   if (cfg.mode === "demo" && !cfg.adminPassword) {
     list.push({ user: "l.bianchi", nome: "Laura Bianchi", mail: "l.bianchi@efuture.it", profilo: "resp", attivo: true, hash: hashCode("l.bianchi", DEMO_ADMIN.password) });
     list.push({ user: "g.verdi", nome: "Giulia Verdi", mail: "g.verdi@efuture.it", profilo: "op", attivo: true, hash: hashCode("g.verdi", DEMO_ADMIN.password) });
-    list.push({ user: "a.neri", nome: "Andrea Neri", mail: "a.neri@efuture.it", profilo: "agent", attivo: true, hash: hashCode("a.neri", DEMO_ADMIN.password) });
+    list.push({ user: "a.neri", nome: "Andrea Neri", mail: "a.neri@efuture.it", profilo: "agent", aree: ["a-ene", "a-pha"], attivo: true, hash: hashCode("a.neri", DEMO_ADMIN.password) });
     list.push({ user: "m.rossi", nome: "Marco Rossi", mail: "m.rossi@caseificiovalle.ch", profilo: "cliente", cliente: "cas", attivo: true, hash: hashCode("m.rossi", DEMO_ADMIN.password) });
   }
   return list;

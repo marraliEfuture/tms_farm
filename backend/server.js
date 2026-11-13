@@ -7,6 +7,7 @@ const express = require("express");
 const cfg = require("./src/config");
 const store = require("./src/store");
 const auth = require("./src/auth");
+const recap = require("./src/recap");
 const sources = require("./src/connectors");
 const mail = require("./src/mail");
 const { recognize } = require("./src/recognize");
@@ -33,6 +34,9 @@ app.use("/api/app", (req, res, next) => {
 });
 
 /* contatti: persone di un'azienda cliente o fornitrice */
+const techNameOf = ini => { const t = auth.techs().find(x => x.ini === ini); return t ? t.nome : ""; };
+/* recap al cliente senza mai bloccare l'operazione che lo ha fatto partire */
+const sendRecap = async (t, kind) => { try { const { clients } = await sources.data(); return await recap.forTicket(t, clients, kind, techNameOf(t.tech)); } catch (e) { console.error("recap", e.message); return null; } };
 const contactOf = (clients, id) => { for (const c of clients) { const k = (c.contacts || []).find(x => x.id && x.id === id); if (k) return { ...k, azienda: c }; } return null; };
 const mailAddr = x => { const m = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/.exec(String(x || "")); return m ? m[0].toLowerCase() : ""; };
 /* mail del cliente per la copia: quella salvata sulla conversazione, l'ultima mail inoltrata, o una mail arrivata a support sul ticket (mai un tecnico) */
@@ -154,6 +158,7 @@ app.post("/api/app/send", auth.requireTech, async (req, res, next) => {
     if (!th) { th = { ticket, client: c ? c.id : null, unread: false, msgs: [] }; threads.unshift(th); }
     const cm = b.kind === "mail" ? mailAddr(b.mailFrom) : "";
     if (cm) th.clientMail = cm;
+    if (isNew && c && cfg.mode === "demo") { const nt = (await sources.data()).tickets.find(x => x.id === ticket); if (nt) await sendRecap(nt, "apertura"); }
     if (k) { th.contatto = k.id; if (existing && !existing.contatto && cfg.mode === "demo") sources.demo.updateTicket(existing.id, { contatto: k.id }); }
     th.msgs.push({ k: "fwd", kind: b.kind, mailFrom: cm || undefined, contatto: k ? k.id : undefined, from: (k && k.n) || b.from || "", t: b.time || now(), text: b.body, lines: b.lines || null, photos: (b.files || []).length });
     if (b.note) th.msgs.push({ k: "me", t: now(), text: b.note });
@@ -319,13 +324,14 @@ app.get("/api/admin/state", async (req, res, next) => {
     const tl = auth.techs(), op = (req.admin.profilo || "admin") === "op";
     const threads = Object.entries(st.threads).flatMap(([m, list]) => { const t = tl.find(x => x.mail === m); return (list || []).map(th => ({ ...th, tech: t ? t.ini : "", techMail: m })); })
       .filter(th => !op || th.techMail === req.admin.mail);
+    recap.checkInbound(mails);
     /* profilo Cliente: solo i ticket e l'anagrafica della propria azienda, niente posta né conversazioni interne */
     const mine = (req.admin.profilo || "admin") === "cliente" ? req.admin.cliente || "-" : "";
     const hidden = new Set(st.hiddenMails || []);
     mails = mails.filter(m => !hidden.has(m.id));
     if (mine) return res.json({ threads: [], ai: { enabled: false }, profiles: settings.profiles(), o365: null, settings: null, me: auth.publicAdmin(req.admin), mode: cfg.mode, support: "", appUrl: cfg.appUrl,
       clients: clients.filter(c => c.id === mine), tickets: tickets.filter(t => t.client === mine), techs: techsPublic().map(({ mail, ...t }) => ({ ...t, mail: "" })), mails: [], rules: [], customRules: [], aree: [], limiti: auth.limitInfo(), connections: [] });
-    res.json({ sistema: settings.sistema(), customRules: st.customRules || [], aree: settings.aree(), limiti: auth.limitInfo(), threads, ai: settings.aiPublic(), profiles: settings.profiles(), o365, settings: settings.can(req.admin.profilo || "admin", "office365", "v") ? settings.publicView() : null, me: auth.publicAdmin(req.admin), mode: cfg.mode, support: settings.support(), appUrl: cfg.appUrl, clients, tickets, techs: techsPublic(), mails, rules: st.rules, connections: await sources.status() });
+    res.json({ recaps: recap.list().slice(0, 300), recapCfg: settings.recap(), recapMissing: recap.missing(clients, tickets), sistema: settings.sistema(), customRules: st.customRules || [], aree: settings.aree(), limiti: auth.limitInfo(), threads, ai: settings.aiPublic(), profiles: settings.profiles(), o365, settings: settings.can(req.admin.profilo || "admin", "office365", "v") ? settings.publicView() : null, me: auth.publicAdmin(req.admin), mode: cfg.mode, support: settings.support(), appUrl: cfg.appUrl, clients, tickets, techs: techsPublic(), mails, rules: st.rules, connections: await sources.status() });
   } catch (e) { next(e); }
 });
 /* l'ufficio scrive nella conversazione del tecnico: il messaggio arriva nell'app come «Ticket Farm» */
@@ -368,11 +374,13 @@ app.post("/api/admin/tickets", need("ticket", "m"), async (req, res, next) => {
     const kk = (c.contacts || []).find(x => x.id === req.body.contatto), fo = clients.find(x => x.id === req.body.fornitore && x.tipo === "fornitore");
     const id = sources.demo.createTicket(c, title, String(req.body.tech || ""), { urg: !!req.body.urg, origin: own ? "Portale cliente" : "Console", contatto: kk ? kk.id : "", fornitore: fo ? fo.id : "" });
     log(req, "Ticket creato", id + " · " + c.name + " · " + title, "ticket");
+    const nt = (await sources.data()).tickets.find(x => x.id === id); if (nt) await sendRecap(nt, "apertura");
     res.json({ ticket: { id, sys: c.sys, client: c.id, title } });
   } catch (e) { next(e); }
 });
 /* modificare un ticket: stato, tecnico, urgenza, data dell'intervento, richiesta */
-app.put("/api/admin/tickets/:id", need("ticket", "m"), async (req, res) => {
+app.put("/api/admin/tickets/:id", need("ticket", "m"), async (req, res, next) => {
+  try {
   if (req.admin.profilo === "cliente") return res.status(403).json({ error: "il cliente apre ticket ma non li modifica" });
   if (cfg.mode !== "demo") return res.status(501).json({ error: "dal vivo il ticket si modifica nel sistema dei ticket collegato: collegamento non ancora disponibile" });
   const b = req.body || {};
@@ -380,10 +388,14 @@ app.put("/api/admin/tickets/:id", need("ticket", "m"), async (req, res) => {
   const { clients } = await sources.data(), cur = (await sources.data()).tickets.find(x => x.id === req.params.id);
   if (b.contatto && cur) { const az = clients.find(x => x.id === cur.client); if (!az || !(az.contacts || []).some(x => x.id === b.contatto)) return res.status(400).json({ error: "il contatto non è di questo cliente" }); }
   if (b.fornitore && !clients.some(x => x.id === b.fornitore && x.tipo === "fornitore")) return res.status(400).json({ error: "fornitore non valido" });
+  const before = cur ? { state: cur.state, plan: JSON.stringify(cur.plan || null) } : null;
   const t = sources.demo.updateTicket(req.params.id, b);
   if (!t) return res.status(404).json({ error: "ticket non trovato" });
   log(req, "Ticket modificato", t.id + " · " + t.state + (t.tech ? " · " + t.tech : ""), "ticket");
+  if (before && t.state === "Chiuso" && before.state !== "Chiuso") await sendRecap(t, "chiusura");
+  else if (before && t.plan && JSON.stringify(t.plan) !== before.plan && t.state !== "Chiuso") await sendRecap(t, "intervento");
   res.json({ ticket: t });
+  } catch (e) { next(e); }
 });
 app.delete("/api/admin/tickets/:id", need("ticket", "e"), (req, res) => {
   if (cfg.mode !== "demo") return res.status(501).json({ error: "dal vivo i ticket si chiudono in ITSM o Halo, non si eliminano da qui" });
@@ -486,6 +498,16 @@ app.delete("/api/admin/profiles/:key", need("profili", "e"), (req, res) => {
   const r = settings.removeProfile(req.params.key, auth.users().some(u => !u.eliminato && u.profilo === req.params.key));
   if (r.error) return res.status(400).json(r); log(req, "Profilo eliminato", req.params.key, "profili"); res.json(r);
 });
+/* recap ai clienti: impostazioni, registro, invii manuali, prova, nuovi tentativi */
+app.get("/api/admin/recap", need("recap", "v"), async (req, res, next) => { try { const { clients, tickets } = await sources.data(); res.json({ recap: settings.recap(), recaps: recap.list().slice(0, 500), missing: recap.missing(clients, tickets) }); } catch (e) { next(e); } });
+app.post("/api/admin/recap/settings", need("recap", "m"), (req, res) => { const r = settings.updateRecap(req.body || {}); log(req, "Impostazioni dei recap", r.recap.attivo ? "attivi" : "spenti", "recap"); res.json(r); });
+app.post("/api/admin/recap/ticket", need("recap", "m"), async (req, res, next) => {
+  try { const { clients, tickets } = await sources.data(), t = tickets.find(x => x.id === req.body.ticket); if (!t) return res.status(404).json({ error: "ticket non trovato" });
+    const kind = ["apertura", "intervento", "chiusura"].includes(req.body.kind) ? req.body.kind : (t.state === "Chiuso" ? "chiusura" : t.plan ? "intervento" : "apertura");
+    const e = await recap.forTicket(t, clients, kind, techNameOf(t.tech), true); log(req, "Recap inviato a mano", t.id + " · " + e.stato, "recap"); res.json({ recap: e }); } catch (e) { next(e); } });
+app.post("/api/admin/recap/settimanale", need("recap", "m"), async (req, res, next) => { try { const { clients, tickets } = await sources.data(); const out = await recap.weekly(clients, tickets); log(req, "Riepilogo settimanale inviato", out.length + " destinatari", "recap"); res.json({ inviati: out }); } catch (e) { next(e); } });
+app.post("/api/admin/recap/test", need("recap", "m"), async (req, res, next) => { try { const r = await recap.test(String(req.body.to || "").trim()); if (r.error) return res.status(400).json(r); log(req, "Recap di prova", r.to + " · " + r.stato, "recap"); res.json({ recap: r }); } catch (e) { next(e); } });
+app.post("/api/admin/recap/:id/riprova", need("recap", "m"), async (req, res, next) => { try { const { clients, tickets } = await sources.data(); const r = await recap.retry(clients, tickets, req.params.id); res.json({ recap: r[0] || null }); } catch (e) { next(e); } });
 /* aree di lavoro */
 /* sistema dei ticket in uso: i collegamenti sono alternativi (uno solo alla volta) */
 app.post("/api/admin/sistema", need("collegamenti", "m"), (req, res) => { const r = settings.setSistema(req.body.sistema); if (r.error) return res.status(400).json(r); sources.invalidate(); log(req, "Sistema dei ticket in uso", r.sistema, "collegamenti"); res.json(r); });
@@ -557,6 +579,8 @@ app.post("/api/admin/rules", need("regole", "m"), (req, res) => {
 app.use((err, req, res, next) => { console.error(err); res.status(500).json({ error: err.message || "errore del server" }); });
 
 if (require.main === module) {
+  /* recap: nuovi tentativi e riepilogo settimanale, controllati ogni 10 minuti */
+  setInterval(() => recap.tick(sources.data).catch(e => console.error("recap", e.message)), 10 * 60000);
   app.listen(cfg.port, () => {
     console.log(`Ticket Farm backend su http://localhost:${cfg.port} (modalità ${cfg.mode})`);
     if (cfg.mode === "demo") console.log("Prova: accedi dall'app con mb@efuture.it e codice 123456. Le mail vanno in backend/outbox.");
