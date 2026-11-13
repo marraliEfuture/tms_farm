@@ -107,11 +107,13 @@ function removeProfile(key, inUse) {
   delete custom[key]; delete s.profiles[key]; save(s); return { ok: true, profiles: profiles() };
 }
 /* aree di lavoro: si associano a tecnici e agenti; eliminate restano nello storico */
-/* in prova, finché non se ne crea una, tre aree per settore di clienti (analisi di acqua e vapore) */
+/* in prova, finché non se ne crea una: tre zone, amministrazione e supporto IT */
 const DEMO_AREE = [
-  { id: "a-ene", nome: "Centrali e teleriscaldamento", desc: "Ciclo acqua-vapore: silice, sodio, conducibilità, ossigeno", colore: "#2aa7ff" },
-  { id: "a-acq", nome: "Acque potabili e reflue", desc: "Acquedotti e depuratori: cloro, torbidità, ammonio, fosfato", colore: "#22aa66" },
-  { id: "a-pha", nome: "Farmaceutico e acqua ultrapura", desc: "Acqua purificata e per iniettabili, semiconduttori: TOC, conducibilità", colore: "#d9ab45" },
+  { id: "a-nord", nome: "Zona Nord", desc: "Bellinzonese, Leventina e valli", colore: "#2aa7ff" },
+  { id: "a-centro", nome: "Zona Centro", desc: "Luganese e Malcantone", colore: "#22aa66" },
+  { id: "a-sud", nome: "Zona Sud", desc: "Mendrisiotto e Basso Ceresio", colore: "#d9ab45" },
+  { id: "a-amm", nome: "Amministrazione", desc: "Contratti, offerte e fatturazione", colore: "#8b5cf6" },
+  { id: "a-it", nome: "Supporto IT", desc: "Assistenza informatica, collegamenti e app", colore: "#e0565b" }
 ];
 function aree() { const s = load(); return (s.aree || (cfg.mode === "demo" ? DEMO_AREE : [])).map(a => ({ attivo: true, ...a })); }
 function addArea({ nome, desc, colore }) {

@@ -537,9 +537,11 @@ const techByIni = ini => TECHS.find(t=>t.ini===ini);
 const techTag = ini => { const t = techByIni(ini); if(!ini) return `<span class="dim">da assegnare</span>`; return `<span class="strong tech-i" title="Tecnico${t?" · "+esc(techName(t)):""}" style="color:${PCOLOR.op}">${picon("op")}</span><span class="strong">${esc(ini)}</span>${t && t.eliminato ? ' <span class="pill p-mut">eliminato</span>' : t && t.attivo===false ? ' <span class="pill p-warn">disattivato</span>' : ""}`; };
 const clientTag = c => c ? esc(c.name)+(c.eliminato?' <span class="pill p-mut">eliminato</span>':c.attivo===false?' <span class="pill p-warn">disattivato</span>':"") : "";
 let AREE_LIST = [
-  {id:"a-ene", nome:"Centrali e teleriscaldamento", desc:"Ciclo acqua-vapore: silice, sodio, conducibilità, ossigeno", colore:"#2aa7ff", attivo:true},
-  {id:"a-acq", nome:"Acque potabili e reflue", desc:"Acquedotti e depuratori: cloro, torbidità, ammonio, fosfato", colore:"#22aa66", attivo:true},
-  {id:"a-pha", nome:"Farmaceutico e acqua ultrapura", desc:"Acqua purificata e per iniettabili, semiconduttori: TOC, conducibilità", colore:"#d9ab45", attivo:true}
+  {id:"a-nord", nome:"Zona Nord", desc:"Bellinzonese, Leventina e valli", colore:"#2aa7ff", attivo:true},
+  {id:"a-centro", nome:"Zona Centro", desc:"Luganese e Malcantone", colore:"#22aa66", attivo:true},
+  {id:"a-sud", nome:"Zona Sud", desc:"Mendrisiotto e Basso Ceresio", colore:"#d9ab45", attivo:true},
+  {id:"a-amm", nome:"Amministrazione", desc:"Contratti, offerte e fatturazione", colore:"#8b5cf6", attivo:true},
+  {id:"a-it", nome:"Supporto IT", desc:"Assistenza informatica, collegamenti e app", colore:"#e0565b", attivo:true}
 ];
 let LIMITI = {max:0, attivi:0, pieno:false};
 const areaTag = id => { const a = AREE_LIST.find(x=>x.id===id); return a ? `<span class="atag" style="--ac:${esc(a.colore)}">${esc(a.nome)}${a.eliminato?" (eliminata)":""}</span>` : ""; };
@@ -559,10 +561,10 @@ function logo(c){
   return `<span class="lav" style="--h:${h}" aria-hidden="true">${esc(ini)}${src?`<img src="${src}" alt="" loading="lazy" onload="if(this.naturalWidth&&this.naturalWidth<=16)this.remove()" onerror="this.remove()">`:""}</span>`;
 }
 const TECHS = [
-  {ini:"MB", name:"Tecnico Zona Sud", mail:"mb@efuture.it", zona:"Sud", app:true, last:"08:20", attivo:true, aree:["a-ene","a-pha"]},
-  {ini:"LC", name:"Tecnico Zona Centro", mail:"lc@efuture.it", zona:"Centro", app:true, last:"ieri", attivo:true, aree:["a-acq"]},
-  {ini:"GN", name:"Tecnico Zona Nord", mail:"gn@efuture.it", zona:"Nord", app:false, last:"—", attivo:true, aree:["a-acq"]},
-  {ini:"FB", name:"Franco Bassi", mail:"fb@efuture.it", zona:"Sud", app:true, last:"21/10", attivo:false, aree:["a-ene"]}
+  {ini:"MB", name:"Tecnico Zona Sud", mail:"mb@efuture.it", zona:"Sud", app:true, last:"08:20", attivo:true, aree:["a-sud"]},
+  {ini:"LC", name:"Tecnico Zona Centro", mail:"lc@efuture.it", zona:"Centro", app:true, last:"ieri", attivo:true, aree:["a-centro"]},
+  {ini:"GN", name:"Tecnico Zona Nord", mail:"gn@efuture.it", zona:"Nord", app:false, last:"—", attivo:true, aree:["a-nord"]},
+  {ini:"FB", name:"Franco Bassi", mail:"fb@efuture.it", zona:"Sud", app:true, last:"21/10", attivo:false, aree:["a-sud"]}
 ];
 
 const tfReset = () => ({q:"", stato:"aperti", client:"", tech:"", sys:"", origin:"", per:"", dal:"", al:"", urg:false, area:"", forn:"", contatto:""});
@@ -1848,7 +1850,7 @@ let USERS_LOCAL = [
   {user:"admin", nome:"Amministratore", mail:"admin@efuture.it", profilo:"admin", attivo:true, ultimo:"2026-11-10T09:30:00"},
   {user:"l.bianchi", nome:"Laura Bianchi", mail:"l.bianchi@efuture.it", profilo:"resp", attivo:true, ultimo:"2026-11-10T08:02:00"},
   {user:"g.verdi", nome:"Giulia Verdi", mail:"g.verdi@efuture.it", profilo:"op", attivo:true, ultimo:"2026-11-10T08:30:00"},
-  {user:"a.neri", nome:"Andrea Neri", mail:"a.neri@efuture.it", profilo:"agent", attivo:true, aree:["a-ene","a-pha"], ultimo:"2026-11-10T07:58:00"},
+  {user:"a.neri", nome:"Andrea Neri", mail:"a.neri@efuture.it", profilo:"agent", attivo:true, aree:["a-sud","a-it"], ultimo:"2026-11-10T07:58:00"},
   {user:"m.rossi", nome:"Marco Rossi", mail:"m.rossi@caseificiovalle.ch", profilo:"cliente", cliente:"cas", attivo:true, ultimo:"2026-11-09T16:12:00"},
   {user:"p.neri", nome:"Paolo Neri", mail:"p.neri@efuture.it", profilo:"op", attivo:false, ultimo:"2026-10-02T11:10:00"}
 ];
@@ -2137,7 +2139,7 @@ function areeView(){
   const people = id => [...TECHS.filter(t=>!t.eliminato && (t.aree||[]).includes(id)).map(t=>({n:t.ini+" · "+techName(t), k:"Tecnico", off:t.attivo===false})),
     ...USERS_LOCAL.concat([]).filter(u=>!LIVE && !u.eliminato && u.profilo==="agent" && (u.aree||[]).includes(id)).map(u=>({n:u.nome||u.user, k:"Agente", off:u.attivo===false}))];
   const list = AREE_LIST.filter(a=>S.areaOld || !a.eliminato);
-  $("#main").innerHTML = `<div class="top"><div><h1>Aree di lavoro</h1><p class="sub">Settori o gruppi di clienti. Si associano a tecnici e agenti; nei Ticket si filtra per area.</p></div>
+  $("#main").innerHTML = `<div class="top"><div><h1>Aree di lavoro</h1><p class="sub">Zone o reparti. Si associano a tecnici e agenti; nei Ticket si filtra per area.</p></div>
       <button class="btn primary" type="button" id="ar-add" data-perm="aree:m">+ Nuova area</button></div>
     <label class="check"><input type="checkbox" id="ar-old" ${S.areaOld?"checked":""}> Mostra anche le eliminate</label>
     <div class="tbl"><table><thead><tr><th>Area</th><th>Descrizione</th><th>Tecnici e agenti</th><th>Ticket aperti</th><th>Stato</th><th><span class="sr">Azioni</span></th></tr></thead><tbody>
@@ -2160,8 +2162,8 @@ function areaForm(a){
   const isNew = !a; a = a || {nome:"", desc:"", colore:"#2aa7ff", attivo:true};
   openEditor(`<h2>${isNew?"Nuova area di lavoro":"Modifica area"}</h2>
     <div class="formgrid">
-      <label class="field wide"><span>Nome</span><input class="input" id="ar-nome" required maxlength="50" value="${esc(a.nome)}" placeholder="es. Centrali e teleriscaldamento"></label>
-      <label class="field wide"><span>Descrizione</span><input class="input" id="ar-desc" maxlength="200" value="${esc(a.desc||"")}" placeholder="es. Ciclo acqua-vapore: silice, sodio, ossigeno"></label>
+      <label class="field wide"><span>Nome</span><input class="input" id="ar-nome" required maxlength="50" value="${esc(a.nome)}" placeholder="es. Zona Sud"></label>
+      <label class="field wide"><span>Descrizione</span><input class="input" id="ar-desc" maxlength="200" value="${esc(a.desc||"")}" placeholder="es. Mendrisiotto e Basso Ceresio"></label>
       <label class="field"><span>Colore</span><input class="input" id="ar-col" type="color" value="${esc(a.colore||"#2aa7ff")}"></label>
     </div>
     ${isNew?"":`<label class="check"><input type="checkbox" id="ar-att" ${a.attivo!==false?"checked":""}> Attiva</label>`}
