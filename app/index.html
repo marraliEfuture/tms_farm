@@ -844,7 +844,7 @@ function ticketSheet(id){
     ${(()=>{ const k = personOf(t), f = t.fornitore && cl(t.fornitore); return (k?`<div class="row"><span>Chi lo chiede<br><b>${esc(k.n)}</b>${k.ruolo?` · ${esc(k.ruolo)}`:""}</span>${waBtn(k.tel, "", "WhatsApp")}</div>`:"")
       + (f?`<div class="row"><span>Fornitore<br><b>${esc(f.name)}</b> · ${esc((f.contacts[0]||{}).n||"")}</span>${waBtn((f.contacts[0]||{}).tel, "", "WhatsApp")}</div>`:""); })()}
     <div class="kv"><div class="row"><span>Stato</span><b>${esc(t.state)}</b></div><div class="row"><span>Intervento</span><b>${t.plan?(t.plan.day===0?"oggi":t.plan.day===1?"domani":dayName(t.plan.day))+" alle "+esc(t.plan.time):"non pianificato"}</b></div>${t.opened?`<div class="row"><span>Aperto il</span><b>${esc(t.opened.split("-").reverse().join("/"))}</b></div>`:""}</div>
-    <div class="ts-act"><button class="btn primary" id="ts-chat" type="button">Messaggi</button>${c.lat?`<a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}" target="_blank" rel="noopener">Naviga</a>`:""}<button class="btn" id="ts-cli" type="button">Scheda cliente</button></div>
+    <div class="ts-act"><button class="btn primary" id="ts-chat" type="button">Messaggi</button>${c.lat?`<a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}" target="_blank" rel="noopener">Mappa</a>`:""}<button class="btn" id="ts-cli" type="button">Scheda cliente</button></div>
     <span class="hint">Stato e data si cambiano dall'ufficio; tu scrivi una nota o un messaggio al cliente da «Messaggi».</span>
     <button class="btn block" id="ts-x" type="button">Chiudi</button>
   </div></div>`;
@@ -940,10 +940,10 @@ function renderMappa(){
         <span class="sub">${esc(x.ticket.id)} · ${esc(x.ticket.t)}</span>
         <span class="sub">${esc(x.c.city||"")} · ${i?"dalla tappa prima":"da qui"} circa ${roadKm(x.d).toFixed(0)} km</span>
         <div class="row" style="justify-content:flex-start;gap:8px;margin-top:6px">
-          <a class="btn small primary" href="https://www.google.com/maps/dir/?api=1&destination=${x.c.lat},${x.c.lng}" target="_blank" rel="noopener">Naviga</a>
+          <a class="btn small primary" href="https://www.google.com/maps/dir/?api=1&destination=${x.c.lat},${x.c.lng}" target="_blank" rel="noopener">Mappa</a>
           ${waBtn((personOf({...x.ticket, c:x.c})||{}).tel || firstTel(x.c), "", "WhatsApp")}
           <button class="btn small" type="button" data-fly="${x.c.id}">Sulla mappa</button></div></div></li>`).join("") || `<div class="empty">Nessun cliente con ticket aperti da visitare</div>`}</ol>
-    <p class="hint">Distanze stimate in linea d'aria più il 30%. «Naviga» apre Google Maps (o l'app di navigazione del telefono) con la destinazione.</p>`;
+    <p class="hint">Distanze stimate in linea d'aria più il 30%. «Mappa» apre Google Maps (o l'app di navigazione del telefono) con la destinazione.</p>`;
   el.querySelectorAll("[data-o]").forEach(b=>b.onclick=()=>{ S.map.order = b.dataset.o; renderMappa(); });
   $("#m-all").onchange = e => { S.map.all = e.target.checked; renderMappa(); };
   $("#m-pos").onclick = ()=>{
@@ -965,10 +965,10 @@ function drawMap(start, route){
   route.forEach((x,i)=>{
     pts.push([x.c.lat, x.c.lng]);
     L.marker([x.c.lat, x.c.lng], {icon:L.divIcon({className:"", html:`<span class="mk${x.urg?" urg":""}">${i+1}</span>`, iconSize:[30,30], iconAnchor:[15,15]})}).addTo(LMAP)
-      .bindPopup(`<b>${esc(x.c.name)}</b><br>${esc(x.ticket.id)} · ${esc(x.ticket.t)}<div class="pop-act"><a href="https://www.google.com/maps/dir/?api=1&destination=${x.c.lat},${x.c.lng}" target="_blank" rel="noopener">Naviga</a><button type="button" data-sheet="${x.c.id}">Scheda cliente</button></div>`);
+      .bindPopup(`<b>${esc(x.c.name)}</b><br>${esc(x.ticket.id)} · ${esc(x.ticket.t)}<div class="pop-act"><a href="https://www.google.com/maps/dir/?api=1&destination=${x.c.lat},${x.c.lng}" target="_blank" rel="noopener">Mappa</a><button type="button" data-sheet="${x.c.id}">Scheda cliente</button></div>`);
   });
   if(S.map.all) CLIENTS.filter(c=>c.lat && !route.some(x=>x.c.id===c.id)).forEach(c=>{
-    L.marker([c.lat, c.lng], {icon:L.divIcon({className:"", html:'<span class="mk off"></span>', iconSize:[16,16], iconAnchor:[8,8]})}).addTo(LMAP).bindPopup(`<b>${esc(c.name)}</b><br>Nessun ticket aperto<div class="pop-act"><a href="https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}" target="_blank" rel="noopener">Naviga</a><button type="button" data-sheet="${c.id}">Scheda cliente</button></div>`);
+    L.marker([c.lat, c.lng], {icon:L.divIcon({className:"", html:'<span class="mk off"></span>', iconSize:[16,16], iconAnchor:[8,8]})}).addTo(LMAP).bindPopup(`<b>${esc(c.name)}</b><br>Nessun ticket aperto<div class="pop-act"><a href="https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}" target="_blank" rel="noopener">Mappa</a><button type="button" data-sheet="${c.id}">Scheda cliente</button></div>`);
     pts.push([c.lat, c.lng]);
   });
   if(route.length) L.polyline([[start.lat,start.lng], ...route.map(x=>[x.c.lat,x.c.lng])], {color:"#1aa0e8", weight:4, opacity:.8, dashArray:"8 8"}).addTo(LMAP);
@@ -997,13 +997,13 @@ function simulateAgenda(w){
   if(w.today[0]) f.push("Alle "+w.today[0].plan.time+" sei da "+w.today[0].c.name+" per la "+w.today[0].t.split(":").slice(-1)[0].trim()+": porta il kit di taratura.");
   if(w.later[0]) f.push((w.later[0].plan.day===1?"Domani":"Tra "+w.later[0].plan.day+" giorni")+" alle "+w.later[0].plan.time+" ti aspetta "+w.later[0].c.name+(/lampada/i.test(w.later[0].t)?": verifica di avere una lampada di ricambio.":"."));
   if(w.waiting[0]) f.push("Per "+w.waiting[0].c.name+" ("+w.waiting[0].id+") controlla se il ricambio è arrivato e, se sì, proponi una data.");
-  const why = t => w.urgent.includes(t) ? "Urgente e senza data: va pianificato per primo." : w.today.includes(t) ? "È in agenda oggi alle "+t.plan.time+"." : w.later.includes(t) ? "Già pianificato: basta prepararsi." : w.waiting.includes(t) ? "Dipende dal ricambio: solo un controllo veloce." : "Da pianificare quando hai tempo.";
+  const why = t => w.urgent.includes(t) ? "Urgente e senza data: va pianificato per primo." : w.today.includes(t) ? "È in agenda oggi alle "+t.plan.time+"." : w.later.includes(t) ? "Già pianificato: basta prepararsi." : w.waiting.includes(t) ? "Dipende dal ricambio: solo un controllo veloce." : "Da assegnare quando hai tempo.";
   return {source:"simulazione", model:"claude-opus-5-5", text:f.join(" ") || "Oggi non hai attività aperte.", order:[...w.urgent, ...w.today, ...w.waiting, ...w.later, ...w.todo].map(t=>({ticket:t.id, perche:why(t)}))};
 }
 const remClosed = () => { try{ return localStorage.getItem("tf-rem-closed")==="1"; }catch(e){ return false; } };
 function renderRiepilogo(){
   const el = $("#s-riepilogo"), w = myWork();
-  const when = t => w.urgent.includes(t) ? "Da pianificare" : t.plan ? (t.plan.day===0 ? "Oggi " : t.plan.day===1 ? "Domani " : dayName(t.plan.day)+" ")+t.plan.time : w.waiting.includes(t) ? "In attesa" : "Da fare";
+  const when = t => w.urgent.includes(t) ? "Da assegnare" : t.plan ? (t.plan.day===0 ? "Oggi " : t.plan.day===1 ? "Domani " : dayName(t.plan.day)+" ")+t.plan.time : w.waiting.includes(t) ? "In attesa" : "Da fare";
   const list = [...w.urgent, ...w.today, ...w.later, ...w.waiting, ...w.todo];
   el.innerHTML = `<div><h2 class="sec">Riepilogo</h2><p class="sub">${esc(dayName(0).replace(/^./,x=>x.toUpperCase()))}</p></div>
     <section class="rcard${remClosed()?" closed":""}" id="r-rem" hidden><button class="r-head" type="button" id="r-tog" aria-expanded="${!remClosed()}"><span class="r-ic" aria-hidden="true">✦</span><b>Promemoria di oggi</b><span class="r-chev">${remClosed()?"Mostra":"Riduci"}</span></button>
@@ -1017,7 +1017,7 @@ function renderRiepilogo(){
     <ol class="acts2" id="r-acts">${list.map(t=>`<li class="act2 ${w.urgent.includes(t)?"urg":w.waiting.includes(t)?"wait":""}" data-tid="${esc(t.id)}">
       <div class="sbody"><span class="when">${esc(when(t))}</span><div class="row" style="justify-content:flex-start;gap:8px">${logo(t.c)}<b>${esc(t.c.name)}</b>${t.urg?'<span class="pill p-urg">Urgente</span>':""}</div>
         <span class="sub">${esc(t.id)} · ${esc(t.t)}${personOf(t)?" · "+esc(personOf(t).n):""}</span><span class="why" hidden></span>
-        <div class="act2-x"><button class="btn small primary" type="button" data-open="${esc(t.id)}" data-c="${t.c.id}">Apri</button>${t.c.lat?`<a class="btn small" href="https://www.google.com/maps/dir/?api=1&destination=${t.c.lat},${t.c.lng}" target="_blank" rel="noopener">Naviga</a>`:""}${waBtn((personOf(t)||{}).tel || firstTel(t.c), "", "WhatsApp")}<button class="btn small" type="button" data-sheet="${t.c.id}">Scheda</button></div></div></li>`).join("") || `<div class="empty">Nessuna attività aperta: ottimo lavoro.</div>`}</ol>`;
+        <div class="act2-x"><button class="btn small primary" type="button" data-open="${esc(t.id)}" data-c="${t.c.id}">Apri</button>${t.c.lat?`<a class="btn small" href="https://www.google.com/maps/dir/?api=1&destination=${t.c.lat},${t.c.lng}" target="_blank" rel="noopener">Mappa</a>`:""}${waBtn((personOf(t)||{}).tel || firstTel(t.c), "", "WhatsApp")}<button class="btn small" type="button" data-sheet="${t.c.id}">Scheda</button></div></div></li>`).join("") || `<div class="empty">Nessuna attività aperta: ottimo lavoro.</div>`}</ol>`;
   el.querySelectorAll("[data-sheet]").forEach(b=>b.onclick=()=>clientSheet(b.dataset.sheet));
   /* «Apri»: la conversazione del ticket (se non c'è ancora, ne apre una nuova) */
   el.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{

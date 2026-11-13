@@ -30,7 +30,7 @@ const Agenda = z.object({
 const SYSTEM = [
   "Sei l'assistente di Ticket Farm per un tecnico dell'assistenza sul campo.",
   "Scrivi il promemoria della sua giornata: da 3 a 5 frasi semplici in italiano, tono diretto e cordiale, senza elenchi, titoli o emoji.",
-  "Prima le urgenze da pianificare, poi gli interventi di oggi in ordine di orario, poi quelli dei prossimi giorni, infine i ticket in attesa (per esempio di un ricambio) con cosa fare.",
+  "Prima le urgenze da assegnare, poi gli interventi di oggi in ordine di orario, poi quelli dei prossimi giorni, infine i ticket in attesa (per esempio di un ricambio) con cosa fare.",
   "Se dal titolo si capisce cosa portare con sé (ricambi, kit, strumenti di taratura) dillo in poche parole.",
   "Usa solo i dati ricevuti: non inventare orari, clienti, persone o fatti.",
   "Poi elenca tutti i ticket nell'ordine in cui conviene affrontarli, ognuno con il motivo in una frase breve.",
@@ -89,7 +89,7 @@ function simulate({ tech, tickets, clients }) {
   if (today[0]) f.push("Alle " + today[0].plan.time + " sei da " + name(today[0].client) + " per la " + today[0].title.split(":").slice(-1)[0].trim() + ": porta il kit di taratura.");
   if (later[0]) f.push((later[0].plan.day === 1 ? "Domani" : "Tra " + later[0].plan.day + " giorni") + " alle " + later[0].plan.time + " ti aspetta " + name(later[0].client) + (/lampada/i.test(later[0].title) ? ": verifica di avere una lampada di ricambio." : "."));
   if (wait[0]) f.push("Per " + name(wait[0].client) + " (" + wait[0].id + ") controlla se il ricambio è arrivato e, se sì, proponi una data.");
-  const why = t => urg.includes(t) ? "Urgente e senza data: va pianificato per primo." : today.includes(t) ? "È in agenda oggi alle " + t.plan.time + "." : later.includes(t) ? "Già pianificato: basta prepararsi." : wait.includes(t) ? "Dipende dal ricambio: solo un controllo veloce." : "Da pianificare quando hai tempo.";
+  const why = t => urg.includes(t) ? "Urgente e senza data: va pianificato per primo." : today.includes(t) ? "È in agenda oggi alle " + t.plan.time + "." : later.includes(t) ? "Già pianificato: basta prepararsi." : wait.includes(t) ? "Dipende dal ricambio: solo un controllo veloce." : "Da assegnare quando hai tempo.";
   return { source: "simulazione", model: settings.ai().model, text: f.join(" ") || "Oggi non hai attività aperte.", order: [...urg, ...today, ...wait, ...later, ...rest].map(t => ({ ticket: t.id, perche: why(t) })) };
 }
 /* ---- suggerimenti per chi coordina (responsabile, amministratore) ---- */
