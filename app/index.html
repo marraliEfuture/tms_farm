@@ -1160,6 +1160,8 @@ function addPhotos(list, done){
   const f = S.f;
   Promise.all([...list].map(shrink)).then(arr=>{ f.files = (f.files||[]).concat(arr.filter(Boolean)); f.photos = f.files.length; done(); });
 }
+/* versione di prova senza backend: si entra comunque con mail e codice di esempio */
+const DEMO_LOGIN = {mail:"mb@efuture.it", code:"123456"};
 function renderLogin(){
   const el = $("#login"); el.hidden = false;
   el.innerHTML = `<button class="brand login-brand" id="l-brand" type="button" aria-label="Ticket Farm: rivedi l'introduzione">${$("#brand").innerHTML}</button><h2>Accedi a Ticket Farm</h2><p class="sub">Usa la tua mail aziendale e il codice che ti ha dato l'ufficio.</p>
@@ -1169,8 +1171,8 @@ function renderLogin(){
     <button class="btn primary block" id="l-go" type="button">Accedi</button>
     <button class="linkbtn" id="l-forgot" type="button" style="align-self:center">Codice dimenticato?</button>
     <div id="l-fmsg"></div>`;
-  /* in modalità prova il backend suggerisce le credenziali di esempio */
-  api("/api/app/info").then(i=>{
+  /* in modalità prova il backend suggerisce le credenziali di esempio; senza backend le stesse di esempio */
+  (API ? api("/api/app/info") : Promise.resolve({demo:DEMO_LOGIN})).then(i=>{
     if(!i.demo) return;
     $("#l-mail").placeholder = i.demo.mail; $("#l-code").placeholder = i.demo.code;
     $("#l-mail").title = "Prova: mail = "+i.demo.mail+", codice = "+i.demo.code; $("#l-code").title = $("#l-mail").title;
@@ -1184,7 +1186,7 @@ function renderLogin(){
     const mail = $("#l-mail").value.trim();
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)){ toast("Scrivi prima la tua mail aziendale"); $("#l-mail").focus(); return; }
     const b = $("#l-forgot"); b.disabled = true;
-    api("/api/app/forgot", {mail}).then(r=>{
+    (API ? api("/api/app/forgot", {mail}) : Promise.resolve({message:"Versione di prova: nessuna mail parte davvero.", demoCode:DEMO_LOGIN.code})).then(r=>{
       $("#l-fmsg").innerHTML = `<div class="banner">${esc(r.message||"Ti abbiamo mandato un nuovo codice.")}${r.demoCode?`<br>Modalità prova: il nuovo codice è <b>${esc(r.demoCode)}</b>`:""}</div>`;
       if(r.demoCode) $("#l-code").value = r.demoCode; else $("#l-code").focus();
     }).catch(e=>toast("Richiesta non riuscita: "+e.message)).finally(()=>{ b.disabled = false; });
@@ -1192,7 +1194,7 @@ function renderLogin(){
   $("#l-go").onclick = ()=>{
     const mail = $("#l-mail").value.trim(), code = $("#l-code").value.trim();
     if(!mail || !code){ toast("Scrivi mail e codice"); return; }
-    api("/api/app/login", {mail, code}).then(r=>{ TOKEN = r.token; try{ localStorage.setItem("tf-token", TOKEN); }catch(e){} el.hidden = true; start(); })
+    (API ? api("/api/app/login", {mail, code}) : (mail.toLowerCase()===DEMO_LOGIN.mail && code===DEMO_LOGIN.code ? Promise.resolve({token:"prova"}) : Promise.reject(new Error("mail o codice non corretti")))).then(r=>{ TOKEN = r.token; try{ localStorage.setItem("tf-token", TOKEN); }catch(e){} el.hidden = true; start(); })
       .catch(e=>toast("Accesso non riuscito: "+e.message));
   };
 }
@@ -1202,12 +1204,12 @@ function profile(){
   root.innerHTML = `<div class="sheet-bg" id="sb"><div class="sheet" role="dialog" aria-label="Profilo"><div class="grab"></div>
     <div class="client">${esc(ME)}</div><span class="sub">I tuoi messaggi partono da questo indirizzo.</span>
     <label class="field"><span>Schermata iniziale</span><select class="input" id="p-home">${HOME_TABS.map(([k,l])=>`<option value="${k}" ${k===homeTab()?"selected":""}>${l}</option>`).join("")}</select></label>
-    ${API ? `<button class="btn block" id="p-out" type="button">Esci</button>` : `<span class="sub">Modalità prova: non serve accedere.</span>`}
+    <button class="btn block" id="p-out" type="button">Esci</button>
     <button class="btn block" id="p-x" type="button">Chiudi</button></div></div>`;
   $("#sb").onclick = e => { if(e.target.id==="sb") root.innerHTML = ""; };
   $("#p-x").onclick = ()=>{ root.innerHTML = ""; };
   $("#p-home").onchange = e => { try{ localStorage.setItem("tf-home", e.target.value); }catch(err){} toast("All'apertura vedrai: "+HOME_TABS.find(([k])=>k===e.target.value)[1]); };
-  if(API) $("#p-out").onclick = ()=>{ root.innerHTML = ""; logout(); };
+  $("#p-out").onclick = ()=>{ root.innerHTML = ""; logout(); };
 }
 function handleShare(){
   const q = new URLSearchParams(location.search);
@@ -1217,8 +1219,8 @@ function handleShare(){
   S.f = blankForm(); show("inoltra"); ingest(shared, "share");
 }
 function start(){
-  if(!API){ show(homeTab()); handleShare(); return; }
   if(!TOKEN){ renderLogin(); return; }
+  if(!API){ show(homeTab()); handleShare(); return; }
   api("/api/app/data").then(d=>{ applyData(d); show(homeTab()); handleShare(); setInterval(refresh, 60000); })
     .catch(e=>{ if(TOKEN){ show(homeTab()); toast("Backend non raggiungibile: "+e.message); } });
 }
@@ -1234,7 +1236,7 @@ function replayIntro(){
   if(!window.tfSplash) return;
   window.tfSplash(()=>{
     $("#sheet-root").innerHTML = "";
-    if(API && !TOKEN){ renderLogin(); return; }
+    if(!TOKEN){ renderLogin(); return; }
     $("#login").hidden = true; S.f = blankForm(); show(homeTab());
   });
 }
