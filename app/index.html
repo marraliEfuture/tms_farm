@@ -238,6 +238,26 @@ body{padding:0!important}
 .tabs{padding-bottom:max(14px, env(safe-area-inset-bottom,0px))}
 .composer{padding-bottom:max(16px, env(safe-area-inset-bottom,0px))}
 .avatar{border:0;cursor:pointer}
+/* telefono girato (poco alto) e schermi larghi: la barra in basso diventa una colonna a sinistra,
+   così le schermate tengono tutta l'altezza disponibile */
+@media (orientation:landscape) and (max-height:540px), (min-width:900px){
+  .phone{max-width:none;padding-left:calc(84px + env(safe-area-inset-left,0px));padding-right:env(safe-area-inset-right,0px)}
+  .tabs{top:0;bottom:0;left:0;right:auto;width:calc(84px + env(safe-area-inset-left,0px));grid-template-columns:1fr;grid-auto-rows:minmax(0,1fr);align-content:center;
+    border-top:0;border-right:1px solid var(--line);padding:max(6px, env(safe-area-inset-top,0px)) 4px max(6px, env(safe-area-inset-bottom,0px)) calc(4px + env(safe-area-inset-left,0px))}
+  .tab{justify-content:center;font-size:10.5px;padding:2px 0;max-height:72px}
+  .tab svg{width:20px;height:20px}
+  .screen{padding-bottom:20px}
+  .chat,.sheet-root{left:0}
+}
+@media (orientation:landscape) and (max-height:540px){
+  .appbar{padding:2px 16px 4px}
+  .screen .banner{display:none}
+  .screen h2.sec,.screen>h2{font-size:22px}
+  .install{display:none!important}
+}
+@media (min-width:900px){
+  .phone{max-width:1280px}
+}
 .install{display:flex;align-items:center;gap:10px;margin:0 16px 12px;padding:10px 12px;border-radius:14px;background:var(--accent-soft);color:var(--ink);font-size:13px;font-weight:600}
 .install span{flex:1}
 .lav{position:relative;display:inline-grid;place-items:center;flex:0 0 auto;border-radius:9px;overflow:hidden;font-weight:700;color:#fff;background:hsl(var(--h) 55% 42%);letter-spacing:0}
