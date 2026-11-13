@@ -10,6 +10,7 @@ const auth = require("./src/auth");
 const recap = require("./src/recap");
 const tpl = require("./src/templates");
 const files = require("./src/files");
+const push = require("./src/push");
 const sources = require("./src/connectors");
 const mail = require("./src/mail");
 const { recognize } = require("./src/recognize");
@@ -96,6 +97,12 @@ async function logMail(msg, sent) {
   return entry;
 }
 
+/* notifica push al telefono del tecnico; "badge" = conversazioni non lette, per il pallino sull'icona */
+function pushTech(techMailOrIni, title, body, ticket) {
+  const t = auth.techs().find(x => x.mail === techMailOrIni || x.ini === techMailOrIni); if (!t) return;
+  const st = store.load(), badge = (st.threads[t.mail] || []).filter(x => x.unread).length;
+  push.notify(t.mail, { title, body: String(body || "").slice(0, 180), ticket: ticket || "", badge, tag: ticket || "tf" }).catch(() => {});
+}
 /* ---------------- API app ---------------- */
 /* codice dimenticato: nuovo codice mandato alla mail aziendale del tecnico (in prova torna anche nella risposta) */
 app.post("/api/app/forgot", async (req, res, next) => {
@@ -147,6 +154,10 @@ app.post("/api/app/passkey/login/verify", async (req, res) => {
     res.json({ token: auth.techSession(t) });
   } catch (e) { res.status(401).json({ error: "passkey non valida: " + e.message }); }
 });
+app.get("/api/app/push/key", (req, res) => res.json({ key: push.publicKey() }));
+app.post("/api/app/push/subscribe", auth.requireTech, (req, res) => { const r = push.subscribe(req.tech.mail, req.body.subscription); if (r.error) return res.status(400).json(r); res.json(r); });
+app.post("/api/app/push/unsubscribe", auth.requireTech, (req, res) => res.json(push.unsubscribe(req.tech.mail, req.body.endpoint)));
+app.post("/api/app/push/test", auth.requireTech, async (req, res) => res.json({ sent: await push.notify(req.tech.mail, { title: "Ticket Farm", body: "Le notifiche funzionano: qui arrivano le nuove risposte.", badge: 0, tag: "test" }) }));
 app.get("/api/app/security", auth.requireTech, (req, res) => res.json(auth.techSecurity(req.tech)));
 app.post("/api/app/2fa/setup", auth.requireTech, (req, res) => res.json(auth.techSetup2fa(req.tech)));
 app.post("/api/app/2fa/enable", auth.requireTech, (req, res) => { const r = auth.techEnable2fa(req.tech, req.body.code); if (r.error) return res.status(400).json(r); audit.add(req.tech.mail, "Verifica in due passaggi attivata", "app", "accesso"); res.json({ ...r, ...auth.techSecurity(req.tech) }); });
@@ -409,6 +420,7 @@ app.post("/api/admin/threads/reply", need("ticket", "m"), (req, res) => {
   if (att.saved.length) msg.files = att.saved;
   if (req.body.forClient) msg.forClient = String(req.body.forClient).slice(0, 2000);
   th.msgs.push(msg); th.unread = true; store.save();
+  pushTech(m, "Messaggio dall'ufficio · " + th.ticket, (msg.by ? msg.by + ": " : "") + (text || "allegato"), th.ticket);
   log(req, "Messaggio al tecnico", th.ticket + " · " + m, "ticket");
   sources.data().then(d => { const t = d.tickets.find(x => x.id === th.ticket); if (t) return sendRecap(t, "messaggio", { chi: "L'ufficio" }); }).catch(() => {});
   res.json({ ok: true, msg });
@@ -444,6 +456,7 @@ app.post("/api/admin/tickets", need("ticket", "m"), async (req, res, next) => {
     const id = sources.demo.createTicket(c, title, String(req.body.tech || ""), { urg: !!req.body.urg, origin: own ? "Portale cliente" : "Console", contatto: kk ? kk.id : "", fornitore: fo ? fo.id : "" });
     log(req, "Ticket creato", id + " · " + c.name + " · " + title, "ticket");
     const nt = (await sources.data()).tickets.find(x => x.id === id); if (nt) await sendRecap(nt, "apertura");
+    if (req.body.tech) pushTech(String(req.body.tech), "Nuovo ticket assegnato a te", id + " · " + c.name + " · " + title + (req.body.urg ? " · URGENTE" : ""), id);
     res.json({ ticket: { id, sys: c.sys, client: c.id, title } });
   } catch (e) { next(e); }
 });
@@ -461,6 +474,7 @@ app.put("/api/admin/tickets/:id", need("ticket", "m"), async (req, res, next) =>
   const t = sources.demo.updateTicket(req.params.id, b);
   if (!t) return res.status(404).json({ error: "ticket non trovato" });
   log(req, "Ticket modificato", t.id + " · " + t.state + (t.tech ? " · " + t.tech : ""), "ticket");
+  if (t.tech && cur && cur.tech !== t.tech) pushTech(t.tech, "Nuovo ticket assegnato a te", t.id + " · " + t.title + (t.urg ? " · URGENTE" : ""), t.id);
   /* ogni modifica delle proprietà arriva al cliente: chiusura, intervento o aggiornamento con l'elenco delle modifiche */
   if (before) {
     const plan = p => p ? recapWhen(p) : "da fissare", nm = id => { const k = contactOf(clients, id); return k ? k.n : "—"; }, az = id => (clients.find(x => x.id === id) || { name: "nessuno" }).name;
@@ -626,7 +640,7 @@ app.post("/api/admin/threads", need("ticket", "m"), async (req, res, next) => {
     let th = list.find(x => x.ticket === t.id);
     if (!th) { th = { ticket: t.id, client: t.client, contatto: t.contatto || "", unread: true, msgs: [] }; list.unshift(th); }
     const msg = { k: "tf", t: now(), text, by: req.admin.nome || req.admin.user, id: "o" + Date.now().toString(36) };
-    th.msgs.push(msg); th.unread = true; store.save(); log(req, "Conversazione aperta con il tecnico", t.id + " · " + m, "ticket");
+    th.msgs.push(msg); th.unread = true; store.save(); pushTech(m, "Messaggio dall'ufficio · " + t.id, msg.text, t.id); log(req, "Conversazione aperta con il tecnico", t.id + " · " + m, "ticket");
     await sendRecap(t, "messaggio", { chi: "L'ufficio" });
     res.json({ ok: true, msg });
   } catch (e) { next(e); }

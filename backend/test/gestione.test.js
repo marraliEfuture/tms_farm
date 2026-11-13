@@ -181,3 +181,22 @@ test("app: messaggio con allegato (foto) salvato e scaricabile", async () => {
   assert.equal(f.status, 200); assert.equal(f.headers.get("content-type"), "image/png");
   assert.equal((await fetch(base + "/api/app/file/" + m.files[0].id)).status, 401, "serve l'accesso");
 });
+
+test("notifiche push: iscrizione del telefono e avviso quando l'ufficio scrive", async () => {
+  const push = require("../src/push"), got = [];
+  push.setSender(async (sub, body) => { got.push({ sub, body: JSON.parse(body) }); });
+  const tk = (await call("POST", "/api/app/login", null, { mail: "mb@efuture.it", code: "123456" })).json.token;
+  assert.ok((await call("GET", "/api/app/push/key")).json.key.length > 40);
+  assert.equal((await call("POST", "/api/app/push/subscribe", tk, { subscription: { endpoint: "http://x" } })).status, 400);
+  const sub = { endpoint: "https://push.example/abc", keys: { p256dh: "BNc", auth: "xyz" } };
+  assert.equal((await call("POST", "/api/app/push/subscribe", tk, { subscription: sub })).status, 200);
+  const ad = await login("admin", "admin123");
+  const th = (await call("GET", "/api/app/data", tk)).json.threads[0];
+  await call("POST", "/api/admin/threads/reply", ad, { ticket: th.ticket, techMail: "mb@efuture.it", text: "Passa dal cliente alle 10" });
+  await new Promise(r => setTimeout(r, 50));
+  assert.equal(got.length, 1); assert.match(got[0].body.title, /ufficio/); assert.ok(got[0].body.badge >= 1); assert.equal(got[0].body.ticket, th.ticket);
+  push.setSender(async () => { const e = new Error("gone"); e.statusCode = 410; throw e; });
+  await call("POST", "/api/admin/threads/reply", ad, { ticket: th.ticket, techMail: "mb@efuture.it", text: "ancora" });
+  await new Promise(r => setTimeout(r, 50));
+  assert.equal(push.count("mb@efuture.it"), 0, "iscrizione scaduta tolta");
+});

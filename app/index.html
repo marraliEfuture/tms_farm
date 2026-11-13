@@ -203,6 +203,7 @@ textarea.input{min-height:96px;resize:vertical}
 .composer .cc{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted)}.composer .cc b{color:var(--ink);overflow-wrap:anywhere}.composer .cc span{min-width:0}.composer .cc input{flex:0 0 18px;width:18px;height:18px;accent-color:var(--accent)}
 .composer .line{display:flex;gap:8px;align-items:flex-end}
 .ctools{display:flex;gap:6px}
+.notif-ask{display:flex;align-items:center;gap:10px;background:var(--accent-soft);color:var(--ink);border-radius:14px;padding:10px 12px;font-size:13px;font-weight:600}.notif-ask span{flex:1}
 .cbtn{width:40px;height:40px;flex:0 0 40px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);display:grid;place-items:center;cursor:pointer;text-decoration:none}
 .cbtn:hover{border-color:var(--accent)}.cbtn.on{background:var(--red);border-color:var(--red);color:#fff;animation:pulse 1.2s infinite}
 @keyframes pulse{50%{opacity:.7}}
@@ -543,7 +544,52 @@ function personOf(x){ const id = x && (x.contatto || (ticketOf(x.ticket||x.id)||
 const firstName = k => k ? String(k.n).split(" ")[0] : "cliente";
 function clientMailOf(th){ const k = personOf(th); if(k && k.mail) return k.mail; if(th.clientMail) return th.clientMail; const m = [...th.msgs].reverse().find(x=>x.k==="fwd" && x.mailFrom); return m ? m.mailFrom : ""; }
 function lastOf(th){ return th.msgs[th.msgs.length-1]; }
-function updateCount(){ const n = S.threads.filter(t=>t.unread).length; const c=$("#count"); c.hidden = !n; c.textContent = n; }
+function updateCount(){ const n = S.threads.filter(t=>t.unread).length; const c=$("#count"); c.hidden = !n; c.textContent = n;
+  /* pallino con il numero sull'icona dell'app installata */
+  try{ if(navigator.setAppBadge){ (n ? navigator.setAppBadge(n) : navigator.clearAppBadge()).catch(()=>{}); } }catch(e){} }
+/* ---------- notifiche push: nuove risposte e nuovi ticket arrivano anche ad app chiusa ---------- */
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent), standalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+const pushSupported = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+const notifOn = () => { try{ return pushSupported() && Notification.permission==="granted" && localStorage.getItem("tf-notif")==="1"; }catch(e){ return false; } };
+const b64key = k => { const p = "=".repeat((4 - k.length % 4) % 4), raw = atob((k+p).replace(/-/g,"+").replace(/_/g,"/")); return Uint8Array.from(raw, ch=>ch.charCodeAt(0)); };
+async function enableNotifications(){
+  if(isIOS && !standalone()){ toast("Su iPhone le notifiche arrivano solo con l'app installata: Condividi → «Aggiungi alla schermata Home», poi riapri da lì"); return false; }
+  if(!pushSupported()){ toast("Questo browser non supporta le notifiche"); return false; }
+  const perm = await Notification.requestPermission();
+  if(perm !== "granted"){ toast(perm==="denied" ? "Notifiche bloccate: riattivale nelle impostazioni del telefono per Ticket Farm" : "Notifiche non attivate"); return false; }
+  const reg = await navigator.serviceWorker.ready;
+  try{
+    if(API){
+      const {key} = await api("/api/app/push/key");
+      const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:b64key(key)});
+      await api("/api/app/push/subscribe", {subscription:sub.toJSON()});
+      api("/api/app/push/test", {}).catch(()=>{});
+    } else {
+      reg.showNotification("Ticket Farm", {body:"Notifiche attive: qui arrivano le nuove risposte dei clienti e dell'ufficio (prova).", icon:"icons/icon-192.png", tag:"test"}).catch(()=>{});
+    }
+  }catch(e){ toast("Notifiche non attivate: "+e.message); return false; }
+  try{ localStorage.setItem("tf-notif","1"); }catch(e){}
+  toast("Notifiche attive"); return true;
+}
+async function disableNotifications(){
+  try{ localStorage.setItem("tf-notif","0"); }catch(e){}
+  try{ const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription();
+    if(sub){ if(API) await api("/api/app/push/unsubscribe", {endpoint:sub.endpoint}).catch(()=>{}); await sub.unsubscribe(); } }catch(e){}
+  toast("Notifiche spente");
+}
+/* versione di prova: una risposta simulata con l'app in secondo piano diventa una notifica vera */
+function localNotify(title, body, ticket){
+  if(!notifOn() || !document.hidden) return;
+  navigator.serviceWorker.ready.then(reg=>reg.showNotification(title, {body, icon:"icons/icon-192.png", tag:ticket||"tf", data:{ticket}})).catch(()=>{});
+}
+/* tocco sulla notifica: si apre la conversazione del ticket */
+function openTicketChat(t){
+  if(!t || !S.threads) return; const i = S.threads.findIndex(th=>th.ticket===t); if(i<0) return;
+  $("#sheet-root").innerHTML = ""; show("messaggi"); openChat(i);
+}
+/* tornando nell'app si aggiornano messaggi e pallino */
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden && API && TOKEN) refresh(); });
+if("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message", e => { if(e.data && e.data.open !== undefined) openTicketChat(e.data.open); });
 /* ordine delle conversazioni: restituisce gli indici, così openChat(i) resta giusto */
 function msgOrder(){
   const idx = S.threads.map((_,i)=>i), by = S.mord || "rec";
@@ -555,7 +601,10 @@ function msgOrder(){
 }
 function renderMessaggi(){
   const el = $("#s-messaggi");
-  el.innerHTML = (API ? "" : `<div class="banner">Modalità prova: nessuna mail parte davvero. Per collegare l'app al backend imposta backendUrl in config.js.</div>`) + `<div><h2 class="sec">Messaggi</h2><p class="sub">Le conversazioni con i tuoi clienti, ticket per ticket</p></div>
+  let askN = false; try{ askN = pushSupported() && Notification.permission==="default" && localStorage.getItem("tf-notif-x")!=="1"; }catch(e){}
+  el.innerHTML = (API ? "" : `<div class="banner">Modalità prova: nessuna mail parte davvero. Per collegare l'app al backend imposta backendUrl in config.js.</div>`)
+    + (askN ? `<div class="notif-ask"><span>🔔 Attiva le notifiche: ti avvisiamo appena arriva una risposta, anche ad app chiusa.</span><button class="btn small primary" type="button" id="n-on">Attiva</button><button class="linkbtn" type="button" id="n-x" aria-label="Non ora">✕</button></div>` : "")
+    + `<div><h2 class="sec">Messaggi</h2><p class="sub">Le conversazioni con i tuoi clienti, ticket per ticket</p></div>
     <label class="sortsel">Ordina per <select class="input" id="m-ord"><option value="rec">più recenti</option><option value="unr">da leggere prima</option><option value="per">persona A–Z</option><option value="cli">azienda A–Z</option></select></label>
     <div class="list">${msgOrder().map(i=>{ const th = S.threads[i]; const c=cl(th.client)||{name:"Cliente da identificare",sys:"ITSM"}; const l=lastOf(th);
       return `<button class="item${th.unread?" unread":""}" data-i="${i}">
@@ -564,6 +613,8 @@ function renderMessaggi(){
         <span class="pv">${l.k==="tf"?"Ufficio: ":l.k==="fwd"?esc(firstName(personOf(th)))+": ":"Tu: "}${esc(l.text)}</span></button>`;}).join("")}</div>`;
   el.querySelectorAll(".item").forEach(b=>b.onclick=()=>openChat(+b.dataset.i));
   $("#m-ord").value = S.mord || "rec"; $("#m-ord").onchange = e => { S.mord = e.target.value; renderMessaggi(); };
+  if($("#n-on")) $("#n-on").onclick = ()=>enableNotifications().then(()=>renderMessaggi());
+  if($("#n-x")) $("#n-x").onclick = ()=>{ try{ localStorage.setItem("tf-notif-x","1"); }catch(e){} renderMessaggi(); };
   updateCount();
 }
 
@@ -708,7 +759,8 @@ function drawMsgs(){
 }
 function reply(th, m, delay){
   th.typing = true; drawMsgs();
-  setTimeout(()=>{ th.typing=false; th.msgs.push(m); if(S.threads[S.openThread]!==th) th.unread = true; drawMsgs(); renderMessaggi(); }, delay||1300);
+  setTimeout(()=>{ th.typing=false; th.msgs.push(m); if(S.threads[S.openThread]!==th || document.hidden) th.unread = true; drawMsgs(); renderMessaggi();
+    localNotify("Nuovo messaggio · "+th.ticket, m.text||"", th.ticket); }, delay||1300);
 }
 
 /* ---------- INOLTRA ---------- */
@@ -1467,6 +1519,7 @@ function profile(){
   root.innerHTML = `<div class="sheet-bg" id="sb"><div class="sheet" role="dialog" aria-label="Profilo"><div class="grab"></div>
     <div class="client">${esc(ME)}</div><span class="sub">I tuoi messaggi partono da questo indirizzo.</span>
     <label class="field"><span>Schermata iniziale</span><select class="input" id="p-home">${HOME_TABS.map(([k,l])=>`<option value="${k}" ${k===homeTab()?"selected":""}>${l}</option>`).join("")}</select></label>
+    <button class="btn block" id="p-notif" type="button">${notifOn()?"🔔 Notifiche attive · tocca per spegnerle":"🔕 Attiva le notifiche sul telefono"}</button>
     <button class="btn block" id="p-sec" type="button">🔒 Sicurezza dell'accesso</button>
     <button class="btn block" id="p-out" type="button">Esci</button>
     <button class="btn block" id="p-x" type="button">Chiudi</button></div></div>`;
@@ -1474,6 +1527,7 @@ function profile(){
   $("#p-x").onclick = ()=>{ root.innerHTML = ""; };
   $("#p-home").onchange = e => { try{ localStorage.setItem("tf-home", e.target.value); }catch(err){} toast("All'apertura vedrai: "+HOME_TABS.find(([k])=>k===e.target.value)[1]); };
   $("#p-sec").onclick = secSheet;
+  $("#p-notif").onclick = ()=>(notifOn() ? disableNotifications() : enableNotifications()).then(()=>profile());
   $("#p-out").onclick = ()=>{ root.innerHTML = ""; logout(); };
 }
 function handleShare(){
@@ -1483,10 +1537,14 @@ function handleShare(){
   history.replaceState(null, "", location.pathname);
   S.f = blankForm(); show("inoltra"); ingest(shared, "share");
 }
+/* aperta dal tocco su una notifica (#t=ticket): aspetta la fine dell'introduzione, poi apre la conversazione */
+function fromHash(){ const m = /^#t=(.+)$/.exec(location.hash); if(!m || !TOKEN) return; history.replaceState(null, "", location.pathname + location.search);
+  const t = decodeURIComponent(m[1]); let n = 0; const go = () => { const sp = $("#splash"); if(sp && !sp.hidden && n++ < 30) return setTimeout(go, 200); openTicketChat(t); }; go(); }
+window.addEventListener("hashchange", fromHash);
 function start(){
   if(!TOKEN){ renderLogin(); return; }
-  if(!API){ show(homeTab()); handleShare(); return; }
-  api("/api/app/data").then(d=>{ applyData(d); show(homeTab()); handleShare(); setInterval(refresh, 60000); })
+  if(!API){ show(homeTab()); handleShare(); updateCount(); fromHash(); return; }
+  api("/api/app/data").then(d=>{ applyData(d); show(homeTab()); handleShare(); updateCount(); fromHash(); setInterval(refresh, 60000); })
     .catch(e=>{ if(TOKEN){ show(homeTab()); toast("Backend non raggiungibile: "+e.message); } });
 }
 function curTheme(){ return document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"); }

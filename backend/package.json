@@ -17,6 +17,7 @@
     "@simplewebauthn/server": "~14.0.3",
     "express": "^4.21.2",
     "nodemailer": "~10.2.1",
+    "web-push": "~3.6.7",
     "zod": "~4.6.7"
   }
 }
