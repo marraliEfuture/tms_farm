@@ -56,7 +56,7 @@ function clientMailOf(th, st, tech) {
   return inbound ? mailAddr(inbound.from) : "";
 }
 const now = () => new Date().toLocaleTimeString("it-CH", { hour: "2-digit", minute: "2-digit" });
-const techsPublic = () => { const st = store.load(); return auth.techs().map(({ hash, codice, ...t }) => ({ ...t, attivo: t.attivo !== false && !t.eliminato, aree: t.aree || [], eliminato: t.eliminato || "", app: !!st.threads[t.mail], last: (st.mails.find(m => m.from === t.mail) || {}).at || "—" })); };
+const techsPublic = () => { const st = store.load(); return auth.techs().map(({ hash, codice, totp, totpPending, recovery, passkeys, pkChallenge, ...t }) => ({ ...t, twofa: !!totp, passkeys: (passkeys || []).length, attivo: t.attivo !== false && !t.eliminato, aree: t.aree || [], eliminato: t.eliminato || "", app: !!st.threads[t.mail], last: (st.mails.find(m => m.from === t.mail) || {}).at || "—" })); };
 
 /* clienti con contatti, numeri salvati dall'app e ticket aperti */
 async function clientsWithOpen() {
@@ -118,10 +118,57 @@ app.get("/api/app/logo", async (req, res) => {
 });
 app.get("/api/app/info", (req, res) => res.json({ mode: cfg.mode, demo: auth.demoHint() }));
 app.post("/api/app/login", (req, res) => {
-  const token = auth.login(req.body.mail, req.body.code);
-  if (!token) return res.status(401).json({ error: "mail o codice non corretti" });
-  res.json({ token });
+  const r = auth.techLogin(req.body.mail, req.body.code);
+  if (!r) return res.status(401).json({ error: "mail o codice non corretti" });
+  res.json(r);   /* {token} oppure {need2fa, ticket} se il tecnico ha la verifica in due passaggi */
 });
+app.post("/api/app/login/2fa", (req, res) => {
+  const r = auth.techLogin2fa(req.body.ticket, req.body.code);
+  if (r.error) return res.status(401).json(r);
+  res.json(r);
+});
+/* passkey dei tecnici: accesso con impronta, volto o PIN del telefono */
+app.post("/api/app/passkey/login/options", async (req, res, next) => {
+  try { const opts = await webauthn.generateAuthenticationOptions({ rpID: rp(req).rpID, userVerification: "preferred" }); pkLogins.set(opts.challenge, Date.now() + 5 * 60000); res.json(opts); } catch (e) { next(e); }
+});
+app.post("/api/app/passkey/login/verify", async (req, res) => {
+  try {
+    const resp = req.body.response || {}, t = auth.techByPasskey(resp.id);
+    const ch = JSON.parse(Buffer.from((resp.response && resp.response.clientDataJSON) || "", "base64url").toString() || "{}").challenge;
+    if (!t || t.attivo === false || t.eliminato || !pkLogins.has(ch) || pkLogins.get(ch) < Date.now()) return res.status(401).json({ error: "passkey non riconosciuta" });
+    pkLogins.delete(ch);
+    const pk = t.passkeys.find(p => p.id === resp.id);
+    const v = await webauthn.verifyAuthenticationResponse({ response: resp, expectedChallenge: ch, expectedOrigin: rp(req).origin, expectedRPID: rp(req).rpID,
+      credential: { id: pk.id, publicKey: Buffer.from(pk.publicKey, "base64url"), counter: pk.counter, transports: pk.transports } });
+    if (!v.verified) return res.status(401).json({ error: "passkey non valida" });
+    auth.techTouchPk(t.mail, pk.id, v.authenticationInfo.newCounter);
+    audit.add(t.mail, "Accesso all'app", "passkey «" + pk.nome + "»", "accesso");
+    res.json({ token: auth.techSession(t) });
+  } catch (e) { res.status(401).json({ error: "passkey non valida: " + e.message }); }
+});
+app.get("/api/app/security", auth.requireTech, (req, res) => res.json(auth.techSecurity(req.tech)));
+app.post("/api/app/2fa/setup", auth.requireTech, (req, res) => res.json(auth.techSetup2fa(req.tech)));
+app.post("/api/app/2fa/enable", auth.requireTech, (req, res) => { const r = auth.techEnable2fa(req.tech, req.body.code); if (r.error) return res.status(400).json(r); audit.add(req.tech.mail, "Verifica in due passaggi attivata", "app", "accesso"); res.json({ ...r, ...auth.techSecurity(req.tech) }); });
+app.post("/api/app/2fa/disable", auth.requireTech, (req, res) => { const r = auth.techDisable2fa(req.tech, req.body.code); if (r.error) return res.status(400).json(r); audit.add(req.tech.mail, "Verifica in due passaggi disattivata", "app", "accesso"); res.json(auth.techSecurity(req.tech)); });
+app.post("/api/app/passkey/register/options", auth.requireTech, async (req, res, next) => {
+  try {
+    const t = req.tech;
+    const opts = await webauthn.generateRegistrationOptions({ rpName: "Ticket Farm", rpID: rp(req).rpID, userName: t.mail, userDisplayName: t.nome || t.mail,
+      attestationType: "none", excludeCredentials: (t.passkeys || []).map(p => ({ id: p.id, transports: p.transports })), authenticatorSelection: { residentKey: "required", userVerification: "preferred" } });
+    auth.techSetPk(t, opts.challenge); res.json(opts);
+  } catch (e) { next(e); }
+});
+app.post("/api/app/passkey/register/verify", auth.requireTech, async (req, res) => {
+  try {
+    const t = auth.findTech(req.tech.mail);
+    const v = await webauthn.verifyRegistrationResponse({ response: req.body.response, expectedChallenge: t.pkChallenge, expectedOrigin: rp(req).origin, expectedRPID: rp(req).rpID });
+    if (!v.verified) return res.status(400).json({ error: "passkey non verificata" });
+    const c = v.registrationInfo.credential, nome = String(req.body.nome || "").slice(0, 40) || "Telefono " + new Date().toLocaleDateString("it-CH");
+    auth.techAddPk(t, { id: c.id, publicKey: Buffer.from(c.publicKey).toString("base64url"), counter: c.counter, transports: c.transports || [], nome, creato: new Date().toISOString() });
+    audit.add(t.mail, "Passkey aggiunta", nome, "accesso"); res.json(auth.techSecurity(t));
+  } catch (e) { res.status(400).json({ error: "passkey non salvata: " + e.message }); }
+});
+app.delete("/api/app/passkey/:id", auth.requireTech, (req, res) => { if (!auth.techRemovePk(req.tech, req.params.id)) return res.status(404).json({ error: "passkey non trovata" }); res.json(auth.techSecurity(req.tech)); });
 app.get("/api/app/data", auth.requireTech, async (req, res, next) => { try { res.json(await appData(req.tech)); } catch (e) { next(e); } });
 /* promemoria e ordine delle attività per il tecnico collegato all'app */
 app.get("/api/app/ai/agenda", auth.requireTech, async (req, res, next) => { try { res.json(await aiAgenda(req.tech.ini, req.query.fresh === "1")); } catch (e) { next(e); } });

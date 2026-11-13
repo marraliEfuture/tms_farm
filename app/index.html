@@ -258,6 +258,9 @@ body{padding:0!important}
 @media (min-width:900px){
   .phone{max-width:1280px}
 }
+.qrbox{background:#fff;border-radius:12px;padding:10px;width:200px;max-width:100%;align-self:center}.qrbox svg{display:block;width:100%;height:auto}
+.reccodes{display:grid;grid-template-columns:1fr 1fr;gap:6px}.reccodes span{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:6px;text-align:center;font-size:13px}
+.steps-ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px}
 .install{display:flex;align-items:center;gap:10px;margin:0 16px 12px;padding:10px 12px;border-radius:14px;background:var(--accent-soft);color:var(--ink);font-size:13px;font-weight:600}
 .install span{flex:1}
 .lav{position:relative;display:inline-grid;place-items:center;flex:0 0 auto;border-radius:9px;overflow:hidden;font-weight:700;color:#fff;background:hsl(var(--h) 55% 42%);letter-spacing:0}
@@ -392,6 +395,8 @@ a.btn{text-decoration:none}
 </div>
 
 <script src="config.js"></script>
+<script src="vendor/qrcode-generator-2.0.4.js"></script>
+<script src="vendor/simplewebauthn-browser-14.0.0.umd.min.js"></script>
 <script>
 (function(){
 const CFG = window.TF_CONFIG || {};
@@ -1150,10 +1155,10 @@ function show(tab){
 document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>show(b.dataset.tab));
 
 /* ---------- collegamento al backend ---------- */
-function api(path, body){
-  return fetch(API + path, {method: body ? "POST" : "GET", headers: {"Content-Type":"application/json", "Authorization":"Bearer "+TOKEN}, body: body ? JSON.stringify(body) : undefined})
+function api(path, body, method){
+  return fetch(API + path, {method: method || (body ? "POST" : "GET"), headers: {"Content-Type":"application/json", "Authorization":"Bearer "+TOKEN}, body: body ? JSON.stringify(body) : undefined})
     .then(async r => { const j = await r.json().catch(()=>({}));
-      if(r.status === 401 && path !== "/api/app/login"){ logout(); throw new Error("accesso scaduto"); }
+      if(r.status === 401 && !/^\/api\/app\/(login|passkey\/login)/.test(path)){ logout(); throw new Error("accesso scaduto"); }
       if(!r.ok) throw new Error(j.error || ("errore "+r.status)); return j; });
 }
 function applyData(d){
@@ -1193,6 +1198,123 @@ function addPhotos(list, done){
   const f = S.f;
   Promise.all([...list].map(shrink)).then(arr=>{ f.files = (f.files||[]).concat(arr.filter(Boolean)); f.photos = f.files.length; done(); });
 }
+/* ---------- sicurezza dell'accesso: verifica in due passaggi (codice da un'app di autenticazione) e passkey ----------
+   Con il backend tutto passa dal server; nella versione di prova online funziona davvero ma resta su questo dispositivo. */
+const B32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+function b32dec(x){ let bits = 0, val = 0; const out = []; for(const ch of String(x).toUpperCase().replace(/[^A-Z2-7]/g,"")){ val = (val<<5) | B32.indexOf(ch); bits += 5; if(bits>=8){ out.push((val>>>(bits-8)) & 255); bits -= 8; } } return new Uint8Array(out); }
+async function totpAt(secret, step){
+  const key = await crypto.subtle.importKey("raw", b32dec(secret), {name:"HMAC", hash:"SHA-1"}, false, ["sign"]);
+  const m = new DataView(new ArrayBuffer(8)); m.setUint32(0, Math.floor(step/4294967296)); m.setUint32(4, step>>>0);
+  const h = new Uint8Array(await crypto.subtle.sign("HMAC", key, m.buffer)), o = h[19] & 15;
+  return String((((h[o]&127)<<24) | (h[o+1]<<16) | (h[o+2]<<8) | h[o+3]) % 1000000).padStart(6,"0");
+}
+async function totpOk(secret, input){ const c = String(input).replace(/\D/g,""), st = Math.floor(Date.now()/30000); for(const d of [-1,0,1]) if(await totpAt(secret, st+d) === c) return true; return false; }
+const SECK = "tf-sec-prova";
+const secLoad = () => { try{ return JSON.parse(localStorage.getItem(SECK)) || {}; }catch(e){ return {}; } };
+const secSave = o => { try{ localStorage.setItem(SECK, JSON.stringify(o)); }catch(e){} };
+const secPub = o => ({twofa:!!o.totp, passkeys:(o.passkeys||[]).map(({id,nome,creato,usato})=>({id,nome,creato,usato}))});
+const pkErr = e => /NotAllowed|abort/i.test(String(e && (e.name||e.message))) ? new Error("annullato") : e;
+const SEC = API ? {
+  get: () => api("/api/app/security"),
+  setup: () => api("/api/app/2fa/setup", {}),
+  enable: code => api("/api/app/2fa/enable", {code}),
+  disable: code => api("/api/app/2fa/disable", {code}),
+  login2fa: (ticket, code) => api("/api/app/login/2fa", {ticket, code}),
+  pkAdd: nome => api("/api/app/passkey/register/options", {}).then(optionsJSON=>SimpleWebAuthnBrowser.startRegistration({optionsJSON})).then(response=>api("/api/app/passkey/register/verify", {response, nome})).catch(e=>{ throw pkErr(e); }),
+  pkLogin: () => api("/api/app/passkey/login/options", {}).then(optionsJSON=>SimpleWebAuthnBrowser.startAuthentication({optionsJSON})).then(response=>api("/api/app/passkey/login/verify", {response})).catch(e=>{ throw pkErr(e); }),
+  pkRemove: id => api("/api/app/passkey/"+encodeURIComponent(id), null, "DELETE"),
+} : {
+  get: async () => secPub(secLoad()),
+  setup: async () => { const o = secLoad(), r = crypto.getRandomValues(new Uint8Array(20)); o.pending = [...r].map(b=>B32[b & 31]).join(""); secSave(o);
+    return {secret:o.pending, uri:`otpauth://totp/Ticket%20Farm:${encodeURIComponent(DEMO_LOGIN.mail)}?secret=${o.pending}&issuer=Ticket%20Farm`}; },
+  enable: async code => { const o = secLoad(); if(!o.pending || !(await totpOk(o.pending, code))) throw new Error("codice non corretto: controlla l'ora del telefono e riprova");
+    o.totp = o.pending; delete o.pending; const rec = Array.from({length:8}, ()=>[...crypto.getRandomValues(new Uint8Array(5))].map(b=>b.toString(16).padStart(2,"0")).join("").replace(/(.{5})/,"$1-"));
+    o.recovery = rec; secSave(o); return {recovery:rec, ...secPub(o)}; },
+  disable: async code => { const o = secLoad(); if(!o.totp || !(await totpOk(o.totp, code))) throw new Error("codice non corretto"); delete o.totp; delete o.recovery; secSave(o); return secPub(o); },
+  login2fa: async (ticket, code) => { const o = secLoad(); if(await totpOk(o.totp, code)) return {token:"prova"};
+    const c = String(code).trim().toLowerCase(), i = (o.recovery||[]).indexOf(c); if(i>=0){ o.recovery.splice(i,1); secSave(o); return {token:"prova", usedRecovery:true, left:o.recovery.length}; }
+    throw new Error("codice non corretto"); },
+  pkAdd: async nome => { const o = secLoad();
+    try{ const cr = await navigator.credentials.create({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)), rp:{name:"Ticket Farm"},
+        user:{id:crypto.getRandomValues(new Uint8Array(16)), name:DEMO_LOGIN.mail, displayName:"Tecnico Zona Sud"}, pubKeyCredParams:[{type:"public-key", alg:-7},{type:"public-key", alg:-257}],
+        authenticatorSelection:{residentKey:"required", userVerification:"preferred"}, timeout:60000}});
+      o.passkeys = o.passkeys || []; o.passkeys.push({id:b64u(cr.rawId), nome:nome || "Telefono "+new Date().toLocaleDateString("it-CH"), creato:new Date().toISOString()}); secSave(o); return secPub(o);
+    }catch(e){ throw pkErr(e); } },
+  pkLogin: async () => { const o = secLoad();
+    try{ const a = await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)), userVerification:"preferred", timeout:60000}});
+      const p = (o.passkeys||[]).find(x=>x.id===b64u(a.rawId)); if(!p) throw new Error("passkey non riconosciuta");
+      p.usato = new Date().toISOString(); secSave(o); return {token:"prova"};
+    }catch(e){ throw pkErr(e); } },
+  pkRemove: async id => { const o = secLoad(); o.passkeys = (o.passkeys||[]).filter(p=>p.id!==id); secSave(o); return secPub(o); },
+};
+const canPasskey = () => !!(window.PublicKeyCredential && window.isSecureContext && (!API || window.SimpleWebAuthnBrowser));
+/* dopo mail e codice giusti: dentro, oppure il secondo passaggio */
+function loginDone(r){
+  if(r.need2fa){ ask2fa(r.ticket); return; }
+  TOKEN = r.token; try{ localStorage.setItem("tf-token", TOKEN); }catch(e){}
+  if(r.usedRecovery) toast("Codice di recupero usato: te ne restano "+r.left);
+  $("#login").hidden = true; start();
+}
+function ask2fa(ticket){
+  const el = $("#login");
+  el.innerHTML = `<button class="brand login-brand" type="button" aria-hidden="true" tabindex="-1">${$("#brand").innerHTML}</button><h2>Verifica in due passaggi</h2>
+    <p class="sub">Apri l'app di autenticazione sul telefono e scrivi il codice di 6 cifre di Ticket Farm.</p>
+    <label class="field"><span>Codice</span><input class="input mono" id="l2-code" inputmode="numeric" autocomplete="one-time-code" maxlength="11" placeholder="123456" style="font-size:22px;letter-spacing:.2em"></label>
+    <button class="btn primary block" id="l2-go" type="button">Conferma</button>
+    <span class="hint">Hai perso il telefono? Scrivi uno dei codici di recupero che hai salvato.</span>
+    <button class="linkbtn" id="l2-back" type="button" style="align-self:center">‹ Torna all'accesso</button>`;
+  setTimeout(()=>$("#l2-code").focus(), 50);
+  $("#l2-back").onclick = renderLogin;
+  const go = ()=>{ const code = $("#l2-code").value.trim(); if(!code){ toast("Scrivi il codice"); return; }
+    SEC.login2fa(ticket, code).then(loginDone).catch(e=>toast("Accesso non riuscito: "+e.message)); };
+  $("#l2-go").onclick = go; $("#l2-code").onkeydown = e => { if(e.key==="Enter") go(); };
+}
+/* sezione Sicurezza del profilo */
+function secSheet(){
+  const root = $("#sheet-root");
+  const paint = st => {
+    root.innerHTML = `<div class="sheet-bg" id="sb"><div class="sheet" role="dialog" aria-label="Sicurezza dell'accesso"><div class="grab"></div>
+      <div class="client">Sicurezza dell'accesso</div>
+      ${API?"":`<span class="hint">Versione di prova: funziona davvero, ma resta salvato solo su questo dispositivo.</span>`}
+      <div class="kv"><div class="row"><span>Verifica in due passaggi<br><small class="sub">dopo il codice serve anche quello dell'app di autenticazione</small></span><b style="color:${st.twofa?"var(--ok,#13805f)":"var(--muted)"}">${st.twofa?"attiva":"spenta"}</b></div></div>
+      <button class="btn block ${st.twofa?"":"primary"}" id="sc-2fa" type="button">${st.twofa?"Disattiva la verifica in due passaggi":"Attiva la verifica in due passaggi"}</button>
+      <div class="kv">${(st.passkeys||[]).map(p=>`<div class="row"><span>🔑 <b>${esc(p.nome)}</b><br><small class="sub">creata ${esc(new Date(p.creato).toLocaleDateString("it-CH"))}${p.usato?" · usata "+esc(new Date(p.usato).toLocaleDateString("it-CH")):""}</small></span><button class="btn small" type="button" data-pkx="${esc(p.id)}">Rimuovi</button></div>`).join("") || `<div class="row"><span>Passkey<br><small class="sub">entri con impronta, volto o PIN del telefono, senza codice</small></span><b style="color:var(--muted)">nessuna</b></div>`}</div>
+      ${canPasskey()?`<button class="btn block" id="sc-pk" type="button">+ Aggiungi una passkey</button>`:`<span class="hint">Questo browser non supporta le passkey.</span>`}
+      <div id="sc-box"></div>
+      <button class="btn block" id="sc-x" type="button">Chiudi</button></div></div>`;
+    $("#sb").onclick = e => { if(e.target.id==="sb") root.innerHTML = ""; };
+    $("#sc-x").onclick = ()=>{ root.innerHTML = ""; };
+    root.querySelectorAll("[data-pkx]").forEach(b=>b.onclick=()=>SEC.pkRemove(b.dataset.pkx).then(st=>{ paint(st); toast("Passkey rimossa"); }).catch(e=>toast(e.message)));
+    if($("#sc-pk")) $("#sc-pk").onclick = ()=>{
+      $("#sc-box").innerHTML = `<label class="field"><span>Nome della passkey</span><input class="input" id="sc-pkn" maxlength="40" placeholder="es. iPhone di lavoro"></label><button class="btn primary block" id="sc-pkgo" type="button">Crea la passkey</button>`;
+      $("#sc-pkgo").onclick = ()=>SEC.pkAdd($("#sc-pkn").value.trim()).then(st=>{ paint(st); toast("Passkey salvata: la prossima volta tocca «Accedi con passkey»"); }).catch(e=>toast("Passkey: "+e.message));
+    };
+    $("#sc-2fa").onclick = ()=>{
+      if(st.twofa){
+        $("#sc-box").innerHTML = `<label class="field"><span>Codice dall'app di autenticazione</span><input class="input mono" id="sc-off" inputmode="numeric" maxlength="6"></label><button class="btn block" id="sc-offgo" type="button">Disattiva</button>`;
+        $("#sc-offgo").onclick = ()=>SEC.disable($("#sc-off").value.trim()).then(st=>{ paint(st); toast("Verifica in due passaggi disattivata"); }).catch(e=>toast(e.message));
+        return;
+      }
+      SEC.setup().then(su=>{
+        let qr = ""; try{ const q = qrcode(0,"M"); q.addData(su.uri); q.make(); qr = q.createSvgTag({cellSize:4, margin:2, scalable:true}); }catch(e){}
+        $("#sc-box").innerHTML = `<ol class="steps-ol"><li>Installa Microsoft Authenticator, Google Authenticator o un'app simile.</li><li>Tocca <b>+</b> e inquadra il codice QR${qr?"":" (oppure inserisci la chiave)"}.</li><li>Scrivi qui il codice di 6 cifre.</li></ol>
+          ${qr?`<div class="qrbox">${qr}</div>`:""}<span class="hint">Chiave da inserire a mano: <span class="mono">${esc(su.secret.replace(/(.{4})/g,"$1 ").trim())}</span></span>
+          <label class="field"><span>Codice dall'app</span><input class="input mono" id="sc-on" inputmode="numeric" autocomplete="one-time-code" maxlength="6" style="font-size:20px;letter-spacing:.2em"></label>
+          <button class="btn primary block" id="sc-ongo" type="button">Attiva</button>`;
+        $("#sc-ongo").onclick = ()=>SEC.enable($("#sc-on").value.trim()).then(r=>{
+          paint({twofa:true, passkeys:r.passkeys||st.passkeys});
+          $("#sc-box").innerHTML = `<div class="banner">Salva questi codici di recupero: se perdi il telefono, ognuno ti fa entrare una volta. Non li vedrai più.</div>
+            <div class="reccodes">${r.recovery.map(c=>`<span class="mono">${esc(c)}</span>`).join("")}</div><button class="btn block" id="sc-copy" type="button">Copia i codici</button>`;
+          $("#sc-copy").onclick = ()=>{ try{ navigator.clipboard.writeText(r.recovery.join("\n")).then(()=>toast("Codici copiati"), ()=>toast("Copia i codici a mano")); }catch(e){ toast("Copia i codici a mano"); } };
+          toast("Verifica in due passaggi attiva");
+        }).catch(e=>toast(e.message));
+      }).catch(e=>toast("Non disponibile: "+e.message));
+    };
+  };
+  SEC.get().then(paint).catch(e=>toast(e.message));
+}
+
 /* versione di prova senza backend: si entra comunque con mail e codice di esempio */
 const DEMO_LOGIN = {mail:"mb@efuture.it", code:"123456"};
 function renderLogin(){
@@ -1202,8 +1324,10 @@ function renderLogin(){
     <label class="field"><span>Mail</span><input class="input" id="l-mail" type="email" autocomplete="username" placeholder="nome@efuture.it"></label>
     <label class="field"><span>Codice</span><input class="input" id="l-code" type="password" inputmode="numeric" autocomplete="current-password"></label>
     <button class="btn primary block" id="l-go" type="button">Accedi</button>
+    ${canPasskey()?`<button class="btn block" id="l-pk" type="button">🔑 Accedi con passkey</button>`:""}
     <button class="linkbtn" id="l-forgot" type="button" style="align-self:center">Codice dimenticato?</button>
     <div id="l-fmsg"></div>`;
+  if($("#l-pk")) $("#l-pk").onclick = ()=>SEC.pkLogin().then(loginDone).catch(e=>toast(e.message==="annullato" ? "Accesso con passkey annullato" : "Passkey: "+e.message));
   /* in modalità prova il backend suggerisce le credenziali di esempio; senza backend le stesse di esempio */
   (API ? api("/api/app/info") : Promise.resolve({demo:DEMO_LOGIN})).then(i=>{
     if(!i.demo) return;
@@ -1227,7 +1351,7 @@ function renderLogin(){
   $("#l-go").onclick = ()=>{
     const mail = $("#l-mail").value.trim(), code = $("#l-code").value.trim();
     if(!mail || !code){ toast("Scrivi mail e codice"); return; }
-    (API ? api("/api/app/login", {mail, code}) : (mail.toLowerCase()===DEMO_LOGIN.mail && code===DEMO_LOGIN.code ? Promise.resolve({token:"prova"}) : Promise.reject(new Error("mail o codice non corretti")))).then(r=>{ TOKEN = r.token; try{ localStorage.setItem("tf-token", TOKEN); }catch(e){} el.hidden = true; start(); })
+    (API ? api("/api/app/login", {mail, code}) : (mail.toLowerCase()===DEMO_LOGIN.mail && code===DEMO_LOGIN.code ? Promise.resolve(secLoad().totp ? {need2fa:true, ticket:"prova"} : {token:"prova"}) : Promise.reject(new Error("mail o codice non corretti")))).then(loginDone)
       .catch(e=>toast("Accesso non riuscito: "+e.message));
   };
 }
@@ -1237,11 +1361,13 @@ function profile(){
   root.innerHTML = `<div class="sheet-bg" id="sb"><div class="sheet" role="dialog" aria-label="Profilo"><div class="grab"></div>
     <div class="client">${esc(ME)}</div><span class="sub">I tuoi messaggi partono da questo indirizzo.</span>
     <label class="field"><span>Schermata iniziale</span><select class="input" id="p-home">${HOME_TABS.map(([k,l])=>`<option value="${k}" ${k===homeTab()?"selected":""}>${l}</option>`).join("")}</select></label>
+    <button class="btn block" id="p-sec" type="button">🔒 Sicurezza dell'accesso</button>
     <button class="btn block" id="p-out" type="button">Esci</button>
     <button class="btn block" id="p-x" type="button">Chiudi</button></div></div>`;
   $("#sb").onclick = e => { if(e.target.id==="sb") root.innerHTML = ""; };
   $("#p-x").onclick = ()=>{ root.innerHTML = ""; };
   $("#p-home").onchange = e => { try{ localStorage.setItem("tf-home", e.target.value); }catch(err){} toast("All'apertura vedrai: "+HOME_TABS.find(([k])=>k===e.target.value)[1]); };
+  $("#p-sec").onclick = secSheet;
   $("#p-out").onclick = ()=>{ root.innerHTML = ""; logout(); };
 }
 function handleShare(){

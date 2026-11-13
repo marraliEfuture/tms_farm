@@ -135,3 +135,34 @@ test("il tecnico vede i suoi ticket; quelli della zona solo con il permesso", as
   assert.ok(d.zoneTickets.some(t => !t.tech), "vede anche quelli da assegnare");
   assert.ok(!d.zoneTickets.some(t => t.tech === "LC"), "non quelli di un'altra zona");
 });
+
+test("app: verifica in due passaggi del tecnico", async () => {
+  const totp = require("../src/totp");
+  const tk = (await call("POST", "/api/app/login", null, { mail: "lc@efuture.it", code: "123456" })).json.token;
+  assert.ok(tk);
+  assert.equal((await call("GET", "/api/app/security", tk)).json.twofa, false);
+  const st = (await call("POST", "/api/app/2fa/setup", tk)).json;
+  assert.equal((await call("POST", "/api/app/2fa/enable", tk, { code: "000000" })).status, 400);
+  const on = await call("POST", "/api/app/2fa/enable", tk, { code: totp.code(st.secret) });
+  assert.equal(on.status, 200); assert.equal(on.json.recovery.length, 8);
+  const l = (await call("POST", "/api/app/login", null, { mail: "lc@efuture.it", code: "123456" })).json;
+  assert.ok(l.need2fa && !l.token);
+  assert.equal((await call("POST", "/api/app/login/2fa", null, { ticket: l.ticket, code: "111111" })).status, 401);
+  const ok = await call("POST", "/api/app/login/2fa", null, { ticket: l.ticket, code: on.json.recovery[0] });
+  assert.ok(ok.json.token); assert.equal(ok.json.left, 7);
+  assert.equal((await call("POST", "/api/app/login/2fa", null, { ticket: l.ticket, code: on.json.recovery[0] })).status, 401, "codice di recupero usa e getta");
+  assert.equal((await call("POST", "/api/app/2fa/disable", ok.json.token, { code: totp.code(st.secret) })).json.twofa, false);
+  assert.ok((await call("POST", "/api/app/login", null, { mail: "lc@efuture.it", code: "123456" })).json.token);
+});
+
+test("la console non riceve i segreti dei tecnici; l'ufficio può azzerare la sicurezza", async () => {
+  const totp = require("../src/totp");
+  const tk = (await call("POST", "/api/app/login", null, { mail: "lc@efuture.it", code: "123456" })).json.token;
+  const st = (await call("POST", "/api/app/2fa/setup", tk)).json;
+  await call("POST", "/api/app/2fa/enable", tk, { code: totp.code(st.secret) });
+  const ad = await login("admin", "admin123");
+  const lc = (await call("GET", "/api/admin/state", ad)).json.techs.find(t => t.mail === "lc@efuture.it");
+  assert.equal(lc.twofa, true); assert.equal(lc.totp, undefined); assert.equal(lc.recovery, undefined);
+  assert.equal((await call("PUT", "/api/admin/techs/lc%40efuture.it", ad, { azzeraSicurezza: true })).status, 200);
+  assert.ok((await call("POST", "/api/app/login", null, { mail: "lc@efuture.it", code: "123456" })).json.token);
+});

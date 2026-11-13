@@ -1656,14 +1656,15 @@ function techForm(t){
       <label class="field wide"><span>Mail aziendale (casella da cui partono le mail dell'app)</span><input class="input" id="tf-mail" type="email" required value="${esc(t.mail||"")}" ${isNew?"":"readonly"}></label>
       ${areaChecks(t.aree)}
     </div>
-    ${isNew ? `<p class="note">Alla creazione viene generato il codice di accesso all'app.</p>` : `<label class="check"><input type="checkbox" id="tf-code"> Genera un nuovo codice di accesso (quello vecchio smette di funzionare)</label>`}
+    ${isNew ? `<p class="note">Alla creazione viene generato il codice di accesso all'app.</p>` : `<label class="check"><input type="checkbox" id="tf-code"> Genera un nuovo codice di accesso (quello vecchio smette di funzionare)</label>
+      <label class="check"><input type="checkbox" id="tf-sec"> Telefono perso: togli verifica in due passaggi e passkey${t.twofa||((t.passkeys||0)>0)?` <span class="dim">(attive: ${[t.twofa?"verifica":"", t.passkeys?t.passkeys+" passkey":""].filter(Boolean).join(", ")})</span>`:""}</label>`}
     <div class="actions"><button class="btn primary" type="submit">${isNew ? "Crea tecnico" : "Salva"}</button><button class="btn" type="button" data-close>Annulla</button></div>`, ()=>{
       const nome = $("#tf-nome").value.trim(), mail = $("#tf-mail").value.trim().toLowerCase(), zona = $("#tf-zona").value.trim();
       const ini = ($("#tf-ini").value.trim() || nome.split(/\s+/).slice(0,2).map(w=>w[0]).join("")).toUpperCase();
       const newCode = !isNew && $("#tf-code").checked, aree = readAreas();
       if(!nome || !mail.includes("@")){ toast("Scrivi nome e mail aziendale"); return; }
       if(isNew && limitFull()){ toast(limitMsg()); return; }
-      if(LIVE){ (isNew ? post("/api/admin/techs", {mail, nome, ini, zona, aree}) : put("/api/admin/techs/"+encodeURIComponent(t.mail), {nome, ini, zona, newCode, aree}))
+      if(LIVE){ (isNew ? post("/api/admin/techs", {mail, nome, ini, zona, aree}) : put("/api/admin/techs/"+encodeURIComponent(t.mail), {nome, ini, zona, newCode, aree, azzeraSicurezza:$("#tf-sec").checked}))
         .then(r=>{ load(); if(r.code) showCode(r.tech, r.code); else { closeEditor(); toast("Tecnico salvato"); } }).catch(err=>toast("Non riuscito: "+err.message)); return; }
       const code = String(100000 + Math.floor(Math.random()*900000));
       if(isNew){ if(TECHS.some(x=>x.mail===mail)){ toast("Esiste già un tecnico con questa mail"); return; } TECHS.push({mail, name:nome, nome, ini, zona, aree, attivo:true, app:false, last:"—"}); logLocal("Tecnico creato", mail, "tecnici"); }
@@ -2476,8 +2477,50 @@ function load(){
   }).catch(err=>{ if(err && err.auth){ logout(); return; } toast("Backend non raggiungibile: "+(err && err.message || "")); render(); });
 }
 /* senza backend (file aperto o GitHub Pages): dati di prova, accesso e profilo solo in questo browser */
-const OFF_USER = {user:"admin", password:"admin123"};
-function offProfile(){ let p = null; try{ p = JSON.parse(localStorage.getItem("tf-admin-profile")||"null"); }catch(e){} return Object.assign({user:"admin", nome:"Amministratore", mail:"admin@efuture.it", home:"cruscotto", vista:"op"}, p||{}); }
+const OFF_USER = {user:"admin", password:(()=>{ try{ return localStorage.getItem("tf-admin-pass-prova"); }catch(e){ return null; } })() || "admin123"};
+/* versione di prova online: verifica in due passaggi, passkey e nuova password funzionano davvero ma restano in questo browser */
+const B32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+function b32dec(x){ let bits = 0, val = 0; const out = []; for(const ch of String(x).toUpperCase().replace(/[^A-Z2-7]/g,"")){ val = (val<<5) | B32.indexOf(ch); bits += 5; if(bits>=8){ out.push((val>>>(bits-8)) & 255); bits -= 8; } } return new Uint8Array(out); }
+async function totpAt(secret, step){
+  const key = await crypto.subtle.importKey("raw", b32dec(secret), {name:"HMAC", hash:"SHA-1"}, false, ["sign"]);
+  const m = new DataView(new ArrayBuffer(8)); m.setUint32(0, Math.floor(step/4294967296)); m.setUint32(4, step>>>0);
+  const h = new Uint8Array(await crypto.subtle.sign("HMAC", key, m.buffer)), o = h[19] & 15;
+  return String((((h[o]&127)<<24) | (h[o+1]<<16) | (h[o+2]<<8) | h[o+3]) % 1000000).padStart(6,"0");
+}
+async function totpOk(secret, input){ const c = String(input).replace(/\D/g,""), st = Math.floor(Date.now()/30000); for(const d of [-1,0,1]) if(await totpAt(secret, st+d) === c) return true; return false; }
+const secLoad = () => { try{ return JSON.parse(localStorage.getItem("tf-admin-sec-prova")) || {}; }catch(e){ return {}; } };
+const secSave = o => { try{ localStorage.setItem("tf-admin-sec-prova", JSON.stringify(o)); }catch(e){} };
+const secMe = () => { const o = secLoad(); return {twofa:!!o.totp, recoveryLeft:(o.recovery||[]).length, passkeys:(o.passkeys||[]).map(({id,nome,creato,usato})=>({id,nome,creato,usato}))}; };
+const pkCancelled = e => /NotAllowed|abort/i.test(String(e && (e.name||e.message)));
+/* stesse risposte del backend, calcolate qui */
+async function offSec(path, b){
+  const o = secLoad(), me = () => Object.assign(offProfile(), secMe());
+  if(path==="/api/admin/2fa/setup"){ o.pending = [...crypto.getRandomValues(new Uint8Array(20))].map(x=>B32[x & 31]).join(""); secSave(o); return {secret:o.pending, uri:`otpauth://totp/Ticket%20Farm:admin?secret=${o.pending}&issuer=Ticket%20Farm`}; }
+  if(path==="/api/admin/2fa/enable"){ if(!o.pending || !(await totpOk(o.pending, b.code))) throw new Error("codice non corretto: controlla l'ora del telefono e riprova");
+    o.totp = o.pending; delete o.pending; o.recovery = Array.from({length:8}, ()=>[...crypto.getRandomValues(new Uint8Array(5))].map(x=>x.toString(16).padStart(2,"0")).join("").replace(/(.{5})/,"$1-")); secSave(o); return {ok:true, recovery:o.recovery, me:me()}; }
+  if(path==="/api/admin/2fa/disable"){ if(b.password !== OFF_USER.password) throw new Error("password non corretta"); if(!o.totp || !(await totpOk(o.totp, b.code))) throw new Error("codice non corretto"); delete o.totp; delete o.recovery; secSave(o); return {ok:true, me:me()}; }
+  if(path.startsWith("/api/admin/passkey/") && b==="DELETE"){ const id = decodeURIComponent(path.split("/").pop()); o.passkeys = (o.passkeys||[]).filter(p=>p.id!==id); secSave(o); return {ok:true, me:me()}; }
+  throw new Error("non disponibile nella versione di prova");
+}
+async function offPkAdd(nome){
+  const cr = await navigator.credentials.create({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)), rp:{name:"Ticket Farm"}, user:{id:crypto.getRandomValues(new Uint8Array(16)), name:"admin", displayName:"Amministratore"},
+    pubKeyCredParams:[{type:"public-key", alg:-7},{type:"public-key", alg:-257}], authenticatorSelection:{residentKey:"required", userVerification:"preferred"}, timeout:60000}});
+  const o = secLoad(); o.passkeys = o.passkeys || []; o.passkeys.push({id:b64u(cr.rawId), nome:nome || "Passkey "+new Date().toLocaleDateString("it-CH"), creato:new Date().toISOString()}); secSave(o);
+  return {ok:true, me:Object.assign(offProfile(), secMe())};
+}
+async function offPkLogin(){
+  const a = await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)), userVerification:"preferred", timeout:60000}});
+  const o = secLoad(), p = (o.passkeys||[]).find(x=>x.id===b64u(a.rawId)); if(!p) throw new Error("passkey non riconosciuta");
+  p.usato = new Date().toISOString(); secSave(o);
+}
+async function off2faOk(code){ const o = secLoad(); if(o.totp && await totpOk(o.totp, code)) return {};
+  const c = String(code).trim().toLowerCase(), i = (o.recovery||[]).indexOf(c); if(i>=0){ o.recovery.splice(i,1); secSave(o); return {usedRecovery:true, left:o.recovery.length}; }
+  throw new Error("codice non corretto"); }
+function offEnter(){ try{ localStorage.setItem("tf-admin-in","1"); }catch(e){} $("#login").hidden = true; $("#login2").hidden = true; $("#lg-pass").value = ""; ME = offProfile(); landing(); startOffline(); }
+const spost = (u, b) => BACKEND ? post(u, b) : offSec(u, b);
+const sdel = u => BACKEND ? del(u) : offSec(u, "DELETE");
+function offProfile(){ let p = null; try{ p = JSON.parse(localStorage.getItem("tf-admin-profile")||"null"); }catch(e){} return Object.assign({user:"admin", nome:"Amministratore", mail:"admin@efuture.it", home:"cruscotto", vista:"op"}, p||{}, secMe()); }
 function startOffline(){
   if(location.hostname.endsWith("github.io")){ $("#foot-mode").textContent = "Console di prova: dati di esempio, non collegata a un backend"; const a=$("#app-link"); a.href="../"; a.hidden=false; }
   ME = offProfile(); if(!BOOTED){ BOOTED = true; landing(); } paintMe(); render();
@@ -2504,6 +2547,7 @@ function ask2fa(ticket){
     <button class="btn primary" type="submit">Verifica</button>
     <p class="note">Telefono perso? Scrivi uno dei <b>codici di recupero</b> che hai salvato quando hai attivato la verifica.</p>
     <button class="linkback" type="button" id="l2-back">‹ Torna all'accesso</button>`, ()=>{
+      if(!BACKEND){ off2faOk($("#l2-code").value.trim()).then(r=>{ offEnter(); if(r.usedRecovery) toast("Codice di recupero usato: te ne restano "+r.left); }).catch(err=>{ toast(err.message); $("#l2-code").select(); }); return; }
       fetch("/api/admin/login/2fa", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ticket, code:$("#l2-code").value.trim()})})
         .then(r=>r.json().then(j=>r.ok ? j : Promise.reject(new Error(j.error||r.status)))).then(finishLogin).catch(err=>{ toast(err.message); $("#l2-code").select(); });
     });
@@ -2513,7 +2557,7 @@ $("#lg-forgot").onclick = ()=>{
     <label class="field"><span>Utente o mail</span><input class="input" id="l2-user" autocomplete="username" required></label>
     <button class="btn primary" type="submit">Manda il link</button><div id="l2-out"></div>
     <button class="linkback" type="button" id="l2-back">‹ Torna all'accesso</button>`, ()=>{
-      if(!BACKEND){ $("#l2-out").innerHTML = `<p class="note">Versione di prova online: qui non parte nessuna mail. Con il backend acceso arriva un link per scegliere la nuova password.</p>`; return; }
+      if(!BACKEND){ $("#l2-out").innerHTML = `<p class="note">Versione di prova online: nessuna mail parte davvero. Ecco il link che riceveresti:</p><button class="btn" type="button" id="l2-demo">Apri il link per la nuova password</button>`; $("#l2-demo").onclick = ()=>askReset("prova"); return; }
       fetch("/api/admin/forgot", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({user:$("#l2-user").value.trim()})}).then(r=>r.json())
         .then(j=>{ $("#l2-out").innerHTML = `<p class="note">${esc(j.message)}</p>`+(j.demoLink ? `<p class="hint">Modalità prova: la mail è in <span class="mono">backend/outbox</span>. Link: <a href="${esc(j.demoLink)}">apri il link</a></p>` : ""); });
     });
@@ -2525,6 +2569,9 @@ function askReset(token){
     <button class="btn primary" type="submit">Salva la password</button>
     <button class="linkback" type="button" id="l2-back">‹ Torna all'accesso</button>`, ()=>{
       if($("#l2-p1").value !== $("#l2-p2").value){ toast("Le due password non sono uguali"); return; }
+      if(!BACKEND){ if($("#l2-p1").value.length < 8){ toast("La password deve avere almeno 8 caratteri"); return; }
+        OFF_USER.password = $("#l2-p1").value; try{ localStorage.setItem("tf-admin-pass-prova", OFF_USER.password); }catch(e){}
+        $("#login2").hidden = true; showLogin(OFF_USER); toast("Password salvata in questo browser: ora accedi"); return; }
       fetch("/api/admin/reset", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({token, password:$("#l2-p1").value})})
         .then(r=>r.json().then(j=>r.ok ? j : Promise.reject(new Error(j.error||r.status))))
         .then(()=>{ history.replaceState(null, "", location.pathname); $("#login2").hidden = true; showLogin(HINT); toast("Password salvata: ora accedi"); })
@@ -2532,6 +2579,7 @@ function askReset(token){
     });
 }
 $("#lg-pk").onclick = ()=>{
+  if(!BACKEND){ offPkLogin().then(offEnter).catch(err=>toast(pkCancelled(err) ? "Accesso con passkey annullato" : "Passkey: "+err.message)); return; }
   const W = window.SimpleWebAuthnBrowser;
   fetch("/api/admin/passkey/login/options", {method:"POST"}).then(r=>r.json())
     .then(optionsJSON=>W.startAuthentication({optionsJSON}))
@@ -2543,7 +2591,7 @@ $("#lg-pk").onclick = ()=>{
 /* ---------- profilo: sicurezza (verifica in due passaggi, passkey) ---------- */
 function paintSecurity(){
   const box = $("#pf-sec"); if(!box) return;
-  if(!BACKEND){ box.innerHTML = `<p class="note">Verifica in due passaggi e passkey funzionano con il backend acceso (sul PC o sul server), non nella versione di prova online.</p>`; return; }
+  if(!BACKEND && ME) Object.assign(ME, secMe());
   const pks = (ME && ME.passkeys) || [];
   box.innerHTML = `<div class="secrow"><div><b>Verifica in due passaggi</b><span class="dim">${ME && ME.twofa ? "Attiva · restano "+ME.recoveryLeft+" codici di recupero" : "Non attiva: oltre alla password serve il codice dell'app sul telefono"}</span></div>
       <button class="btn small ${ME && ME.twofa ? "danger" : "primary"}" type="button" id="sec-2fa">${ME && ME.twofa ? "Disattiva" : "Attiva"}</button></div>
@@ -2552,10 +2600,11 @@ function paintSecurity(){
     ${pks.map(p=>`<div class="secrow sub2"><div><b>🔑 ${esc(p.nome)}</b><span class="dim">creata ${fmtDate(p.creato)}${p.usato?" · ultimo uso "+fmtDate(p.usato):""}</span></div><button class="btn small danger" type="button" data-pk="${esc(p.id)}">Rimuovi</button></div>`).join("")}`;
   $("#sec-2fa").onclick = ()=> ME.twofa ? off2fa() : on2fa();
   $("#sec-pk-add").onclick = addPasskey;
-  box.querySelectorAll("[data-pk]").forEach(b=>b.onclick=()=>del("/api/admin/passkey/"+encodeURIComponent(b.dataset.pk)).then(r=>{ ME = r.me; paintSecurity(); toast("Passkey rimossa"); }).catch(err=>toast(err.message)));
+  if(!BACKEND) box.insertAdjacentHTML("afterbegin", `<p class="note">Versione di prova online: funziona davvero, ma resta salvato solo in questo browser.</p>`);
+  box.querySelectorAll("[data-pk]").forEach(b=>b.onclick=()=>sdel("/api/admin/passkey/"+encodeURIComponent(b.dataset.pk)).then(r=>{ ME = r.me; paintSecurity(); toast("Passkey rimossa"); }).catch(err=>toast(err.message)));
 }
 function on2fa(){
-  post("/api/admin/2fa/setup", {}).then(st=>{
+  spost("/api/admin/2fa/setup", {}).then(st=>{
     const qr = qrcode(0, "M"); qr.addData(st.uri); qr.make();
     openEditor(`<h2>Attiva la verifica in due passaggi</h2>
       <ol class="proc"><li>Installa un'app di autenticazione: Microsoft Authenticator, Google Authenticator o simili.</li><li>Nell'app tocca <b>+</b> e inquadra il codice QR.</li><li>Scrivi qui il codice di 6 cifre che compare.</li></ol>
@@ -2563,7 +2612,7 @@ function on2fa(){
       <p class="note">Non puoi inquadrare? Inserisci a mano la chiave: <span class="mono">${esc(st.secret.replace(/(.{4})/g,"$1 ").trim())}</span></p>
       <label class="field"><span>Codice dall'app</span><input class="input mono" id="tf-otp" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" style="font-size:20px;letter-spacing:.2em"></label>
       <div class="actions"><button class="btn primary" type="submit">Attiva</button><button class="btn" type="button" data-close>Annulla</button></div>`, ()=>{
-        post("/api/admin/2fa/enable", {code:$("#tf-otp").value.trim()}).then(r=>{
+        spost("/api/admin/2fa/enable", {code:$("#tf-otp").value.trim()}).then(r=>{
           ME = r.me; paintMe(); paintSecurity();
           openEditor(`<h2>Verifica attiva: salva i codici di recupero</h2><p>Se perdi il telefono, ognuno di questi codici ti fa entrare <b>una volta</b>. Salvali in un posto sicuro (gestore di password o carta in cassaforte): non li vedrai più.</p>
             <div class="reccodes">${r.recovery.map(c=>`<span class="mono">${esc(c)}</span>`).join("")}</div>
@@ -2578,7 +2627,7 @@ function off2fa(){
     <label class="field"><span>Password</span><input class="input" id="d2-pass" type="password" autocomplete="current-password"></label>
     <label class="field"><span>Codice dall'app</span><input class="input mono" id="d2-code" inputmode="numeric" maxlength="7"></label>
     <div class="actions"><button class="btn danger" type="submit">Disattiva</button><button class="btn" type="button" data-close>Annulla</button></div>`, ()=>{
-      post("/api/admin/2fa/disable", {password:$("#d2-pass").value, code:$("#d2-code").value.trim()}).then(r=>{ ME = r.me; closeEditor(); paintSecurity(); toast("Verifica in due passaggi disattivata"); }).catch(err=>toast(err.message));
+      spost("/api/admin/2fa/disable", {password:$("#d2-pass").value, code:$("#d2-code").value.trim()}).then(r=>{ ME = r.me; closeEditor(); paintSecurity(); toast("Verifica in due passaggi disattivata"); }).catch(err=>toast(err.message));
     });
 }
 function addPasskey(){
@@ -2587,6 +2636,7 @@ function addPasskey(){
     <label class="field"><span>Nome (per riconoscerla)</span><input class="input" id="pk-name" maxlength="40" placeholder="es. PC ufficio, iPhone"></label>
     <div class="actions"><button class="btn primary" type="submit">Crea la passkey</button><button class="btn" type="button" data-close>Annulla</button></div>`, ()=>{
       const nome = $("#pk-name").value.trim();
+      if(!BACKEND){ offPkAdd(nome).then(r=>{ ME = r.me; closeEditor(); paintSecurity(); toast("Passkey salvata"); }).catch(err=>toast(pkCancelled(err) ? "Creazione annullata" : "Passkey: "+err.message)); return; }
       post("/api/admin/passkey/register/options", {}).then(optionsJSON=>W.startRegistration({optionsJSON}))
         .then(response=>post("/api/admin/passkey/register/verify", {response, nome}))
         .then(r=>{ ME = r.me; closeEditor(); paintSecurity(); toast("Passkey salvata"); })
@@ -2615,7 +2665,7 @@ $("#login-form").onsubmit = e => {
   e.preventDefault();
   const user = $("#lg-user").value.trim(), password = $("#lg-pass").value;
   if(!BACKEND){
-    if(user === OFF_USER.user && password === OFF_USER.password){ try{ localStorage.setItem("tf-admin-in","1"); }catch(e){} $("#login").hidden = true; $("#lg-pass").value=""; ME = offProfile(); landing(); startOffline(); }
+    if(user === OFF_USER.user && password === OFF_USER.password){ if(secLoad().totp) ask2fa("prova"); else offEnter(); }
     else toast("Utente o password non corretti");
     return;
   }
@@ -2678,6 +2728,7 @@ function boot(){
     if(TOKEN) load(); else showLogin(HINT);
   }).catch(()=>{
     BACKEND = false;
+    $("#lg-pk").hidden = !(window.PublicKeyCredential && window.isSecureContext);
     let inside = false; try{ inside = localStorage.getItem("tf-admin-in")==="1"; }catch(e){}
     if(inside) startOffline(); else showLogin(OFF_USER);
   });

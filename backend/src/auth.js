@@ -253,7 +253,7 @@ function addTech({ mail, nome, ini, zona, aree }) {
   list.push(t); saveTechs(list);
   return { tech: techPublic(t), code };
 }
-function editTech(mail, { nome, ini, zona, newCode: regen, attivo, aree, ripristina }) {
+function editTech(mail, { nome, ini, zona, newCode: regen, attivo, aree, ripristina, azzeraSicurezza }) {
   const list = techs(), t = list.find(x => x.mail.toLowerCase() === String(mail).toLowerCase());
   if (!t) return { error: "tecnico non trovato" };
   const riattiva = (attivo === true && t.attivo === false) || (ripristina && t.eliminato);
@@ -267,6 +267,8 @@ function editTech(mail, { nome, ini, zona, newCode: regen, attivo, aree, riprist
   if (aree !== undefined) t.aree = cleanAree(aree);
   let code;
   if (regen) { code = newCode(); t.hash = hashCode(t.mail, code); }
+  /* telefono perso: l'ufficio toglie verifica in due passaggi e passkey, il tecnico rientra con il codice */
+  if (azzeraSicurezza) { delete t.totp; delete t.totpPending; delete t.recovery; delete t.passkeys; }
   saveTechs(list);
   return { tech: techPublic(t), code };
 }
@@ -277,9 +279,44 @@ function removeTech(mail) {
   t.eliminato = new Date().toISOString(); t.attivo = false; saveTechs(list); return true;
 }
 /* solo in prova, senza tecnici veri: credenziali da suggerire nella schermata di accesso */
+/* ---- sicurezza dei tecnici nell'app: verifica in due passaggi e passkey (come per la console) ---- */
+function techLogin(mail, code) {
+  const token = login(mail, code); if (!token) return null;
+  const t = findTech(mail);
+  if (t.totp) return { need2fa: true, ticket: sign({ role: "tech2fa", mail: t.mail, exp: Date.now() + 5 * 60000 }) };
+  return { token };
+}
+const techSession = t => sign({ mail: t.mail, exp: Date.now() + 1000 * 60 * 60 * 24 * 90 });
+const withTech = (mail, fn) => { const list = techs(), t = list.find(x => x.mail.toLowerCase() === String(mail).toLowerCase()); const r = fn(t, list); saveTechs(list); return r; };
+function techLogin2fa(ticket, input) {
+  const o = readSigned(ticket); if (!o || o.role !== "tech2fa") return { error: "tempo scaduto: accedi di nuovo" };
+  const t = findTech(o.mail); if (!t || t.attivo === false || t.eliminato || !t.totp) return { error: "accedi di nuovo" };
+  if (totp.verify(t.totp, input)) return { token: techSession(t) };
+  const h = hashRec(input);
+  if ((t.recovery || []).includes(h)) { const left = withTech(t.mail, x => { x.recovery.splice(x.recovery.indexOf(h), 1); return x.recovery.length; }); return { token: techSession(t), usedRecovery: true, left }; }
+  return { error: "codice non corretto" };
+}
+function techSetup2fa(tech) { return withTech(tech.mail, t => { t.totpPending = totp.newSecret(); return { secret: t.totpPending, uri: totp.uri(t.totpPending, t.mail) }; }); }
+function techEnable2fa(tech, input) {
+  return withTech(tech.mail, t => {
+    if (!t.totpPending || !totp.verify(t.totpPending, input)) return { error: "codice non corretto: controlla l'ora del telefono e riprova" };
+    t.totp = t.totpPending; delete t.totpPending;
+    const codes = Array.from({ length: 8 }, () => crypto.randomBytes(5).toString("hex").replace(/(.{5})/, "$1-"));
+    t.recovery = codes.map(hashRec); return { ok: true, recovery: codes };
+  });
+}
+function techDisable2fa(tech, input) {
+  return withTech(tech.mail, t => { if (!t.totp || !totp.verify(t.totp, input)) return { error: "codice non corretto" }; delete t.totp; delete t.recovery; return { ok: true }; });
+}
+function techSecurity(tech) { const t = findTech(tech.mail) || {}; return { twofa: !!t.totp, passkeys: (t.passkeys || []).map(({ id, nome, creato, usato }) => ({ id, nome, creato, usato })) }; }
+function techSetPk(tech, ch) { withTech(tech.mail, t => { t.pkChallenge = ch; }); }
+function techAddPk(tech, cred) { withTech(tech.mail, t => { t.passkeys = t.passkeys || []; t.passkeys.push(cred); delete t.pkChallenge; }); }
+function techByPasskey(id) { return techs().find(t => (t.passkeys || []).some(p => p.id === id)); }
+function techTouchPk(mail, id, counter) { withTech(mail, t => { const p = t.passkeys.find(x => x.id === id); p.counter = counter; p.usato = new Date().toISOString(); }); }
+function techRemovePk(tech, id) { return withTech(tech.mail, t => { const n = (t.passkeys || []).length; t.passkeys = (t.passkeys || []).filter(p => p.id !== id); return t.passkeys.length < n; }); }
 function demoHint() {
   if (cfg.mode !== "demo") return null;
   const t = findTech(DEMO_TECHS[0].mail);
   return t && t.hash === hashCode(DEMO_TECHS[0].mail, DEMO_TECHS[0].codice) ? { mail: DEMO_TECHS[0].mail, code: DEMO_TECHS[0].codice } : null;
 }
-module.exports = { validProfile, limitInfo, activeCount, techPublic, sessionFor, readSigned, adminLogin2fa, setup2fa, enable2fa, disable2fa, forgot, resetPassword, addPasskey, setPkChallenge, findByPasskey, touchPasskey, removePasskey, users, saveUsers, findUser, addUser, editUser, removeUser, PROFILI, USERS_FILE, addTech, editTech, removeTech, adminLogin, adminDemoHint, adminAccount, updateAdmin, publicAdmin, demoHint, hashCode, techs, findTech, login, verify, requireTech, requireAdmin, TECH_FILE };
+module.exports = { techLogin, techLogin2fa, techSession, techSetup2fa, techEnable2fa, techDisable2fa, techSecurity, techSetPk, techAddPk, techByPasskey, techTouchPk, techRemovePk, validProfile, limitInfo, activeCount, techPublic, sessionFor, readSigned, adminLogin2fa, setup2fa, enable2fa, disable2fa, forgot, resetPassword, addPasskey, setPkChallenge, findByPasskey, touchPasskey, removePasskey, users, saveUsers, findUser, addUser, editUser, removeUser, PROFILI, USERS_FILE, addTech, editTech, removeTech, adminLogin, adminDemoHint, adminAccount, updateAdmin, publicAdmin, demoHint, hashCode, techs, findTech, login, verify, requireTech, requireAdmin, TECH_FILE };
