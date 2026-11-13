@@ -200,3 +200,19 @@ test("notifiche push: iscrizione del telefono e avviso quando l'ufficio scrive",
   await new Promise(r => setTimeout(r, 50));
   assert.equal(push.count("mb@efuture.it"), 0, "iscrizione scaduta tolta");
 });
+
+test("conversazione del ticket: il cliente scrive, il tecnico lo vede, l'ufficio risponde per mail", async () => {
+  const cli = await login("m.rossi", "admin123"), ad = await login("admin", "admin123");
+  const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+  const t = (await call("POST", "/api/admin/tickets", cli, { title: "Display spento", descr: "Da stamattina", files: [{ name: "a.png", type: "image/png", data: png }] })).json.ticket;
+  let p = (await call("GET", "/api/admin/tickets/" + encodeURIComponent(t.id) + "/msgs", cli)).json.portal;
+  assert.equal(p.length, 1); assert.equal(p[0].who, "cliente"); assert.equal(p[0].files.length, 1);
+  await call("PUT", "/api/admin/tickets/" + encodeURIComponent(t.id), ad, { tech: "MB" });
+  assert.equal((await call("POST", "/api/admin/tickets/" + encodeURIComponent(t.id) + "/msg", cli, { text: "Errore E-07" })).status, 200);
+  const tk = (await call("POST", "/api/app/login", null, { mail: "mb@efuture.it", code: "123456" })).json.token;
+  const th = (await call("GET", "/api/app/data", tk)).json.threads.find(x => x.ticket === t.id);
+  assert.ok(th && th.unread && /E-07/.test(th.msgs.slice(-1)[0].text), "il tecnico vede il messaggio del cliente");
+  const r = await call("POST", "/api/admin/tickets/" + encodeURIComponent(t.id) + "/msg", ad, { text: "Passiamo alle 14" });
+  assert.equal(r.json.msg.who, "ufficio"); assert.ok(["preparata", "inviata"].includes(r.json.msg.mail));
+  assert.equal((await call("GET", "/api/admin/tickets/" + encodeURIComponent("Tck #714821") + "/msgs", cli)).status, 403, "non vede i ticket di altre aziende");
+});

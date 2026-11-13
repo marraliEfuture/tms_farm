@@ -63,6 +63,7 @@ function setTransport(t) { testTransport = t; transport = t; }
 function bodyText(o) {
   const head = o.kind === "mail"
     ? `Mail del cliente${o.mailFrom ? " (" + o.mailFrom + ")" : ""}, ricevuta ${o.time} sulla casella personale del tecnico.`
+    : o.kind === "tel" ? `Richiesta del cliente${o.from ? " " + o.from : ""} raccolta dal tecnico (telefonata o visita), ${o.time}.`
     : `Messaggio WhatsApp del cliente${o.from ? " " + o.from : ""}, ricevuto ${o.time} sul numero personale del tecnico.`;
   const lines = o.lines && o.lines.length ? o.lines.map(l => (l.time ? "[" + l.time + "] " : "") + l.text).join("\n") : o.body;
   return head + "\n\n" + lines + (o.note ? "\n\n-- Nota del tecnico --\n" + o.note : "") + "\n\nInviato con l'app Ticket Farm.";

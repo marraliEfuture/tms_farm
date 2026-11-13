@@ -638,7 +638,7 @@ function loadFiles(box){
     fetch(API+"/api/app/file/"+id, {headers:{Authorization:"Bearer "+TOKEN}}).then(r=>r.ok ? r.blob() : Promise.reject()).then(b=>{ FILE_URLS[id] = URL.createObjectURL(b); set(FILE_URLS[id]); }).catch(()=>{}); });
 }
 function msgHTML(m, i){
-  if(m.k==="fwd") return `<div class="msg fwd"><small>${m.kind==="mail"?"Mail":"WhatsApp"}${m.from?" di "+esc(m.from):" del cliente"} · ${esc(m.t)}</small>${m.lines?m.lines.map(l=>`<q><span class="mono">${esc(l.time)}</span> ${esc(l.text)}</q>`).join(""):`<q>${esc(m.text)}</q>`}${m.photos?`<small style="margin-top:6px">${m.photos} foto allegate</small>`:""}</div>`;
+  if(m.k==="fwd") return `<div class="msg fwd"><small>${m.kind==="mail"?"Mail":m.kind==="tel"?"Richiesta a voce":m.kind==="portale"?"Dal portale":"WhatsApp"}${m.from?" di "+esc(m.from):" del cliente"} · ${esc(m.t)}</small>${m.lines?m.lines.map(l=>`<q><span class="mono">${esc(l.time)}</span> ${esc(l.text)}</q>`).join(""):`<q>${esc(m.text)}</q>`}${filesHTML(m.files)}${m.photos?`<small style="margin-top:6px">${m.photos} foto allegate</small>`:""}</div>`;
   if(m.k==="me") return `<div class="msg out${m.cc?" toc":""}"><small><span class="who-tec" title="Tecnico">${ICO_TEC}</span> ${m.cc?"Messaggio a "+esc((personOf(S.threads[S.openThread]||{})||{n:m.cc}).n):"Nota interna"} · ${esc(m.t)}</small>${esc(m.text)}${filesHTML(m.files)}</div>`;
   return `<div class="msg in"><small><span class="who-age" title="Ufficio · agente">${ICO_AGE}</span> Ufficio · ${esc(m.t)}</small>${esc(m.text)}${m.forClient?`<div class="copybox"><span class="lbl">Da mandare a ${esc(firstName(personOf(S.threads[S.openThread]||{})))}</span><p id="cb-${i}">${esc(m.forClient)}</p><div class="cb-act"><button class="btn small primary" data-copy="${i}" type="button">Copia negli appunti</button>${waBtn(curTel, m.forClient, "Apri chat cliente")}</div></div>`:""}</div>`;
 }
@@ -795,9 +795,9 @@ function parseMail(text){
 }
 function ingest(text, via){
   const f = S.f; f.text = text; f.via = via;
-  const ml = parseMail(text);
-  f.kind = ml ? "mail" : "wa"; f.mailFrom = ml ? ml.from : ""; f.subj = ml ? ml.subj : "";
-  f.msgs = ml ? [{time:"", date:"", from:ml.name, text:ml.body}] : parseWA(text);
+  const ml = via==="manual" ? null : parseMail(text);
+  f.kind = via==="manual" ? "tel" : ml ? "mail" : "wa"; f.mailFrom = ml ? ml.from : ""; f.subj = ml ? ml.subj : "";
+  f.msgs = via==="manual" ? [{time:"", date:"", from:"", text:text.trim()}] : ml ? [{time:"", date:"", from:ml.name, text:ml.body}] : parseWA(text);
   const first = f.msgs.find(m=>m.time);
   if(ml && ml.date){ f.time = ml.date; f.timeAuto = true; }
   else if(first){ f.time = first.date+" "+first.time; f.timeAuto = true; } else { f.time = today()+" "+nowStr(); f.timeAuto = false; }
@@ -818,7 +818,13 @@ function renderInoltra(){
         <li>Torna qui e incolla.</li>
       </ol>
       <p class="hint">Da una mail l'app legge mittente e ora, e riconosce il cliente dall'indirizzo. Da WhatsApp arriva solo il testo: scegli tu il ticket o il cliente con un tocco.</p>
-      <div class="row"><label class="btn small" for="f-photo" style="cursor:pointer">+ Solo foto o screenshot</label><input type="file" id="f-photo" accept="image/*" multiple hidden></div>`;
+      <div class="row" style="justify-content:flex-start;gap:8px;flex-wrap:wrap"><button class="btn small" type="button" id="f-man">✎ Scrivi tu la richiesta</button><label class="btn small" for="f-photo" style="cursor:pointer">+ Solo foto o screenshot</label><input type="file" id="f-photo" accept="image/*" multiple hidden></div>
+      <div class="card" id="f-manbox" hidden><span class="lbl">Telefonata, visita o richiesta a voce</span>
+        <textarea class="input" id="f-mantext" rows="4" placeholder="Cosa chiede il cliente? Es. «La bilancia del reparto 2 non si accende da stamattina»"></textarea>
+        <div class="row" style="gap:8px"><button class="btn small" type="button" id="f-manmic">🎤 Detta</button><button class="btn primary small" type="button" id="f-mango">Avanti: scegli il cliente</button></div></div>`;
+    $("#f-man").onclick = ()=>{ $("#f-manbox").hidden = false; $("#f-mantext").focus(); };
+    $("#f-manmic").onclick = ()=>toggleMic($("#f-mantext"), $("#f-manmic"));
+    $("#f-mango").onclick = ()=>{ stopMic(); const t = $("#f-mantext").value.trim(); if(!t){ toast("Scrivi cosa chiede il cliente"); return; } ingest(t, "manual"); };
     const pa = $("#f-paste");
     $("#f-clip").onclick = ()=>{
       if(!navigator.clipboard || !navigator.clipboard.readText){ toast("Tieni premuto nel riquadro e scegli Incolla"); return; }
@@ -840,7 +846,7 @@ function renderInoltra(){
   }
   el.innerHTML = `<div><h2 class="sec">Messaggio di un cliente</h2><p class="sub">Controlla i dati compilati e invia a Ticket Farm.</p></div>
     <div class="card" style="gap:8px">
-      <div class="row"><span class="lbl">${f.kind==="mail"?"Mail del cliente":"Copiato da WhatsApp"}</span><button class="linkbtn" id="f-clear" type="button">Incolla di nuovo</button></div>
+      <div class="row"><span class="lbl">${f.kind==="mail"?"Mail del cliente":f.kind==="tel"?"Richiesta scritta da te":"Copiato da WhatsApp"}</span><button class="linkbtn" id="f-clear" type="button">${f.kind==="tel"?"Riscrivi":"Incolla di nuovo"}</button></div>
       ${f.subj?`<div class="hint">Oggetto: ${esc(f.subj)}</div>`:""}
       ${f.msgs.map(m=>`<div class="wam"${m.time?"":' style="grid-template-columns:1fr"'}>${m.time?`<span class="mono">${esc(m.time)}</span>`:""}<span>${m.from?`<b>${esc(m.from)}</b><br>`:""}${esc(m.text)}</span></div>`).join("")}
       <div class="row"><label class="btn small" for="f-photo" style="cursor:pointer">+ Foto</label><input type="file" id="f-photo" accept="image/*" multiple hidden><span class="hint" id="f-photos">${f.photos?f.photos+" foto allegate":""}</span></div>

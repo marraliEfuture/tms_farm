@@ -211,13 +211,13 @@ app.post("/api/app/send", auth.requireTech, async (req, res, next) => {
       ticket = existing.id; subject = "Re: " + existing.id + " - " + existing.title; inReplyTo = (existing.msgIds || []).slice(-1)[0] || "";
     } else {
       isNew = true;
-      subject = (b.kind === "mail" && b.subj ? b.subj : (b.kind === "mail" ? "Mail del cliente" : "Messaggio WhatsApp")) + " - " + (c ? c.name : "cliente da identificare");
+      subject = (b.kind === "mail" && b.subj ? b.subj : (b.kind === "mail" ? "Mail del cliente" : b.kind === "tel" ? "Richiesta al tecnico (telefonata o visita)" : "Messaggio WhatsApp")) + " - " + (c ? c.name : "cliente da identificare");
       /* in prova simuliamo il numero che ITSM/Halo assegnerebbero; dal vivo il numero arriva quando il sistema lo apre */
       ticket = c && cfg.mode === "demo" ? sources.demo.createTicket(c, String(b.body).slice(0, 60), tech.ini, { contatto: k ? k.id : "" }) : "In attesa-" + (++st.seq);
     }
     const text = mail.bodyText({ kind: b.kind, from: b.from, mailFrom: b.mailFrom, time: b.time, lines: b.lines, body: b.body, note: b.note });
     const msg = mail.buildMessage({ tech, client: c, ticket: existing ? ticket : "", isNew, subject, text, inReplyTo, time: b.time,
-      origin: b.kind === "mail" ? "mail del cliente" + (b.mailFrom ? " (" + b.mailFrom + ")" : "") : "WhatsApp del tecnico", files: b.files });
+      origin: b.kind === "mail" ? "mail del cliente" + (b.mailFrom ? " (" + b.mailFrom + ")" : "") : b.kind === "tel" ? "telefonata o visita (scritta dal tecnico)" : "WhatsApp del tecnico", files: b.files });
     const sent = await mail.send(msg);
     await logMail(msg, sent);
     audit.add(tech.mail, "Messaggio inoltrato dall'app", (c ? c.name : "cliente da identificare") + " · " + ticket, "app");
@@ -260,6 +260,7 @@ app.post("/api/app/note", auth.requireTech, async (req, res, next) => {
     await logMail(msg, sent);
     if (cc) audit.add(tech.mail, "Risposta al cliente dall'app", th.ticket + " · copia a " + cc, "app");
     th.msgs.push({ k: "me", t: now(), text, cc: cc || undefined, files: att.saved.length ? att.saved : undefined });
+    if (cc) portalAdd(th.ticket, { who: "tecnico", by: tech.nome || tech.ini, text, files: att.saved });
     /* nota interna: il cliente riceve solo l'avviso che c'è un aggiornamento (mai il testo); il messaggio al cliente gli arriva già in copia */
     if (!cc && t) await sendRecap(t, "messaggio", { chi: "Il tecnico" });
     store.save();
@@ -404,9 +405,10 @@ app.get("/api/admin/state", async (req, res, next) => {
     const mine = (req.admin.profilo || "admin") === "cliente" ? req.admin.cliente || "-" : "";
     const hidden = new Set(st.hiddenMails || []);
     mails = mails.filter(m => !hidden.has(m.id));
-    if (mine) return res.json({ threads: [], ai: { enabled: false }, profiles: settings.profiles(), o365: null, settings: null, me: auth.publicAdmin(req.admin), mode: cfg.mode, support: "", appUrl: cfg.appUrl,
+    const portal = st.portal || {}, portalFor = ids => Object.fromEntries(Object.entries(portal).filter(([k]) => ids.has(k)));
+    if (mine) return res.json({ portal: portalFor(new Set(tickets.filter(t => t.client === mine).map(t => t.id))), threads: [], ai: { enabled: false }, profiles: settings.profiles(), o365: null, settings: null, me: auth.publicAdmin(req.admin), mode: cfg.mode, support: "", appUrl: cfg.appUrl,
       clients: clients.filter(c => c.id === mine), tickets: tickets.filter(t => t.client === mine), techs: techsPublic().map(({ mail, ...t }) => ({ ...t, mail: "" })), mails: [], rules: [], customRules: [], aree: [], limiti: auth.limitInfo(), connections: [] });
-    res.json({ recaps: recap.list().slice(0, 300), recapCfg: settings.recap(), recapMissing: recap.missing(clients, tickets), sistema: settings.sistema(), customRules: st.customRules || [], aree: settings.aree(), limiti: auth.limitInfo(), threads, ai: settings.aiPublic(), profiles: settings.profiles(), o365, settings: settings.can(req.admin.profilo || "admin", "office365", "v") ? settings.publicView() : null, me: auth.publicAdmin(req.admin), mode: cfg.mode, support: settings.support(), appUrl: cfg.appUrl, clients, tickets, techs: techsPublic(), mails, rules: st.rules, connections: await sources.status() });
+    res.json({ portal, recaps: recap.list().slice(0, 300), recapCfg: settings.recap(), recapMissing: recap.missing(clients, tickets), sistema: settings.sistema(), customRules: st.customRules || [], aree: settings.aree(), limiti: auth.limitInfo(), threads, ai: settings.aiPublic(), profiles: settings.profiles(), o365, settings: settings.can(req.admin.profilo || "admin", "office365", "v") ? settings.publicView() : null, me: auth.publicAdmin(req.admin), mode: cfg.mode, support: settings.support(), appUrl: cfg.appUrl, clients, tickets, techs: techsPublic(), mails, rules: st.rules, connections: await sources.status() });
   } catch (e) { next(e); }
 });
 /* l'ufficio scrive nella conversazione del tecnico: il messaggio arriva nell'app come «Ticket Farm» */
@@ -455,9 +457,57 @@ app.post("/api/admin/tickets", need("ticket", "m"), async (req, res, next) => {
     const kk = (c.contacts || []).find(x => x.id === req.body.contatto), fo = clients.find(x => x.id === req.body.fornitore && x.tipo === "fornitore");
     const id = sources.demo.createTicket(c, title, String(req.body.tech || ""), { urg: !!req.body.urg, origin: own ? "Portale cliente" : "Console", contatto: kk ? kk.id : "", fornitore: fo ? fo.id : "" });
     log(req, "Ticket creato", id + " · " + c.name + " · " + title, "ticket");
+    const descr = String(req.body.descr || "").trim().slice(0, 4000), att = files.save(req.body.files);
+    if (!att.error && (descr || att.saved.length)) portalAdd(id, { who: own ? "cliente" : "ufficio", by: kk ? kk.n : (req.admin.nome || req.admin.user), text: descr, files: att.saved });
     const nt = (await sources.data()).tickets.find(x => x.id === id); if (nt) await sendRecap(nt, "apertura");
     if (req.body.tech) pushTech(String(req.body.tech), "Nuovo ticket assegnato a te", id + " · " + c.name + " · " + title + (req.body.urg ? " · URGENTE" : ""), id);
     res.json({ ticket: { id, sys: c.sys, client: c.id, title } });
+  } catch (e) { next(e); }
+});
+/* conversazione del ticket visibile al cliente (portale): il cliente scrive all'assistenza, l'ufficio e il tecnico rispondono */
+function portalAdd(ticket, m) {
+  const st = store.load(); st.portal = st.portal || {};
+  const msg = { id: "p" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), at: now(), ...m, files: (m.files || []).length ? m.files : undefined };
+  (st.portal[ticket] = st.portal[ticket] || []).push(msg); store.save(); return msg;
+}
+app.get("/api/admin/tickets/:id/msgs", need("ticket", "v"), async (req, res, next) => {
+  try {
+    const t = (await sources.data()).tickets.find(x => x.id === req.params.id);
+    if (!t) return res.status(404).json({ error: "ticket non trovato" });
+    if (req.admin.profilo === "cliente" && t.client !== req.admin.cliente) return res.status(403).json({ error: "non è un ticket della tua azienda" });
+    res.json({ portal: (store.load().portal || {})[t.id] || [], state: t.state });
+  } catch (e) { next(e); }
+});
+app.post("/api/admin/tickets/:id/msg", need("ticket", "m"), async (req, res, next) => {
+  try {
+    const { clients, tickets } = await sources.data(), t = tickets.find(x => x.id === req.params.id);
+    if (!t) return res.status(404).json({ error: "ticket non trovato" });
+    const own = req.admin.profilo === "cliente" ? req.admin.cliente : "";
+    if (own && t.client !== own) return res.status(403).json({ error: "non è un ticket della tua azienda" });
+    if (t.state === "Chiuso" && own) return res.status(400).json({ error: "il ticket è chiuso: aprine uno nuovo" });
+    const text = String(req.body.text || "").trim().slice(0, 4000), att = files.save(req.body.files);
+    if (att.error) return res.status(400).json({ error: att.error });
+    if (!text && !att.saved.length) return res.status(400).json({ error: "scrivi un messaggio o allega un file" });
+    const c = clients.find(x => x.id === t.client) || { contacts: [] }, k = (c.contacts || []).find(x => x.id === t.contatto);
+    const msg = portalAdd(t.id, { who: own ? "cliente" : "ufficio", by: own ? (k ? k.n : req.admin.nome || "Cliente") : (req.admin.nome || req.admin.user), text, files: att.saved });
+    if (own) {
+      /* il tecnico del ticket lo vede subito nell'app, come un messaggio del cliente */
+      const tech = auth.techs().find(x => x.ini === t.tech);
+      if (tech) { const st = store.load(), list = (st.threads[tech.mail] = st.threads[tech.mail] || []);
+        let th = list.find(x => x.ticket === t.id); if (!th) { th = { ticket: t.id, client: t.client, contatto: t.contatto || "", unread: true, msgs: [] }; list.unshift(th); }
+        th.msgs.push({ k: "fwd", kind: "portale", from: msg.by, contatto: t.contatto || undefined, t: now(), text: text || "(allegato)", files: att.saved.length ? att.saved : undefined }); th.unread = true; store.save();
+        pushTech(tech.mail, "Nuovo messaggio del cliente · " + t.id, msg.by + ": " + (text || "allegato"), t.id); }
+      log(req, "Messaggio del cliente sul ticket", t.id, "ticket");
+    } else {
+      /* risposta dell'ufficio: arriva per mail alla persona che ha chiesto */
+      if (k && /@/.test(k.mail || "")) {
+        const sent = await mail.send({ from: { name: "Assistenza tecnica", address: settings.support() }, to: k.mail, replyTo: settings.support(), subject: "Re: " + t.id + " - " + t.title,
+          text: text + "\n\n" + tpl.render("firma_tecnico", { tecnico: req.admin.nome || "Assistenza", ticket: t.id }).testo, attachments: att.mail.map(f => ({ filename: f.name, content: Buffer.from(f.data, "base64"), contentType: f.type })) });
+        msg.mail = sent.real ? "inviata" : "preparata"; store.save();
+      } else msg.mail = "manca la mail";
+      log(req, "Risposta al cliente", t.id + (k ? " · " + k.n : ""), "ticket");
+    }
+    res.json({ msg, portal: store.load().portal[t.id] });
   } catch (e) { next(e); }
 });
 /* modificare un ticket: stato, tecnico, urgenza, data dell'intervento, richiesta */

@@ -1191,17 +1191,18 @@ function wireFix(m){
 
 /* ---------- Ticket ---------- */
 function ticket(){
-  $("#main").innerHTML = `<div class="top"><div><h1>Ticket</h1><p class="sub">Tutti i ticket, con ricerca e filtri.</p></div>
+  $("#main").innerHTML = `<div class="top"><div><h1>Ticket</h1><p class="sub">${ROLE==="cliente"?"I ticket della tua azienda: aprine uno nuovo o segui quelli aperti.":"Tutti i ticket, con ricerca e filtri."}</p></div>
       <div class="actions" style="margin:0"><button class="btn" type="button" id="t-rep">Scarica report</button><button class="btn primary" type="button" id="t-new" data-perm="ticket:m">+ Nuovo ticket</button></div></div>
     <form class="panel" id="t-form" hidden>
       <h2>Nuovo ticket</h2>
       <div class="formgrid">
         <label class="field" ${ROLE==="cliente"?"hidden":""}><span>Cliente</span><select class="input" id="nt-client" required><option value="">Scegli il cliente…</option>${liveClients().filter(alive).map(c=>`<option value="${c.id}" ${ROLE==="cliente"&&c.id===myClientId()?"selected":""}>${esc(c.name)}</option>`).join("")}</select></label>
-        <label class="field" id="tf-scope-w" hidden><span>Quali ticket</span><select class="input" id="tf-scope"><option value="">I miei</option><option value="zona">Della mia zona</option></select></label>
         <label class="field" id="nt-k-w"><span>Chi lo chiede</span><select class="input" id="nt-k"><option value="">Scegli prima il cliente</option></select></label>
         <label class="field" ${ROLE==="cliente"?"hidden":""}><span>Fornitore coinvolto (facoltativo)</span><select class="input" id="nt-forn"><option value="">Nessuno</option>${liveSuppliers().map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("")}</select></label>
         <label class="field" ${ROLE==="cliente"?"hidden":""}><span>Tecnico</span><select class="input" id="nt-tech"><option value="">Da assegnare</option>${TECHS.filter(alive).map(t=>`<option value="${t.ini}">${t.ini} · ${esc(t.name||t.nome||"")}</option>`).join("")}</select></label>
         <label class="field wide"><span>Richiesta</span><input class="input" id="nt-title" maxlength="120" placeholder="Es. Bilancia analitica: non si accende" required></label>
+        <label class="field wide"><span>Descrizione (facoltativa)</span><textarea class="input" id="nt-descr" rows="3" maxlength="4000" placeholder="Cosa succede, da quando, eventuali messaggi di errore"></textarea></label>
+        <div class="field wide"><span>Foto o documenti (facoltativi)</span><div class="mf-atts"><label class="btn small">📎 Allega<input type="file" id="nt-file" multiple accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.odt,.ods,.txt,.zip" hidden></label> <span id="nt-files"></span></div></div>
       </div>
       <label class="check"><input type="checkbox" id="nt-urg"> Urgente</label>
       <div class="actions"><button class="btn primary" type="submit" id="nt-go">Crea ticket</button><button class="btn" type="button" id="nt-x">Annulla</button></div>
@@ -1213,6 +1214,7 @@ function ticket(){
       <div class="f-grid">
         <label class="field" id="tf-client-w"><span>Cliente</span><select class="input" id="tf-client"><option value="">Tutti i clienti</option>${[...CLIENTS].sort((a,b)=>a.name.localeCompare(b.name)).map(c=>`<option value="${c.id}">${esc(c.name)}${c.eliminato?" (eliminato)":c.attivo===false?" (disattivato)":""}</option>`).join("")}</select></label>
         <label class="field" id="tf-tech-w"><span>Tecnico</span><select class="input" id="tf-tech"><option value="">Tutti i tecnici</option><option value="-">Da assegnare</option>${TECHS.map(t=>`<option value="${t.ini}">${t.ini} · ${esc(techName(t))}${t.eliminato?" (eliminato)":t.attivo===false?" (disattivato)":""}</option>`).join("")}</select></label>
+        <label class="field" id="tf-scope-w" hidden><span>Quali ticket</span><select class="input" id="tf-scope"><option value="">I miei</option><option value="zona">Della mia zona</option></select></label>
         <label class="field" id="tf-area-w"><span>Area di lavoro</span><select class="input" id="tf-area"><option value="">Tutte le aree</option>${AREE_LIST.filter(a=>!a.eliminato).map(a=>`<option value="${a.id}">${esc(a.nome)}</option>`).join("")}</select></label>
         <label class="field"><span>Origine</span><select class="input" id="tf-origin"><option value="">Tutte le origini</option>${[...new Set(S.tickets.map(t=>t.origin).filter(Boolean))].sort().map(o=>`<option>${esc(o)}</option>`).join("")}</select></label>
         <label class="field"><span>Aperto</span><select class="input" id="tf-per"><option value="">In qualsiasi data</option><option value="0">Oggi</option><option value="7">Ultimi 7 giorni</option><option value="30">Ultimi 30 giorni</option><option value="c">Dal… al…</option></select></label>
@@ -1275,16 +1277,20 @@ function ticket(){
   $("#t-rep").onclick = ()=>reportDialog(F.client || (S.tickets[0]||{}).client);
   $("#t-new").onclick = ()=>{ form.hidden = false; $("#nt-client").focus(); };
   $("#nt-x").onclick = ()=>{ form.hidden = true; form.reset(); };
+  const ntAtt = []; const paintNt = () => { $("#nt-files").innerHTML = attChips(ntAtt, "data-ntx"); $("#nt-files").querySelectorAll("[data-ntx]").forEach(b=>b.onclick=()=>{ ntAtt.splice(+b.dataset.ntx,1); paintNt(); }); };
+  pickFiles($("#nt-file"), ntAtt, paintNt);
   form.onsubmit = e => {
     e.preventDefault();
-    const c = cl($("#nt-client").value), title = $("#nt-title").value.trim(), tech = $("#nt-tech").value, urg = $("#nt-urg").checked, contatto = $("#nt-k").value, fornitore = $("#nt-forn").value;
+    const c = cl($("#nt-client").value), title = $("#nt-title").value.trim(), tech = $("#nt-tech").value, urg = $("#nt-urg").checked, contatto = $("#nt-k").value, fornitore = $("#nt-forn").value, descr = $("#nt-descr").value.trim();
     if(!c || !title){ toast("Scegli il cliente e scrivi la richiesta"); return; }
+    if(ntAtt.some(a=>a.busy)){ toast("Attendi: sto preparando gli allegati"); return; }
     if(LIVE){ $("#nt-go").disabled = true;
-      post("/api/admin/tickets", {client:c.id, title, tech, urg, contatto, fornitore}).then(r=>{ toast("Ticket "+r.ticket.id+" aperto"); load(); })
+      post("/api/admin/tickets", {client:c.id, title, tech, urg, contatto, fornitore, descr, files:ntAtt.map(({name,type,data})=>({name,type,data}))}).then(r=>{ toast("Ticket "+r.ticket.id+" aperto"); load(); })
         .catch(err=>{ $("#nt-go").disabled = false; toast("Non riuscito: "+err.message); }); return; }
     const id = "Tck #7148"+(++S.seq);
     if(RECAP_CFG.attivo && RECAP_CFG.apertura) setTimeout(()=>{ const nt = S.tickets.find(x=>x.id===id); if(nt) recapLocal(nt, "apertura"); }, 0);
-    S.tickets.unshift({id, opened:dago(0), contatto, fornitore, sys:c.sys, client:c.id, title, state:"Aperto", tech, urg, origin:"Console", upd:"adesso"}); logLocal("Ticket creato", id+" · "+c.name+" · "+title, "ticket");
+    S.tickets.unshift({id, opened:dago(0), contatto, fornitore, sys:c.sys, client:c.id, title, state:"Aperto", tech, urg, origin:ROLE==="cliente"?"Portale cliente":"Console", upd:"adesso"});
+    if(descr || ntAtt.length) PORTAL[id] = [{id:"p"+Date.now(), at:new Date().toISOString(), who:ROLE==="cliente"?"cliente":"ufficio", by:ROLE==="cliente"?((ticketContact({contatto, client:c.id})||{}).n||"Cliente"):((ME&&ME.nome)||"Ufficio"), text:descr, files:ntAtt.map(({name,type,size,url})=>({name,type,size,url}))}]; logLocal("Ticket creato", id+" · "+c.name+" · "+title, "ticket");
     S.tf = tfReset(); ticket(); toast("Ticket "+id+" aperto (prova)");
   };
 }
@@ -1335,6 +1341,22 @@ function confirmInline(b){ if(b.dataset.sure){ return true; } b.dataset.sure = "
 const AFILE = {};
 const afiles = list => (list||[]).length ? `<div class="bub-files">${list.map(f=>/^image\//.test(f.type) ? `<a href="#" data-afid="${esc(f.id||"")}" target="_blank" rel="noopener"><img alt="${esc(f.name)}" data-afid="${esc(f.id||"")}" src="${esc(f.url||"")}"></a>`
   : /^video\//.test(f.type) ? `<video controls preload="metadata" data-afid="${esc(f.id||"")}" src="${esc(f.url||"")}"></video>` : `<a class="bub-doc" href="${esc(f.url||"#")}" data-afid="${esc(f.id||"")}" download="${esc(f.name)}">📎 ${esc(f.name)}</a>`).join("")}</div>` : "";
+/* conversazione del ticket visibile al cliente (in prova resta in questa pagina) */
+let PORTAL = {};
+/* allegati scelti in un modulo: letti in base64, max 12 MB l'uno */
+function pickFiles(input, arr, paint){
+  input.onchange = () => { for(const f of [...input.files]){ if(f.size > 12*1024*1024){ toast("«"+f.name+"» supera 12 MB"); continue; }
+    const a = {name:f.name, type:f.type||"application/octet-stream", size:f.size, busy:true, url:URL.createObjectURL(f)}; arr.push(a);
+    const fr = new FileReader(); fr.onload = ()=>{ a.data = String(fr.result).split(",")[1]; a.busy = false; paint(); }; fr.readAsDataURL(f); }
+    input.value = ""; paint(); };
+}
+const attChips = (arr, attr) => arr.map((a,i)=>`<span class="pill">${a.busy?"⏳":"📎"} ${esc(a.name)} <button class="linkback" type="button" ${attr}="${i}" aria-label="Togli ${esc(a.name)}">✕</button></span>`).join(" ");
+const PWHO = {cliente:"Cliente", tecnico:"Tecnico", ufficio:"Assistenza"};
+function portalHTML(t){
+  const list = PORTAL[t.id] || [];
+  return list.map(m=>`<div class="bub ${m.who==="cliente"?"fwd":"tf"}"><span class="bub-w">${esc(m.by||PWHO[m.who]||"")} · ${esc(PWHO[m.who]||"")}</span>${m.text?`<p>${esc(m.text)}</p>`:""}${afiles(m.files)}<span class="bub-t">${esc(fmtDate(m.at))}${m.mail?" · mail "+esc(m.mail):""}</span></div>`).join("")
+    || `<p class="dim">${ROLE==="cliente"?"Nessun messaggio: scrivi qui se vuoi aggiungere dettagli o foto.":"Nessun messaggio con il cliente su questo ticket."}</p>`;
+}
 /* dettatura con il riconoscimento vocale del browser (Chrome, Edge, Safari) */
 let DREC = null;
 function dictate(field, btn){
@@ -1469,7 +1491,8 @@ function reportData(){
     .sort((a,b)=>(b.opened||"").localeCompare(a.opened||""));
   /* solo quello che il cliente ha visto: i suoi messaggi e le risposte mandate a lui (mai le note interne) */
   const msgs = t => !$("#rp-m").checked ? [] : (S.threads||[]).filter(th=>th.ticket===t.id).flatMap(th=>(th.msgs||[]).flatMap(m=>
-    m.k==="fwd" ? [{by:m.from||"Cliente", t:m.t, text:m.text}] : m.k==="me" && m.cc ? [{by:"Tecnico "+(th.tech||""), t:m.t, text:m.text}] : m.forClient ? [{by:"Assistenza", t:m.t, text:m.forClient}] : []));
+    m.k==="fwd" && m.kind!=="portale" ? [{by:m.from||"Cliente", t:m.t, text:m.text}] : m.forClient ? [{by:"Assistenza", t:m.t, text:m.forClient}] : []))
+    .concat((PORTAL[t.id]||[]).map(m=>({by:m.by||PWHO[m.who]||"", t:fmtDate(m.at), text:m.text||(m.files||[]).map(f=>f.name).join(", ")})));
   return {c, list, days, only, msgs};
 }
 const plainDate = d => d ? new Date(d+(d.length===10?"T12:00":"")).toLocaleDateString("it-CH") : "";
@@ -1817,16 +1840,37 @@ function ticketSheet(id){
     <p style="margin:0;color:var(--ink);font-size:16px;font-weight:600">${esc(t.title)}</p>
     <dl class="kv"><dt>Cliente</dt><dd>${esc(c.name)}${c.city?" · "+esc(c.city):""}</dd><dt>Richiedente</dt><dd>${personLine(ticketContact(t))}</dd><dt>Stato</dt><dd>${esc(t.state)}</dd><dt>Intervento</dt><dd>${esc(plan)}</dd>
       <dt>Tecnico</dt><dd>${tech?techTag(tech.ini)+" · "+esc(techName(tech)):"da assegnare"}</dd><dt>Origine</dt><dd>${esc(t.origin||"")}</dd><dt>Aggiornato</dt><dd>${esc(t.upd||"")}</dd></dl>
+    <div class="field"><span>${ROLE==="cliente"?"Conversazione con l'assistenza":"Conversazione con il cliente"}${ROLE==="cliente"?"":" · la vede anche "+esc((ticketContact(t)||{n:"il cliente"}).n)}</span>
+      <div class="chatbox ts-chat" id="ts-portal">${portalHTML(t)}</div>
+      ${(ROLE==="cliente" ? t.state!=="Chiuso" : can("ticket","m")) ? `<div class="mf-atts" id="ts-patt"></div><div class="msg-f"><div class="mf-tools"><label class="btn small" title="Allega foto o documenti">📎<input type="file" id="ts-pfile" multiple hidden accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.odt,.ods,.txt,.zip"></label><button class="btn small" type="button" id="ts-pmic" title="Detta il messaggio">🎤</button></div>
+        <textarea class="input" id="ts-ptext" rows="2" placeholder="${ROLE==="cliente"?"Scrivi all'assistenza: dettagli, orari, foto…":"Rispondi a "+esc((ticketContact(t)||{n:"cliente"}).n)+": riceve una mail"}"></textarea><button class="btn primary" type="button" id="ts-psend">Invia</button></div>`
+        : (ROLE==="cliente" ? `<p class="note">Il ticket è chiuso. Se il problema torna, apri un nuovo ticket.</p>` : "")}</div>
     ${ROLE==="cliente"?"":(()=>{ const rs = RECAPS.filter(r=>String(r.ticket).split(", ").includes(t.id)); const k = ticketContact(t);
       return `<div class="field"><span>Recap a ${esc(k?k.n:"cliente")}${k&&k.mail?" · "+esc(k.mail):" · nessuna mail"}</span>${rs.map(r=>`<div class="contact"><div>${esc(RKIND[r.kind]||r.kind)} · <span class="dim">${fmtDate(r.at)}</span></div>${rstato(r.stato)}</div>`).join("") || `<span class="dim">Nessun recap ancora.</span>`}
         ${can("recap","m")?`<button class="btn small" type="button" id="ts-recap">Invia recap ora</button>`:""}</div>`; })()}
     ${(()=>{ const th = (S.threads||[]).find(x=>x.ticket===t.id); return th ? `<div class="field"><span>Conversazione con il tecnico ${esc(th.tech||"")}</span><div class="chatbox ts-chat">${bubbles(th)}</div><button class="btn small" type="button" id="ts-chat">Apri nei Messaggi</button></div>` : ""; })()}
-    ${(()=>{ const rk = ticketContact(t), f = t.fornitore && cl(t.fornitore), others = liveContacts(c).filter(k=>!rk || k.id!==rk.id);
+    ${ROLE==="cliente"?"":(()=>{ const rk = ticketContact(t), f = t.fornitore && cl(t.fornitore), others = liveContacts(c).filter(k=>!rk || k.id!==rk.id);
       const row = k => `<div class="contact"><div>${personLine(k)}<div class="dim">${esc(k.mail||"")}${k.tel?" · "+esc(k.tel):""}</div></div>${waBtn(k.tel)}</div>`;
       return (rk?`<div class="field"><span>Si parla con</span>${row(rk)}</div>`:"")
         + (f?`<div class="field"><span>Fornitore · ${esc(f.name)}</span>${liveContacts(f).map(row).join("")}</div>`:"")
         + (others.length?`<details class="field"><summary>Altri contatti di ${esc(c.name)} (${others.length})</summary>${others.map(row).join("")}</details>`:""); })()}
-    <div class="actions"><a class="btn" href="${mapsUrl(c)}" target="_blank" rel="noopener">Mappa</a>${ROLE!=="cliente"&&can("ticket","m")?`<button class="btn" type="button" id="ts-edit">Modifica</button>`:""}<button class="btn" type="button" id="ts-list">Tutti i ticket del cliente</button><button class="btn primary" type="button" data-close>Chiudi</button></div>`, closeEditor);
+    <div class="actions">${ROLE==="cliente"?"":`<a class="btn" href="${mapsUrl(c)}" target="_blank" rel="noopener">Mappa</a>`}${ROLE!=="cliente"&&can("ticket","m")?`<button class="btn" type="button" id="ts-edit">Modifica</button>`:""}<button class="btn" type="button" id="ts-list">Tutti i ticket del cliente</button><button class="btn primary" type="button" data-close>Chiudi</button></div>`, closeEditor);
+  { const pb = $("#ts-portal"); loadAfiles(pb); pb.scrollTop = pb.scrollHeight;
+    /* sempre aggiornata: le risposte di tecnico e ufficio arrivano anche senza ricaricare la pagina */
+    if(LIVE) fetch("/api/admin/tickets/"+encodeURIComponent(t.id)+"/msgs", {headers:H()}).then(r=>r.ok?r.json():null).then(j=>{ if(!j || !document.body.contains(pb)) return;
+      if(JSON.stringify(j.portal) !== JSON.stringify(PORTAL[t.id]||[])){ PORTAL[t.id] = j.portal; pb.innerHTML = portalHTML(t); loadAfiles(pb); pb.scrollTop = pb.scrollHeight; } }).catch(()=>{}); }
+  if($("#ts-psend")){ const patt = []; const paintP = () => { $("#ts-patt").innerHTML = attChips(patt, "data-ptx"); $("#ts-patt").querySelectorAll("[data-ptx]").forEach(b=>b.onclick=()=>{ patt.splice(+b.dataset.ptx,1); paintP(); }); };
+    pickFiles($("#ts-pfile"), patt, paintP);
+    $("#ts-pmic").onclick = ()=>dictate($("#ts-ptext"), $("#ts-pmic"));
+    $("#ts-psend").onclick = ()=>{ const text = $("#ts-ptext").value.trim(); if(!text && !patt.length){ toast("Scrivi il messaggio o allega un file"); return; }
+      if(patt.some(a=>a.busy)){ toast("Attendi: sto preparando gli allegati"); return; }
+      const who = ROLE==="cliente" ? "cliente" : "ufficio";
+      if(LIVE){ $("#ts-psend").disabled = true; return post("/api/admin/tickets/"+encodeURIComponent(t.id)+"/msg", {text, files:patt.map(({name,type,data})=>({name,type,data}))})
+        .then(r=>{ PORTAL[t.id] = r.portal; ticketSheet(t.id); toast(who==="cliente" ? "Messaggio inviato all'assistenza" : r.msg.mail==="manca la mail" ? "Salvato: il contatto non ha una mail" : "Risposta inviata per mail"); })
+        .catch(err=>{ $("#ts-psend").disabled = false; toast("Non inviato: "+err.message); }); }
+      (PORTAL[t.id] = PORTAL[t.id] || []).push({id:"p"+Date.now(), at:new Date().toISOString(), who, by:who==="cliente"?((ticketContact(t)||{}).n||"Cliente"):((ME&&ME.nome)||"Assistenza"), text, files:patt.map(({name,type,size,url})=>({name,type,size,url})), mail:who==="ufficio"?"preparata":undefined});
+      logLocal(who==="cliente"?"Messaggio del cliente sul ticket":"Risposta al cliente", t.id, "ticket"); ticketSheet(t.id); toast(who==="cliente" ? "Messaggio inviato all'assistenza (prova)" : "Risposta preparata per mail (prova)"); };
+  }
   if($("#ts-chat")) $("#ts-chat").onclick = ()=>{ closeEditor(); S.view="messaggi"; S.thSel=t.id; S.mf={q:"",tech:""}; render(); };
   if($("#ts-edit")) $("#ts-edit").onclick = ()=>{ closeEditor(); ticketForm(t); };
   if($("#ts-recap")) $("#ts-recap").onclick = ()=>{
@@ -2559,7 +2603,7 @@ function load(){
   return fetch("/api/admin/state", {headers:H()}).then(r=>{ if(r.status===401) throw {auth:true}; return r.ok ? r.json() : Promise.reject(new Error("errore "+r.status)); }).then(d=>{
     LIVE = true; CONN = d.connections; ME = d.me || ME; paintMe();
     CLIENTS.splice(0, CLIENTS.length, ...d.clients); TECHS.splice(0, TECHS.length, ...d.techs);
-    S.mails = d.mails; S.tickets = d.tickets; S.threads = d.threads || []; S.customRules = d.customRules || []; if(d.recaps) RECAPS = d.recaps; if(d.recapCfg) RECAP_CFG = d.recapCfg; if(d.recapMissing) RECAP_MISSING = d.recapMissing; if(d.sistema) SISTEMA = d.sistema; if(d.aree) AREE_LIST = d.aree; if(d.limiti) LIMITI = d.limiti; S.rules = d.rules; SETTINGS = d.settings || SETTINGS; O365 = d.o365 || null;
+    S.mails = d.mails; S.tickets = d.tickets; S.threads = d.threads || []; PORTAL = d.portal || {}; S.customRules = d.customRules || []; if(d.recaps) RECAPS = d.recaps; if(d.recapCfg) RECAP_CFG = d.recapCfg; if(d.recapMissing) RECAP_MISSING = d.recapMissing; if(d.sistema) SISTEMA = d.sistema; if(d.aree) AREE_LIST = d.aree; if(d.limiti) LIMITI = d.limiti; S.rules = d.rules; SETTINGS = d.settings || SETTINGS; O365 = d.o365 || null;
     if(d.ai) AI = d.ai;
     if(d.profiles) PROFILES = d.profiles; REAL_ROLE = (d.me && d.me.profilo) || "admin"; if(REAL_ROLE !== "admin") ROLE = REAL_ROLE;
     if(!BOOTED){ BOOTED = true; landing(); }
